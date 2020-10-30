@@ -1,0 +1,23 @@
+name: osc_env
+channels:
+  - rdkit
+  - defaults
+  - pytorch
+  - dglteam
+dependencies:
+  - python=3.7.7
+  - pytorch
+  - torchvision
+  - torchaudio
+  - cudatoolkit=10.2
+  - rdkit
+  - dgl
+  - pip
+  - pip:
+    - pytorch_lightning
+    - scikit-learn
+    - tqdm
+    - pyyaml
+    - networkx
+    - matplotlib
+    - seaborn
