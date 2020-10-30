@@ -1,0 +1,15 @@
+__pycache__/
+build/
+dist/
+data/
+*~*
+.vscode/
+.mypy_cache/
+coverage.xml
+.coverage
+*.gv
+*.png
+
+## User defined
+*.egg-info
+*.mp4
