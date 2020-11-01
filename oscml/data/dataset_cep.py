@@ -5,10 +5,12 @@ import numpy as np
 import pandas as pd
 from sklearn.model_selection import train_test_split
 from tqdm import tqdm
-from oscml.utils.util import log
-from oscml.utils.util import smiles2mol
+
+import oscml.data.dataset
 import oscml.features.weisfeilerlehman
 from oscml.features.weisfeilerlehman import mol2seq
+from oscml.utils.util import log
+from oscml.utils.util import smiles2mol
 
 ATOM_TYPES_CEP = {
      ('C', False): 0,
@@ -57,12 +59,12 @@ class Mol2seq_precalculated_with_OOV():
         return descriptor_BFS
 
 def mol2seq_precalculated_with_OOV(df, radius, oov, column_smiles='UNKNOWN'):
-    log('filling mol2seq according to Weisfeiler Lehman algorithm with radius=', radius)
-    sleep(1)
-    
+ 
     mol2seq = Mol2seq_precalculated_with_OOV(radius, oov)
     
     if df is not None:
+        log('filling mol2seq according to Weisfeiler Lehman algorithm with radius=', radius)
+        sleep(1)
         for i in tqdm(range(len(df))):
             smiles = df.iloc[i][column_smiles]
             m = smiles2mol(smiles)
@@ -154,24 +156,6 @@ def sample_without_replacement(df, number_samples):
                                                   random_state=0, stratify=column_bin)
     log('number of selected DB entries=', len(df_sampled))
     return df_sampled
-
-class DataTransformer():
-    
-    def __init__(self, target_mean, target_std):
-        self.target_mean = target_mean
-        self.target_std = target_std
-        
-    def transform(self, data):
-        result = (data - self.target_mean) / self.target_std
-        return result
-    
-    def inverse_transform(self, data):
-        """If the pcez values are predicted for evaluation (in the test phase), 
-        the inverse Z-score transformation has to be applied to get the predicted values 
-        before calculating mean errors or correlation coefficients.
-        """
-        result = data * self.target_std + self.target_mean
-        return result
     
 def split_and_normalize(df, train_ratio, val_ratio, test_ratio):
     df_train_plus_val_plus_test = df.copy()
@@ -189,7 +173,7 @@ def split_and_normalize(df, train_ratio, val_ratio, test_ratio):
     pce_mean = df_train_plus_val['pce'].mean()
     pce_std = df_train_plus_val['pce'].std(ddof=0)
     log('normalizing PCE values with pce_mean=', pce_mean, 'pce_std=', pce_std)
-    transformer = DataTransformer(pce_mean, pce_std)
+    transformer = oscml.data.dataset.DataTransformer(None, pce_mean, pce_std)
     transform = transformer.transform
     
     df_train_plus_val_plus_test['pcez'] = transform(df_train_plus_val_plus_test['pce'])

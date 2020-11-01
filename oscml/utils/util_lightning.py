@@ -1,4 +1,5 @@
 import datetime
+import logging
 
 import numpy as np
 import pytorch_lightning as pl
@@ -9,11 +10,19 @@ import torch.nn
 
 from oscml.utils.util import log, calculate_metrics
 
+def get_standard_params_for_trainer_short():
+    params = {
+        'max_epochs': 1,
+        'log_every_n_steps': 1,
+        'flush_logs_every_n_steps': 10,
+        'gpus': 1 if torch.cuda.is_available() else None,
+        }
+    return params
+
 def get_standard_params_for_trainer(root_dir='./'):
     save_dir = root_dir + 'logs'
     #tb_logger = pl.loggers.TensorBoardLogger(save_dir='save_dir, name='tb')
     csv_logger = pl.loggers.CSVLogger(save_dir=save_dir, name='csv')
-
 
     checkpoint_callback = pl.callbacks.ModelCheckpoint(monitor='val_loss', save_last=True, period=2, save_top_k=-1)
 
@@ -128,3 +137,15 @@ def shared_epoch_end(tensor_step_outputs, is_validation, epoch, inverse_transfor
     log(prefix + ' ' + 'result=', result_with_prefix)
 
     return (result_with_prefix, y_complete, y_hat_complete)
+
+def fit_model(data_loader_fct, data_loader_params, model, model_params, trainer_params):
+    
+    if 'logger' in trainer_params:
+        log('log dir=', trainer_params['logger'].log_dir)
+    else:
+        logging.getLogger().warning('NO LOG DIR')
+    
+    model_instance = model(**model_params)
+    train_dl, val_dl = data_loader_fct(**data_loader_params)
+    trainer = pl.Trainer(**trainer_params)
+    return trainer.fit(model_instance, train_dataloader=train_dl, val_dataloaders=val_dl)

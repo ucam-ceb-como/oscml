@@ -29,7 +29,7 @@ from oscml.utils.util import smiles2mol
 import oscml.utils.util_pytorch
 import oscml.utils.util_lightning
 
-def init_params(df, node2index=None):
+def DEPRECATED_init_params(df, node2index=None):
         
     log('initializing parameters for PyTorch model GNNSIMPLE')
     d = {}
@@ -102,15 +102,16 @@ def create_dgl_graph(smiles, mol2seq_fct):
     m = smiles2mol(smiles)
     adj = rdkit.Chem.rdmolops.GetAdjacencyMatrix(m)
     g_nx = networkx.convert_matrix.from_numpy_matrix(adj)
-    g = dgl.DGLGraph(g_nx)
-    
+    #g = dgl.DGLGraph(g_nx)
+    g = dgl.from_networkx(g_nx)
+
     seq = mol2seq_fct(m)
     tensor = torch.as_tensor(seq, dtype=torch.long, device = cfg[oscml.utils.params.PYTORCH_DEVICE])
     g.ndata['type'] = tensor
     
     return g
     
-class DatasetPceForGNNsimple(torch.utils.data.Dataset):
+class DatasetForGnnWithTransformer(torch.utils.data.Dataset):
     
     def __init__(self, df, mol2seq_fct, smiles_fct, target_fct):
         super().__init__()
@@ -145,28 +146,30 @@ def collate_fn(data):
     y_batch = torch.as_tensor(y, device = device)
     return [g_batch, y_batch]
 
-def get_dataloaders(df_train, df_val, df_test, args, smiles_fct='SMILES_str', target_fct='pcez'):
+def get_dataloaders(train, val, test, batch_size, mol2seq, transformer):
+ 
+    smiles_fct = transformer.transform_x
+    target_fct = transformer.transform
 
-    mol2seq = args['MOL2SEQ']
-    batch_size = args['BATCH_SIZE']
-    
     train_dl = None
-    if df_train is not None:
-        train_ds = DatasetPceForGNNsimple(df_train, mol2seq, smiles_fct, target_fct)
+    if train is not None:
+        train_ds = DatasetForGnnWithTransformer(train, mol2seq, smiles_fct, target_fct)
         train_dl = torch.utils.data.DataLoader(train_ds, batch_size, shuffle=True, collate_fn=collate_fn)
     val_dl = None
-    if df_val is not None:
-        val_ds = DatasetPceForGNNsimple(df_val, mol2seq, smiles_fct, target_fct)
+    if val is not None:
+        val_ds = DatasetForGnnWithTransformer(val, mol2seq, smiles_fct, target_fct)
         val_dl = torch.utils.data.DataLoader(val_ds, batch_size, shuffle=False, collate_fn=collate_fn)
     test_dl = None
-    if df_test is not None:
-        test_ds = DatasetPceForGNNsimple(df_test, mol2seq, smiles_fct, target_fct)
+    if test is not None:
+        test_ds = DatasetForGnnWithTransformer(test, mol2seq, smiles_fct, target_fct)
         test_dl = torch.utils.data.DataLoader(test_ds, batch_size, shuffle=False, collate_fn=collate_fn)
     
     batch_func = (lambda dl : len(dl) if dl else 0)
     batch_numbers = list(map(batch_func, [train_dl, val_dl, test_dl]))
     log('batch numbers - train val test=', batch_numbers)
-    
+ 
+    if test is None:
+        return train_dl, val_dl 
     return train_dl, val_dl, test_dl
 
 class GNNSimpleLayer(pl.LightningModule):
@@ -189,15 +192,18 @@ class GNNSimpleLayer(pl.LightningModule):
 
 class GNNSimple(oscml.utils.util_lightning.CARESModule):
     
-    def __init__(self, args, target_mean, target_std):
-        learning_rate = args['LEARNING_RATE']
+    def __init__(self, node_type_number, conv_dim_list, mlp_dim_list, padding_index, target_mean, target_std, learning_rate):
+
+        #learning_rate = args['LEARNING_RATE']
         super().__init__(learning_rate, target_mean, target_std)
                 
-        node_type_number = args['NODE_TYPE_NUMBER']
-        conv_dim_list = args['CONV_DIM_LIST']
-        mlp_dim_list = args['MLP_DIM_LIST']
-        if 'PADDING_INDEX' in args and (args['PADDING_INDEX'] is not None):
-            self.padding_index = args['PADDING_INDEX']
+        #node_type_number = args['NODE_TYPE_NUMBER']
+        #conv_dim_list = args['CONV_DIM_LIST']
+        #mlp_dim_list = args['MLP_DIM_LIST']
+        #if 'PADDING_INDEX' in args and (args['PADDING_INDEX'] is not None):
+        #    self.padding_index = args['PADDING_INDEX']
+        if padding_index is not None:
+            self.padding_index = padding_index
             log('padding index for embedding was set to ', self.padding_index, '. Thus unknown atom types can be handled')
             # consider the padding index for subsequential transfer learning with unknown atom types:
             # we add +1 to node_type_number because
@@ -213,7 +219,7 @@ class GNNSimple(oscml.utils.util_lightning.CARESModule):
             layer = GNNSimpleLayer(conv_dim_list[i], conv_dim_list[i+1], F.relu)
             self.conv_modules.append(layer)
             
-        self.mlp = util_pytorch.create_mlp(mlp_dim_list)
+        self.mlp = oscml.utils.util_pytorch.create_mlp(mlp_dim_list)
         
         self.one = torch.Tensor([1]).long().to(cfg['PYTORCH_DEVICE'])
     

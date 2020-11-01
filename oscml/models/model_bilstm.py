@@ -14,7 +14,7 @@ import oscml.utils.params
 from oscml.utils.params import cfg
 from oscml.utils.util import log
 from oscml.utils.util import smiles2mol
-import oscml.utils.util_lightning
+import oscml.utils.util_lightning as util_lightning
 import oscml.utils.util_pytorch
 import oscml.features.weisfeilerlehman
 
@@ -37,17 +37,28 @@ def init_params(df, mol2seq=None):
     #log('max sequence length=', d['MAX_SEQUENCE_LENGTH'])
     log('parameters for PyTorch model BiLSTM:', d)
 
-class DatasetPceForBiLstm(torch.utils.data.Dataset):
+class DatasetForBiLstmWithTransformer(torch.utils.data.Dataset):
     
-    def __init__(self, df, max_sequence_length, m2seq_fct):
+    def __init__(self, df, max_sequence_length, m2seq_fct, padding_index, smiles_fct, target_fct):
         super().__init__()
         self.df = df
         self.max_sequence_length = max_sequence_length
         self.m2seq_fct = m2seq_fct
-        self.padding_sequence = [cfg['BILSTM']['PADDING_INDEX']]*100
+        self.padding_sequence = [padding_index]*100
+
+        if isinstance(smiles_fct, str):
+            self.smiles_fct = lambda data: data[smiles_fct]
+        else:
+            self.smiles_fct = smiles_fct
+        if isinstance(target_fct, str):
+            self.target_fct = lambda data: data[target_fct]
+        else:
+            self.target_fct = target_fct
     
     def __getitem__(self, index):
-        smiles = self.df.iloc[index]['SMILES_str']
+        #smiles = self.df.iloc[index]['SMILES_str']
+        row = self.df.iloc[index]
+        smiles = self.smiles_fct(row)
         m = smiles2mol(smiles)
         x = self.m2seq_fct(m)
         # increase all indexes by +1
@@ -56,26 +67,38 @@ class DatasetPceForBiLstm(torch.utils.data.Dataset):
         x = np.append(x, self.padding_sequence[:self.max_sequence_length-len(x)])
         device = cfg[oscml.utils.params.PYTORCH_DEVICE]
         x = torch.as_tensor(x, dtype = torch.long, device = device)
-        y = torch.as_tensor(np.array(self.df.iloc[index]['pcez'], dtype=np.float32), device = device)
-        
+
+        #y = torch.as_tensor(np.array(self.df.iloc[index]['pcez'], dtype=np.float32), device = device)
+        y = self.target_fct(row)
+        y = torch.as_tensor(np.array(y, dtype=np.float32), device = device)
+
         return [x, y]
     
     def __len__(self):
         return len(self.df)
+
+def get_dataloaders(train, val, test, batch_size, mol2seq, max_sequence_length, padding_index,
+        smiles_fct='SMILES_str', target_fct='pcez'):
+
+    train_dl = None
+    if train is not None:
+        train_ds = DatasetForBiLstmWithTransformer(train, max_sequence_length, mol2seq, padding_index, smiles_fct, target_fct)
+        train_dl = torch.utils.data.DataLoader(train_ds, batch_size, shuffle=True)
+    val_dl = None
+    if val is not None:
+        val_ds = DatasetForBiLstmWithTransformer(val, max_sequence_length, mol2seq, padding_index, smiles_fct, target_fct)
+        val_dl = torch.utils.data.DataLoader(val_ds, batch_size, shuffle=False)
+    test_dl = None
+    if test is not None:
+        test_ds = DatasetForBiLstmWithTransformer(test, max_sequence_length, mol2seq, padding_index, smiles_fct, target_fct)
+        test_dl = torch.utils.data.DataLoader(test_ds, batch_size, shuffle=False)
+   
+    batch_func = (lambda dl : len(dl) if dl else 0)
+    batch_numbers = list(map(batch_func, [train_dl, val_dl, test_dl]))
+    log('batch numbers - train val test=', batch_numbers)
     
-def get_dataloaders(df_train, df_val, df_test, params):
-    max_sequence_length = params['MAX_SEQUENCE_LENGTH']
-    mol2seq = params['MOL2SEQ']
-    train_ds = DatasetPceForBiLstm(df_train, max_sequence_length, mol2seq)
-    val_ds = DatasetPceForBiLstm(df_val, max_sequence_length, mol2seq)
-    test_ds = DatasetPceForBiLstm(df_test, max_sequence_length, mol2seq)
-    
-    batch_size = params['BATCH_SIZE']
-    train_dl = torch.utils.data.DataLoader(train_ds, batch_size, shuffle=True)
-    val_dl = torch.utils.data.DataLoader(val_ds, batch_size, shuffle=False)
-    test_dl = torch.utils.data.DataLoader(test_ds, batch_size, shuffle=False)
-    log('number of batches - train val test=', len(train_dl), len(val_dl), len(test_dl))
-    
+    if test is None:
+        return train_dl, val_dl 
     return train_dl, val_dl, test_dl
     
 class Attention(pl.LightningModule):
@@ -148,17 +171,11 @@ class Attention(pl.LightningModule):
         
         return msum
     
-class BiLstmForPce(oscml.utils.util_lightning.CARESModule):
+class BiLstmForPce(util_lightning.CARESModule):
     
-    def __init__(self, args, target_mean, target_std ):
-        learning_rate = args['LEARNING_RATE']
+    def __init__(self, number_of_subgraphs, subgraph_embedding_dim, mlp_dim_list, padding_index, target_mean, target_std, learning_rate):
+
         super().__init__(learning_rate, target_mean, target_std)
-        
-        number_of_subgraphs = args['SUBGRAPH_NUMBER']
-        subgraph_embedding_dim = args['SUBGRAPH_EMBEDDING_DIM']
-        #max_sequence_length = args['MAX_SEQUENCE_LENGTH']
-        mlp_dim_list = args['MLP_DIM_LIST']
-        padding_index = args['PADDING_INDEX']
         
         assert len(mlp_dim_list) > 0
         # since the hidden state vectors of both LSTMs have the same dimension

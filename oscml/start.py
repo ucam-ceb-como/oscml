@@ -1,12 +1,13 @@
 import argparse
 
-import numpy as np
+
 import pytorch_lightning as pl
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
 import torch.utils.data
+import numpy as np
 
 import oscml.data.dataset_cep
 import oscml.models.model_bilstm
@@ -124,15 +125,19 @@ def main(args):
             log('unknown model=', args.model)
 
 if __name__ == '__main__':
+    PATH = 'C:/my/CARES_CEP_project/dropbox_ZhouLi_Project/data/CPEDB_valid_SMILES.csv'
     parser = argparse.ArgumentParser(description='CEP')
-    parser.add_argument("--task", choices=['skipinvalidsmiles', 'train'])
-    parser.add_argument("--model", type=str)
-    parser.add_argument("--src", type=str)
+    parser.add_argument("--task", choices=['skipinvalidsmiles', 'train'], default='train')
+    parser.add_argument("--model", type=str, default='gnnsimple')
+    parser.add_argument("--src", type=str, default=PATH)
     parser.add_argument("--dest", type=str)
     parser.add_argument("--numbersamples", type=int)
     parser.add_argument("--epochs", type=int, default=1)
     parser.add_argument("--plot", type=bool, default=False)
     
+
+    # --task train --model gnnsimple --src C:/my/CARES_CEP_project/dropbox_ZhouLi_Project/data/CPEDB_valid_SMILES.csv --epochs 10
+
     args = parser.parse_args()
     
     #__init__.init()

@@ -11,14 +11,3 @@ __docs__ = (
 )
 __long_docs__ = """
 """
-
-import oscml.utils.util
-from oscml.utils.util import log
-
-def init():
-    loggingconfigfile = './conf/logging.yaml'
-    oscml.utils.util.init_logging(loggingconfigfile)
-    log('initializing finished, version=', __version__)
-    
-print('__init__.py is called')
-init()

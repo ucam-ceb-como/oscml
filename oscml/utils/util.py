@@ -2,6 +2,8 @@ import datetime
 import logging
 import logging.config
 import os
+import pprint
+import pytorch_lightning as pl
 from time import sleep
 import yaml
 
@@ -11,24 +13,45 @@ import sklearn.metrics
 from torch.utils.tensorboard import SummaryWriter
 from tqdm import tqdm
 
+import oscml.utils.params
 from oscml.utils.params import cfg
 
-def init_logging(loggingconfigfile):
-    print('initializing logging with config file=', loggingconfigfile)
-    with open(loggingconfigfile, 'r') as f:
+def init_logging(log_config_file, log_file):
+    print('initializing logging with log config file=', log_config_file, ', log file=', log_file)
+    with open(log_config_file, 'r') as f:
         # always use safe_load to avoid reading and executing as YAML serialized Python code
         # yaml returns a dictionary
         log_cfg = yaml.safe_load(f.read())
 
-    print(log_cfg)
-    log_file = log_cfg['handlers']['file_handler']['filename']
-    print('creating log dirs for log file=', log_file)
-    os.makedirs(os.path.dirname(log_file), exist_ok=True)
+    pprint_log_cfg = pprint.PrettyPrinter().pformat(log_cfg)
+    print(pprint_log_cfg)
+
+    if log_file:
+        log_cfg['handlers']['file_handler']['filename'] = log_file
+    else:
+        log_file = log_cfg['handlers']['file_handler']['filename']
+
+    dir_name = os.path.dirname(log_file)
+    try:
+        os.makedirs(dir_name, exist_ok=True)
+    except FileExistsError:
+        print('dir existiert bereits, dir=', dir_name)
 
     # use logging configuration with dictionary
     logging.config.dictConfig(log_cfg)
 
-    log('initialized logging with config file=', loggingconfigfile, ', log file=', log_file)
+    log('initialized logging with config file=', log_config_file, ', log file=', log_file)
+
+def init_standard_logging():
+
+    # file and console logging with Python's standard logging library
+    log_config_file = './conf/logging.yaml'
+    log_dir = './tmp/log_tmp'
+    name = 'test_train_model_without_hpo'
+    oscml.utils.util.init_logging(log_config_file, log_dir + '/' + name + '.log')
+
+    # metric logging with PyTorch Lightning
+    return pl.loggers.CSVLogger(save_dir=log_dir, name=name, version=None)
 
 def log(*args):
     if len(args) == 1:
@@ -38,13 +61,13 @@ def log(*args):
         for m in args:
             message += str(m) + ' '
         logging.getLogger().info(message)
-
+       
 def logm(*args):
     logging.getLogger().info(args)
 
 def smiles2mol(smiles):
     m = rdkit.Chem.MolFromSmiles(smiles)
-    if m and cfg[params.INCLUDE_HYDROGENS]:
+    if m and cfg[oscml.utils.params.INCLUDE_HYDROGENS]:
         m = rdkit.Chem.AddHs(m)
     return m
 
@@ -87,7 +110,7 @@ def calculate_metrics(y_true_np, y_pred_np):
     return {'mse':mse, 'rmse': rmse, 'R2':R2, 'r':r_Pearson[0,1], 'mae': mae, 'count': len(y_true_np)}
 
 def create_tensorboard_logger(postfix=''):
-    log_dir = cfg[params.TENSOR_BOARD_MAIN_LOG_DIR] + '/' + datetime.datetime.now().strftime('%y%m%d_%H%M')
+    log_dir = cfg[oscml.utils.params.TENSOR_BOARD_MAIN_LOG_DIR] + '/' + datetime.datetime.now().strftime('%y%m%d_%H%M')
     log_dir_val = log_dir + '_val_' + postfix
     val_tb = SummaryWriter(log_dir=log_dir_val, flush_secs=10)
     log_dir_train = log_dir + '_train_' + postfix
