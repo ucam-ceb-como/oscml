@@ -13,7 +13,7 @@ handlers:
     formatter: simple
   file_handler:
     class: logging.FileHandler
-    filename: ./tmp/logs/log/ml.log
+    filename: ./logs/oscml.log
     level: INFO
     formatter: extended
 #  rotating_file_handler:

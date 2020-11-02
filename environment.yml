@@ -6,14 +6,9 @@ channels:
   - dglteam
 dependencies:
   - python=3.7.7
-  - pytorch
-  - torchvision
-  - torchaudio
-  - cudatoolkit=10.2
-  - rdkit
-  - dgl
   - pip
   - pip:
+    - numpy
     - pytorch_lightning
     - scikit-learn
     - tqdm
@@ -21,3 +16,9 @@ dependencies:
     - networkx
     - matplotlib
     - seaborn
+  - pytorch
+  - torchvision
+  - torchaudio
+  - cudatoolkit=10.2
+  - rdkit
+  - dgl

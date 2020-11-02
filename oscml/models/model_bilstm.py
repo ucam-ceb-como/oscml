@@ -18,7 +18,7 @@ import oscml.utils.util_lightning as util_lightning
 import oscml.utils.util_pytorch
 import oscml.features.weisfeilerlehman
 
-def init_params(df, mol2seq=None):
+def DEPRECATED_init_params(df, mol2seq=None):
     log('initializing parameters for PyTorch model BiLSTM')
     d = {}
     cfg['BILSTM'] = d

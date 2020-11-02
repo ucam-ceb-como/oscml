@@ -1,12 +1,8 @@
 import torch
 
-"""Include hydrogens in the molecular graphs as in [WU20]. This leads to 56 different fragments. Set INCLUDE_HYDROGENS = False if hydrogens should not be considered.
-"""
 INCLUDE_HYDROGENS = 'INCLUDE_HYDROGENS'
 TENSOR_BOARD_MAIN_LOG_DIR = 'TENSOR_BOARD_MAIN_LOG_DIR'
 PYTORCH_DEVICE = 'PYTORCH_DEVICE'
-
-
 
 class Singleton(type):
     """see https://stackoverflow.com/questions/6760685/creating-a-singleton-in-python

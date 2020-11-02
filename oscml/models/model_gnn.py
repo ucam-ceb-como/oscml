@@ -23,8 +23,7 @@ from tqdm import tqdm
 import oscml.utils.params
 from oscml.utils.params import cfg
 import oscml.utils.util
-from oscml.utils.util import log
-from oscml.utils.util import logm
+from oscml.utils.util import log, concat
 from oscml.utils.util import smiles2mol
 import oscml.utils.util_pytorch
 import oscml.utils.util_lightning
@@ -63,7 +62,7 @@ class Mol2seq_simple():
         self.oov = oov
         # node index starts with 0, thus -1
         self.max_index = len(self.node2index) - 1
-        log('initialized Mol2seq_simple with fix=', fix, ', oov=', oov, ', max_index=', self.max_index)
+        logging.info(concat('initialized Mol2seq_simple with fix=', fix, ', oov=', oov, ', max_index=', self.max_index))
     
     def apply_OOV(self, index):
         return (index if index <= self.max_index else -1)
@@ -85,7 +84,7 @@ class Mol2seq_simple():
         return seq
 
 def mol2seq_simple(df, column='SMILES_str'):
-    log('filling mol2seq_simple')
+    logging.info('filling mol2seq_simple')
     sleep(1)
     
     mol2seq = Mol2seq_simple() 
@@ -94,7 +93,7 @@ def mol2seq_simple(df, column='SMILES_str'):
         m = smiles2mol(smiles)
         mol2seq(m)
     
-    log('node2index dict:', len(mol2seq.node2index), mol2seq.node2index)
+    logging.info('node2index dict:', len(mol2seq.node2index), mol2seq.node2index)
     
     return mol2seq
 
@@ -166,7 +165,7 @@ def get_dataloaders(train, val, test, batch_size, mol2seq, transformer):
     
     batch_func = (lambda dl : len(dl) if dl else 0)
     batch_numbers = list(map(batch_func, [train_dl, val_dl, test_dl]))
-    log('batch numbers - train val test=', batch_numbers)
+    logging.info(concat('batch numbers - train val test=', batch_numbers))
  
     if test is None:
         return train_dl, val_dl 
@@ -204,14 +203,15 @@ class GNNSimple(oscml.utils.util_lightning.CARESModule):
         #    self.padding_index = args['PADDING_INDEX']
         if padding_index is not None:
             self.padding_index = padding_index
-            log('padding index for embedding was set to ', self.padding_index, '. Thus unknown atom types can be handled')
+            logging.info(concat('padding index for embedding was set to ', self.padding_index, 
+                '. Thus unknown atom types can be handled'))
             # consider the padding index for subsequential transfer learning with unknown atom types:
             # we add +1 to node_type_number because
             # padding_idx = 0 in a sequences is mapped to zero vector
             self.embedding = nn.Embedding(node_type_number+1, conv_dim_list[0], padding_idx=self.padding_index)
         else:
             self.padding_index = None
-            log('No padding index for embedding was set. No transfer learning for unknown atom types will be possible')
+            logging.info('No padding index for embedding was set. No transfer learning for unknown atom types will be possible')
             self.embedding = nn.Embedding(node_type_number, conv_dim_list[0])
         
         self.conv_modules = nn.ModuleList()

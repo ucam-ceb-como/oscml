@@ -8,7 +8,7 @@ import torch
 import torch.optim
 import torch.nn
 
-from oscml.utils.util import log, calculate_metrics
+from oscml.utils.util import concat, calculate_metrics
 
 def get_standard_params_for_trainer_short():
     params = {
@@ -39,9 +39,9 @@ def get_standard_params_for_trainer(root_dir='./'):
         'gpus': gpus,
     }
 
-    log('params for Lightning trainer=', params)
-    log('trainer is logging to save_dir=', csv_logger.save_dir, #', name=', csv_logger.name,
-        ', experiment version=', csv_logger.version)
+    logging.info(concat('params for Lightning trainer=', params))
+    logging.info(concat('trainer is logging to save_dir=', csv_logger.save_dir, #', name=', csv_logger.name,
+        ', experiment version=', csv_logger.version))
 
     return params
 
@@ -50,7 +50,7 @@ class CARESModule(pl.LightningModule):
     def __init__(self, learning_rate, target_mean, target_std):
         super().__init__()
 
-        log('initializing CARESModule with learning_rate=', learning_rate, ', target_mean=', target_mean, ', target_std=', target_std)
+        logging.info(concat('initializing CARESModule with learning_rate=', learning_rate, ', target_mean=', target_mean, ', target_std=', target_std))
 
         self.learning_rate = learning_rate
         self.target_mean = target_mean
@@ -70,8 +70,10 @@ class CARESModule(pl.LightningModule):
         x, y = batch
         y_hat = self(x)
         loss = torch.nn.MSELoss()(y_hat, y)
-        self.log('train_loss', loss)
-        self.log('train_count', len(y))
+        self.log('phase', 'train')
+        self.log('loss', loss)
+        self.log('count', len(y))
+        self.log('time', str(datetime.datetime.now()))
         return loss
 
     def validation_step(self, batch, batch_idx):
@@ -119,33 +121,30 @@ def shared_epoch_end(tensor_step_outputs, is_validation, epoch, inverse_transfor
         y_complete = inverse_transform_fct(y_complete)
         y_hat_complete = inverse_transform_fct(y_hat_complete)
     metrics = calculate_metrics(y_complete, y_hat_complete)
+    
     if is_validation:
-        result = {
-            'epoch': epoch,
-            'time': str(datetime.datetime.now()),
-            'loss': loss}
-        prefix = 'val'
+        result = {'phase': 'val', 'val_loss': loss}
     else: # test
-        result = {'loss': loss}
-        prefix = 'test'
+        result = {'phase': 'test'}
+    
+    result.update({
+        'epoch': epoch,
+        'time': str(datetime.datetime.now()),
+    })
     result.update(metrics)
+    logging.info(concat('result=', result))
 
-    result_with_prefix = {}
-    for key, value in result.items():
-        result_with_prefix[prefix + '_' + key] = value
-
-    log(prefix + ' ' + 'result=', result_with_prefix)
-
-    return (result_with_prefix, y_complete, y_hat_complete)
+    return (result, y_complete, y_hat_complete)
 
 def fit_model(data_loader_fct, data_loader_params, model, model_params, trainer_params):
     
     if 'logger' in trainer_params:
-        log('log dir=', trainer_params['logger'].log_dir)
+        logging.info(concat('log dir=', trainer_params['logger'].log_dir))
     else:
-        logging.getLogger().warning('NO LOG DIR')
+        logging.warning('NO LOG DIR')
     
     model_instance = model(**model_params)
     train_dl, val_dl = data_loader_fct(**data_loader_params)
     trainer = pl.Trainer(**trainer_params)
-    return trainer.fit(model_instance, train_dataloader=train_dl, val_dataloaders=val_dl)
+    trainer.fit(model_instance, train_dataloader=train_dl, val_dataloaders=val_dl)
+    return model_instance, trainer

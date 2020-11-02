@@ -16,7 +16,7 @@ from tqdm import tqdm
 import oscml.utils.params
 from oscml.utils.params import cfg
 
-def init_logging(log_config_file, log_file):
+def init_file_logging(log_config_file, log_file):
     print('initializing logging with log config file=', log_config_file, ', log file=', log_file)
     with open(log_config_file, 'r') as f:
         # always use safe_load to avoid reading and executing as YAML serialized Python code
@@ -42,18 +42,30 @@ def init_logging(log_config_file, log_file):
 
     log('initialized logging with config file=', log_config_file, ', log file=', log_file)
 
-def init_standard_logging():
+def init_logging(src_directory, dst_directory):
 
     # file and console logging with Python's standard logging library
-    log_config_file = './conf/logging.yaml'
-    log_dir = './tmp/log_tmp'
-    name = 'test_train_model_without_hpo'
-    oscml.utils.util.init_logging(log_config_file, log_dir + '/' + name + '.log')
+    log_config_file = src_directory + '/conf/logging.yaml'
+    log_dir = dst_directory + '/logs'
+    name = 'oscml'
+    init_file_logging(log_config_file, log_dir + '/' + name + '.log')
 
     # metric logging with PyTorch Lightning
     return pl.loggers.CSVLogger(save_dir=log_dir, name=name, version=None)
 
+def concat(*args):
+    if len(args) == 1:
+        return args[0]
+    else:
+        message = ''
+        for m in args:
+            message += str(m) + ' '
+        return message
+    
 def log(*args):
+    logging.info(concat(*args))
+
+def DEPRECATED_log(*args):
     if len(args) == 1:
         logging.getLogger().info(args[0])
     else:

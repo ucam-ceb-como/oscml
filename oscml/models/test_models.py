@@ -7,6 +7,7 @@ import oscml.data.dataset
 import oscml.data.dataset_cep
 import oscml.data.dataset_hopv15
 import oscml.models.model_bilstm
+import oscml.start
 import oscml.utils.util
 from oscml.utils.util import log, smiles2mol
 
@@ -24,7 +25,8 @@ class TestModels(unittest.TestCase):
         contain different fragment types and the number of different atom types
         has increased to 12.
         """
-        df_hopv15 = oscml.data.dataset_hopv15.read(oscml.test_oscml.PATH_HOPV_15)
+        path = oscml.start.path_hopv_15()
+        df_hopv15 = oscml.data.dataset_hopv15.read(path)
         mol2seq_without_OOV = oscml.data.dataset_cep.mol2seq_precalculated_with_OOV(None, radius=1, oov=False, column_smiles='smiles')
         mol2seq_with_OOV = oscml.data.dataset_cep.mol2seq_precalculated_with_OOV(None, radius=1, oov=True, column_smiles='smiles')
         log(mol2seq_with_OOV.atom_dict)
@@ -59,9 +61,9 @@ class TestModels(unittest.TestCase):
         log('number of molecules with at least one new atom type=', count_larger)
         assert count_larger == 340
 
-    def test_bilstm_model_forward(self
-    ):
-        df_train, df_val, df_test = oscml.data.dataset.read_and_split(oscml.test_oscml.PATH_CEPDB_25000)
+    def test_bilstm_model_forward(self):
+        path = oscml.start.path_cepdb_25000()
+        df_train, df_val, df_test = oscml.data.dataset.read_and_split(path)
         transformer = oscml.data.dataset.create_transformer(df_train, column_target='pce', column_x='SMILES_str')
         mol2seq = oscml.data.dataset_cep.mol2seq_precalculated_with_OOV(None, radius=1, oov=True)
 
