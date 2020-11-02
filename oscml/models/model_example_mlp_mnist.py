@@ -12,6 +12,12 @@ import pytorch_lightning as pl
 
 from oscml.utils.util import log
 
+
+"""
+code was extracted from https://github.com/optuna/optuna/blob/master/examples/pytorch_simple.py
+and https://github.com/optuna/optuna/blob/master/examples/pytorch_lightning_simple.py
+"""
+
 def get_mnist(mnist_dir, batch_size):
 
     train_loader = torch.utils.data.DataLoader(

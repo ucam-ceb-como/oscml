@@ -23,16 +23,14 @@ import oscml.utils.util_lightning
 import oscml.utils.util_pytorch
 
 def start(src, dst, epochs):
-    csv_logger = oscml.utils.util.init_logging(src, dst)
-    log('current working directory=', os.getcwd())
-    log('src=', src, ', dst=', dst, ', epochs=', epochs)
-    
-    trainer_params = oscml.utils.util_lightning.get_standard_params_for_trainer_short()
-    trainer_params.update({
-        'max_epochs': epochs,
-        'logger': csv_logger
-    })
 
+    # initialize, e.g. logging
+    csv_logger = oscml.utils.util.init_logging(src, dst)
+    logging.info('current working directory=' + os.getcwd())
+    logging.info(concat('src=', src, ', dst=', dst, ', epochs=', epochs))
+    
+
+    # read data and preprocess, e.g. standarization, splitting into train, validation and test set
     path = oscml.start.path_hopv_15(src)
     df = oscml.data.dataset_hopv15.read(path)
     df = oscml.data.dataset.clean_data(df, None, 'smiles', 'pce')
@@ -40,10 +38,12 @@ def start(src, dst, epochs):
     df_train, df_val, df_test, transformer = oscml.data.dataset.split_data_frames_and_transform(
             df, column_smiles='smiles', column_target='pce', train_size=283, test_size=30)
 
+
+    # define data loader and params
+    data_loader_fct = oscml.models.model_gnn.get_dataloaders
+
     node2index = oscml.data.dataset_hopv15.ATOM_TYPES_HOPV15
     mol2seq = oscml.models.model_gnn.Mol2seq_simple(node2index, fix=True, oov=True)
-
-    data_loader_fct = oscml.models.model_gnn.get_dataloaders
 
     data_loader_params = {
         'train': df_train,
@@ -54,6 +54,8 @@ def start(src, dst, epochs):
         'mol2seq': mol2seq
     }
 
+
+    # define models and params
     model = oscml.models.model_gnn.GNNSimple
 
     model_params =  {
@@ -66,6 +68,16 @@ def start(src, dst, epochs):
         'learning_rate': 0.001,
     }
 
+
+    # define params for Lightning trainer
+    trainer_params = oscml.utils.util_lightning.get_standard_params_for_trainer_short()
+    trainer_params.update({
+        'max_epochs': epochs,
+        'logger': csv_logger
+    })
+
+
+    # put all information together
     params = {
         'data_loader_fct': data_loader_fct,
         'data_loader_params': data_loader_params,
@@ -74,8 +86,14 @@ def start(src, dst, epochs):
         'trainer_params': trainer_params
     }
 
+
     # train
     model_instance, trainer = oscml.utils.util_lightning.fit_model(**params)
+    #model_instance = model(**model_params)
+    #train_dl, val_dl = data_loader_fct(**data_loader_params)
+    #trainer = pl.Trainer(**trainer_params)
+    #trainer.fit(model_instance, train_dataloader=train_dl, val_dataloaders=val_dl)
+
 
     # test
     logging.info('start testing')
@@ -83,6 +101,7 @@ def start(src, dst, epochs):
     _, _, test_dl = data_loader_fct(**data_loader_params)
     metrics = trainer.test(model_instance, test_dataloaders=test_dl)
     logging.info(metrics)
+
 
 if __name__ == '__main__':
     print('current working directory=', os.getcwd())
