@@ -24,6 +24,7 @@ function check_conda {
         echo "INFO: Found "$conda_version
     else
         echo "ERROR: Couldn't find conda installation. On Windows, you must run this script from Anaconda Prompt for conda to be correctly located. Aborting installation."
+        read -n 1 -s -r -p "Press any key to continue"
         exit -1
     fi
     echo
@@ -39,6 +40,7 @@ function recreate_conda_env {
     if [ $? -ne 0 ]; then
         echo
         echo "ERROR: Couldn't create / update conda '"$CONDA_ENV_NAME"' environment. Aborting installation."
+        read -n 1 -s -r -p "Press any key to continue"
         exit -1
     fi
     echo
@@ -54,11 +56,12 @@ function install_ZhouLiML_package {
     if [ $? -eq 0 ]; then
         pip install -e .
         if [ $? -ne 0 ]; then
-			echo "ERROR: Couldn't install the OSCML project. Please check the pip log." 
+			echo "ERROR: Couldn't install the OSCML project. Please check the pip log."
 			exit -1
         fi
     else
-        echo "Couldn't activate conda '"$CONDA_ENV_NAME"' environment. Aborting installation." 
+        echo "Couldn't activate conda '"$CONDA_ENV_NAME"' environment. Aborting installation."
+        read -n 1 -s -r -p "Press any key to continue"
         exit -1
     fi
     echo
@@ -69,7 +72,7 @@ function get_data_from_server {
     echo "4. Downloading required project data from the server..."
     echo "-------------------------------------------------------------"
     echo
-    if [ -d $DATA_LOCAL ] 
+    if [ -d $DATA_LOCAL ]
     then
         echo "INFO: Directory" $DATA_LOCAL "already exists. Remove it if you wish to re-download data from the server."
     else
