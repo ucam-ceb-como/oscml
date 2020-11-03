@@ -29,9 +29,13 @@ steps:
     \> install_script.sh -a
 
 (Linux)
-1. Add Miniconda to your PATH in .bashrc or .bash_profile file
-2. Navigate to the project directory
-3. Run:
+1. Add Miniconda to your PATH in .bashrc by running "conda init" command.
+   On HPC you may need to run "module load miniconda/3/" command first.
+2. Run:
+    \> conda activate
+   command. This will activate your base conda environment.
+3. Navigate to the project directory.
+4. Run:
     \> install_script.sh -a
 
 The steps above, regardless of the OS platform, should create a separate conda virtual
