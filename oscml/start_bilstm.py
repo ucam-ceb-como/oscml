@@ -17,31 +17,26 @@ import oscml.start
 import oscml.utils.params
 from oscml.utils.params import cfg
 import oscml.utils.util
-from oscml.utils.util import log
+from oscml.utils.util import concat
 import oscml.utils.util_lightning
 import oscml.utils.util_pytorch
 import oscml.visualization.util_plot
 
-def start(src, dst, epochs, plot):
-    csv_logger = oscml.utils.util.init_logging(src, dst)
-    log('current working directory=', os.getcwd())
-    log('src=', src, ', dst=', dst, ', epochs=', epochs, ', plot=', plot)
-
-    trainer_params = oscml.utils.util_lightning.get_standard_params_for_trainer_short()
-    trainer_params.update({
-        'max_epochs': epochs,
-        'logger': csv_logger
-    })
-    
+def process(src, dst, epochs, csv_logger):
+   
+    # read data and preprocess, e.g. standarization, splitting into train, validation and test set
     path = oscml.start.path_cepdb_25000(src)
     df_train, df_val, df_test = oscml.data.dataset.read_and_split(path)
     df_train = df_train[:1500].copy()
     df_val = df_val[:500].copy()
     df_test = df_test[:500].copy()
+
+
+    # define data loader and params
+    data_loader_fct = oscml.models.model_bilstm.get_dataloaders
+
     transformer = oscml.data.dataset.create_transformer(df_train, column_target='pce', column_x='SMILES_str')
     mol2seq = oscml.data.dataset_cep.mol2seq_precalculated_with_OOV(None, radius=1, oov=True)
-
-    data_loader_fct = oscml.models.model_bilstm.get_dataloaders
 
     data_loader_params = {
         'train': df_train,
@@ -55,6 +50,8 @@ def start(src, dst, epochs, plot):
         'target_fct': transformer.transform, 
     }
 
+
+    # define models and params
     model = oscml.models.model_bilstm.BiLstmForPce
 
     model_params =  {
@@ -67,6 +64,16 @@ def start(src, dst, epochs, plot):
         'learning_rate': 0.001,
     }
 
+
+    # define params for Lightning trainer
+    trainer_params = oscml.utils.util_lightning.get_standard_params_for_trainer(monitor='val_loss')
+    trainer_params.update({
+        'max_epochs': epochs,
+        'logger': csv_logger
+    })
+
+
+    # put all information together
     params = {
         'data_loader_fct': data_loader_fct,
         'data_loader_params': data_loader_params,
@@ -75,18 +82,39 @@ def start(src, dst, epochs, plot):
         'trainer_params': trainer_params
     }
 
+
     # train
     model_instance, trainer = oscml.utils.util_lightning.fit_model(**params)
 
+
     # test
-    log('start testing')
+    logging.info('start testing')
     data_loader_params['test'] = df_test
     _, _, test_dl = data_loader_fct(**data_loader_params)
     metrics = trainer.test(model_instance, test_dataloaders=test_dl)
     logging.info(metrics)
-    if plot:
-        y, y_hat = model_instance.test_predictions
-        oscml.visualization.util_plot.plot(y, y_hat)
+
+    return model, model_instance, trainer, test_dl
+
+
+def start(src, dst, epochs):
+   # initialize, e.g. logging
+    csv_logger = oscml.utils.util.init_logging(src, dst)
+    logging.info('current working directory=' + os.getcwd())
+    logging.info(concat('src=', src, ', dst=', dst, ', epochs=', epochs))
+
+    np.random.seed(200)
+    torch.manual_seed(200)
+
+    try:
+        return process(src, dst, epochs, csv_logger)
+    except BaseException as exc:
+        print(exc)
+        logging.exception('finished with exception', exc_info=True)
+        raise exc
+    else:
+        logging.info('finished successfully')
+    
 
 if __name__ == '__main__':
     print('current working directory=', os.getcwd())
@@ -94,6 +122,5 @@ if __name__ == '__main__':
     parser.add_argument("--src", type=str, default='.')
     parser.add_argument("--dst", type=str, default='.')
     parser.add_argument("--epochs", type=int)
-    parser.add_argument("--plot", type=bool, default=False)
     args = parser.parse_args()
-    start(args.src, args.dst, args.epochs, args.plot)
+    start(args.src, args.dst, args.epochs)

@@ -18,17 +18,11 @@ import oscml.test_oscml
 import oscml.utils.params
 from oscml.utils.params import cfg
 import oscml.utils.util
-from oscml.utils.util import log, concat
+from oscml.utils.util import concat
 import oscml.utils.util_lightning
 import oscml.utils.util_pytorch
 
-def start(src, dst, epochs):
-
-    # initialize, e.g. logging
-    csv_logger = oscml.utils.util.init_logging(src, dst)
-    logging.info('current working directory=' + os.getcwd())
-    logging.info(concat('src=', src, ', dst=', dst, ', epochs=', epochs))
-    
+def process(src, dst, epochs, csv_logger):
 
     # read data and preprocess, e.g. standarization, splitting into train, validation and test set
     path = oscml.start.path_hopv_15(src)
@@ -70,7 +64,7 @@ def start(src, dst, epochs):
 
 
     # define params for Lightning trainer
-    trainer_params = oscml.utils.util_lightning.get_standard_params_for_trainer_short()
+    trainer_params = oscml.utils.util_lightning.get_standard_params_for_trainer(monitor='val_loss')
     trainer_params.update({
         'max_epochs': epochs,
         'logger': csv_logger
@@ -101,7 +95,28 @@ def start(src, dst, epochs):
     _, _, test_dl = data_loader_fct(**data_loader_params)
     metrics = trainer.test(model_instance, test_dataloaders=test_dl)
     logging.info(metrics)
+    
+    return model, model_instance, trainer, test_dl
 
+
+def start(src, dst, epochs):
+   # initialize, e.g. logging
+    csv_logger = oscml.utils.util.init_logging(src, dst)
+    logging.info('current working directory=' + os.getcwd())
+    logging.info(concat('src=', src, ', dst=', dst, ', epochs=', epochs))
+
+    np.random.seed(200)
+    torch.manual_seed(200)
+
+    try:
+        return process(src, dst, epochs, csv_logger)
+    except BaseException as exc:
+        print(exc)
+        logging.exception('finished with exception', exc_info=True)
+        raise exc
+    else:
+        logging.info('finished successfully')
+    
 
 if __name__ == '__main__':
     print('current working directory=', os.getcwd())

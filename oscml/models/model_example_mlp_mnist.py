@@ -37,6 +37,7 @@ class MlpWithLightning(pl.LightningModule):
     
     def __init__(self, number_classes, layers, units, dropouts, optimizer, optimizer_lr):
         super().__init__()
+        self.save_hyperparameters()
         self.optimizer = optimizer
         self.optimizer_lr = optimizer_lr
        

@@ -40,8 +40,8 @@ class DataTransformer():
             return data * self.target_std + self.target_mean
     
 def create_transformer(df, column_target, column_x=None):
-    mean = df[column_target].mean()
-    std = df[column_target].std(ddof=0)
+    mean = float(df[column_target].mean())
+    std = float(df[column_target].std(ddof=0))
     log('calculated target mean=', mean, ', target std=', std)
     return DataTransformer(column_target, mean, std, column_x)
 

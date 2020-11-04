@@ -19,12 +19,13 @@ def get_standard_params_for_trainer_short():
         }
     return params
 
-def get_standard_params_for_trainer(root_dir='./'):
-    save_dir = root_dir + 'logs'
-    #tb_logger = pl.loggers.TensorBoardLogger(save_dir='save_dir, name='tb')
-    csv_logger = pl.loggers.CSVLogger(save_dir=save_dir, name='csv')
-
-    checkpoint_callback = pl.callbacks.ModelCheckpoint(monitor='val_loss', save_last=True, period=2, save_top_k=-1)
+def get_standard_params_for_trainer(monitor):
+ 
+    # https://pytorch-lightning.readthedocs.io/en/latest/generated/pytorch_lightning.callbacks.ModelCheckpoint.html
+    # By default, dirpath is None and will be set at runtime to the location specified 
+    # by Trainer’s default_root_dir or weights_save_path arguments, 
+    # and if the Trainer uses a logger, the path will also contain logger name and version.
+    checkpoint_callback = pl.callbacks.ModelCheckpoint(monitor=monitor, save_last=True, period=1, save_top_k=10)
 
     # does not work at the moment on laptop with gpu
     #gpus = 1 if torch.cuda.is_available() else 0
@@ -34,14 +35,11 @@ def get_standard_params_for_trainer(root_dir='./'):
         'log_every_n_steps': 1,
         'flush_logs_every_n_steps': 10,
         'progress_bar_refresh_rate': 1,
-        'logger': csv_logger, #[csv_logger, tb_logger],
         'checkpoint_callback': checkpoint_callback,
         'gpus': gpus,
     }
 
     logging.info(concat('params for Lightning trainer=', params))
-    logging.info(concat('trainer is logging to save_dir=', csv_logger.save_dir, #', name=', csv_logger.name,
-        ', experiment version=', csv_logger.version))
 
     return params
 

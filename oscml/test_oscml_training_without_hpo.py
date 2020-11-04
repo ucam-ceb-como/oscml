@@ -5,8 +5,10 @@ import unittest
 
 import pytorch_lightning as pl
 
+import oscml.start
 import oscml.start_bilstm
 import oscml.start_gnn
+import oscml.start_mnist
 import oscml.test_oscml
 import oscml.data.dataset
 import oscml.data.dataset_cep
@@ -14,7 +16,6 @@ import oscml.data.dataset_hopv15
 import oscml.models.model_bilstm
 import oscml.models.model_gnn
 import oscml.models.model_example_mlp_mnist
-import oscml.start
 import oscml.utils.util
 import oscml.utils.util_lightning
 
@@ -25,70 +26,33 @@ class Test_Oscml_Training_Without_HPO(unittest.TestCase):
         #oscml.utils.util.init_standard_logging()
         pass
 
-    def test_train_mlp_mnist_without_hpo(self):
 
-         # initialize, e.g. logging
-        csv_logger = oscml.utils.util.init_logging(src_directory='.', dst_directory='.')
-        logging.info('current working directory=' + os.getcwd())
-
-
-        # define data loaders and params
-        data_loader_fct = oscml.models.model_example_mlp_mnist.get_mnist
-
-        data_loader_params = {
-            'mnist_dir': './tmp', 
-            'batch_size': 128
-        }
-
-
-        # define models and params
-        model = oscml.models.model_example_mlp_mnist.MlpWithLightning
-        
-        model_params =  {
-            # model parameters
-            'number_classes': 10, 
-            'layers': 3,
-            'units': [100, 50, 20], 
-            'dropouts': [0.2, 0.2, 0.2],
-            # optimizer parameters
-            'optimizer': 'Adam', 
-            'optimizer_lr': 0.0015
-        }
-
-
-        # define params for Lightning trainer
-        trainer_params = oscml.utils.util_lightning.get_standard_params_for_trainer_short()
-        trainer_params.update({
-            'max_epochs': 2,
-            'logger': csv_logger
-        })
-
-        
-        # create the model, dataloaders and Lightning trainer
-        model_instance = model(**model_params)
-        train_dl, val_dl = data_loader_fct(**data_loader_params)
-        trainer = pl.Trainer(**trainer_params)
-
-
-        # train the model
-        trainer.fit(model_instance, train_dataloader=train_dl, val_dataloaders=val_dl)
-
-
-        # test
-        logging.info('start testing')
-        # the mnist example didn't provide a test test. Thus, we will use
-        # the validation dataloader as test loader here.
-        metrics = trainer.test(model_instance, test_dataloaders=val_dl)
-        logging.info(metrics)
+    def assert_same_test_metrics_for_reloaded_model(self, model_class, model_instance, trainer, test_dl):
     
+        metrics = trainer.test(model_instance, test_dataloaders=test_dl)[0]
+        logging.info('expected metrics on test set=' + str(metrics))
 
+        log_dir = trainer.logger.log_dir
+        checkpoint_path = log_dir + '/checkpoints/last.ckpt'
+        hparams_file = log_dir + '/hparams.yaml'
+        model_reloaded = model_class.load_from_checkpoint(checkpoint_path=checkpoint_path, 
+                hparams_file=hparams_file)
+        metrics_reloaded = trainer.test(model_reloaded, test_dataloaders=test_dl)[0]
+        logging.info('actual metrics on test set=' + str(metrics_reloaded))
 
+        oscml.test_oscml.assertNearlyEqual(metrics['mse'], metrics_reloaded['mse'])
+        oscml.test_oscml.assertNearlyEqual(metrics['r'], metrics_reloaded['r'])
+
+    def test_train_mlp_mnist_without_hpo(self):
+        oscml.start_mnist.start('.', '.', epochs=2)
 
     def test_train_gnn_hopv_without_hpo(self):
-        oscml.start_gnn.start('.', '.', epochs=1)
+        model, model_instance, trainer, test_dl = oscml.start_gnn.start('.', '.', epochs=2)
+        self.assert_same_test_metrics_for_reloaded_model(model, model_instance, trainer, test_dl)
 
-    def test_train_and_test_bilstm_cepdb_without_hpo(self):
-        oscml.start_bilstm.start('.', '.', epochs=1, plot=False)
+    def test_train_bilstm_cepdb_without_hpo(self):
+        model, model_instance, trainer, test_dl = oscml.start_bilstm.start('.', '.', epochs=2)
+        self.assert_same_test_metrics_for_reloaded_model(model, model_instance, trainer, test_dl)
 
 if __name__ == '__main__':
 
@@ -96,5 +60,5 @@ if __name__ == '__main__':
 
     test = Test_Oscml_Training_Without_HPO()
     test.test_train_mlp_mnist_without_hpo()
-    #test.test_train_gnn_hopv_without_hpo()
-    #test.test_train_and_test_bilstm_cepdb_without_hpo()
+    test.test_train_gnn_hopv_without_hpo()
+    test.test_train_bilstm_cepdb_without_hpo()

@@ -195,7 +195,8 @@ class GNNSimple(oscml.utils.util_lightning.CARESModule):
 
         #learning_rate = args['LEARNING_RATE']
         super().__init__(learning_rate, target_mean, target_std)
-                
+        self.save_hyperparameters()
+
         #node_type_number = args['NODE_TYPE_NUMBER']
         #conv_dim_list = args['CONV_DIM_LIST']
         #mlp_dim_list = args['MLP_DIM_LIST']
