@@ -19,13 +19,13 @@ def get_standard_params_for_trainer_short():
         }
     return params
 
-def get_standard_params_for_trainer(monitor):
+def get_standard_params_for_trainer(metric):
  
     # https://pytorch-lightning.readthedocs.io/en/latest/generated/pytorch_lightning.callbacks.ModelCheckpoint.html
     # By default, dirpath is None and will be set at runtime to the location specified 
     # by Trainer’s default_root_dir or weights_save_path arguments, 
     # and if the Trainer uses a logger, the path will also contain logger name and version.
-    checkpoint_callback = pl.callbacks.ModelCheckpoint(monitor=monitor, save_last=True, period=1, save_top_k=10)
+    checkpoint_callback = pl.callbacks.ModelCheckpoint(monitor=metric, save_last=True, period=1, save_top_k=10)
 
     # does not work at the moment on laptop with gpu
     #gpus = 1 if torch.cuda.is_available() else 0
@@ -39,16 +39,14 @@ def get_standard_params_for_trainer(monitor):
         'gpus': gpus,
     }
 
-    logging.info(concat('params for Lightning trainer=', params))
-
     return params
 
-class CARESModule(pl.LightningModule):
+class OscmlModule(pl.LightningModule):
 
     def __init__(self, learning_rate, target_mean, target_std):
         super().__init__()
 
-        logging.info(concat('initializing CARESModule with learning_rate=', learning_rate, ', target_mean=', target_mean, ', target_std=', target_std))
+        logging.info(concat('initializing OscmlModule with learning_rate=', learning_rate, ', target_mean=', target_mean, ', target_std=', target_std))
 
         self.learning_rate = learning_rate
         self.target_mean = target_mean

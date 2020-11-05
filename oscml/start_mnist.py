@@ -52,7 +52,7 @@ def process(src, dst, epochs, csv_logger):
         #trainer_params = oscml.utils.util_lightning.get_standard_params_for_trainer_short()
         trainer_params = oscml.utils.util_lightning.get_standard_params_for_trainer(monitor='val_acc')
         trainer_params.update({
-            'max_epochs': 3,
+            'max_epochs': epochs,
             'logger': csv_logger
         })
 
@@ -88,13 +88,15 @@ def start(src, dst, epochs):
     torch.manual_seed(200)
 
     try:
-        return process(src, dst, epochs, csv_logger)
+        model, model_instance, trainer, test_dl = process(src, dst, epochs, csv_logger)
     except BaseException as exc:
         print(exc)
         logging.exception('finished with exception', exc_info=True)
         raise exc
     else:
         logging.info('finished successfully')
+    
+    return model, model_instance, trainer, test_dl
 
 
 if __name__ == '__main__':

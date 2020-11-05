@@ -40,7 +40,8 @@ def init_file_logging(log_config_file, log_file):
     # use logging configuration with dictionary
     logging.config.dictConfig(log_cfg)
 
-    log('initialized logging with config file=', log_config_file, ', log file=', log_file)
+    logging.info(concat('initialized logging with config file=', log_config_file, ', log file=', log_file))
+
 
 def init_logging(src_directory, dst_directory):
 
@@ -84,7 +85,7 @@ def smiles2mol(smiles):
     return m
 
 def smiles2mol_df(df, column):
-    log('generating RDKit molecules, column=', column)
+    logging.info('generating RDKit molecules, column=' + column)
     sleep(1)
     x = []
     for i in tqdm(range(len(df))):

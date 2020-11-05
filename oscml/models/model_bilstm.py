@@ -171,7 +171,7 @@ class Attention(pl.LightningModule):
         
         return msum
     
-class BiLstmForPce(util_lightning.CARESModule):
+class BiLstmForPce(util_lightning.OscmlModule):
     
     def __init__(self, number_of_subgraphs, subgraph_embedding_dim, mlp_dim_list, padding_index, target_mean, target_std, learning_rate):
 

@@ -107,13 +107,15 @@ def start(src, dst, epochs):
     torch.manual_seed(200)
 
     try:
-        return process(src, dst, epochs, csv_logger)
+        model, model_instance, trainer, test_dl =  process(src, dst, epochs, csv_logger)
     except BaseException as exc:
         print(exc)
         logging.exception('finished with exception', exc_info=True)
         raise exc
     else:
         logging.info('finished successfully')
+    
+    return model, model_instance, trainer, test_dl
     
 
 if __name__ == '__main__':

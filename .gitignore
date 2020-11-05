@@ -13,3 +13,5 @@ coverage.xml
 ## User defined
 *.egg-info
 *.mp4
+tmp/
+logs/

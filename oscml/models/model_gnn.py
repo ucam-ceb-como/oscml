@@ -189,12 +189,14 @@ class GNNSimpleLayer(pl.LightningModule):
             h = self.linear(h)
             return self.activation_fct(h)
 
-class GNNSimple(oscml.utils.util_lightning.CARESModule):
+class GNNSimple(oscml.utils.util_lightning.OscmlModule):
     
     def __init__(self, node_type_number, conv_dim_list, mlp_dim_list, padding_index, target_mean, target_std, learning_rate):
 
         #learning_rate = args['LEARNING_RATE']
         super().__init__(learning_rate, target_mean, target_std)
+        logging.info('initializing ' + str(locals()))
+
         self.save_hyperparameters()
 
         #node_type_number = args['NODE_TYPE_NUMBER']
