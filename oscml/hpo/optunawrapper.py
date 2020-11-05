@@ -5,6 +5,7 @@ import os
 
 import numpy as np
 import optuna
+import optuna.samplers
 import pytorch_lightning as pl
 import torch
 
@@ -84,7 +85,29 @@ def fit(model_instance, train_dl, val_dl, trainer_params, trial):
     return value
 
 
-def start_hpo(init, objective, metric, direction, fixed_trial=None, seed=200, post_hpo=None):
+def create_objective_decorator(objective, n_trials):
+        def decorator(trial):
+            logging.info(concat('starting trial ', trial.number, ' / ', n_trials))
+            value = objective(trial)
+            logging.info(concat('finished trial ', trial.number, ' / ', n_trials))
+            return value
+            
+        return decorator
+
+
+def create_study(direction, seed):
+    # pruner = optuna.pruners.MedianPruner()
+    # pruner = optuna.pruners.MedianPruner(n_startup_trials=5, n_warmup_steps=30, interval_steps=10)
+    # pruner = optuna.pruners.PercentilePruner(25.0, n_startup_trials=5, n_warmup_steps=30, interval_steps=10) #keep top 25%
+    # #pruner = ThresholdPruner(upper=1.0)
+    #pruner = optuna.pruners.HyperbandPruner(min_resource=1, max_resource=epochs, reduction_factor=3)
+    pruner = None
+    sampler = optuna.samplers.TPESampler(consider_prior=True, n_startup_trials=10, seed=seed)
+    study = optuna.create_study(direction=direction, pruner=pruner, sampler=sampler)
+    return study
+
+
+def start_hpo(init, objective, metric, direction, fixed_trial=None, seed=200, timeout_in_seconds=600, post_hpo=None):
 
     print('current working directory=', os.getcwd())
     parser = argparse.ArgumentParser()
@@ -92,6 +115,7 @@ def start_hpo(init, objective, metric, direction, fixed_trial=None, seed=200, po
     parser.add_argument("--dst", type=str, default='.')
     parser.add_argument("--epochs", type=int, default=1)
     parser.add_argument("--trials", type=int, default=1)
+    parser.add_argument("--jobs", type=int, default=1)
     args = parser.parse_args()
 
     # init file logging
@@ -102,14 +126,11 @@ def start_hpo(init, objective, metric, direction, fixed_trial=None, seed=200, po
 
     logging.info('current working directory=' + os.getcwd())
 
-    user_attrs = {
-        'src': args.src,
-        'dst': args.dst,
-        'epochs': args.epochs,
-        'trials': args.trials,
+    user_attrs = vars(args).copy()
+    user_attrs.update({
         'metric': metric,
         'log_dir': log_dir
-    }
+    })
     logging.info(user_attrs)
     logging.info({'direction': direction, 'seed': seed})
 
@@ -130,11 +151,14 @@ def start_hpo(init, objective, metric, direction, fixed_trial=None, seed=200, po
             value = objective(trial)
             logging.info(concat('finished objective function call with ', metric, '=', value))
         else:
-            study = optuna.create_study(direction=direction) #, pruner=pruner)
+            #study = optuna.create_study(direction=direction) #, pruner=pruner)
+            study = create_study(direction, seed)
             for key, value in user_attrs.items():
                 study.set_user_attr(key, value)
             logging.info('starting HPO')
-            study.optimize(objective, n_trials=args.trials, timeout=600)
+            decorator = create_objective_decorator(objective, args.trials)
+            study.optimize(decorator, n_trials=args.trials, n_jobs=args.jobs,
+                    timeout=timeout_in_seconds, gc_after_trial=True)
             path = log_dir + '/hpo_result.csv'
             log_and_save(study, path)
 
