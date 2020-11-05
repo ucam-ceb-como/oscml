@@ -75,13 +75,14 @@ class Objective(object):
         mlp_layers =  trial.suggest_int('mlp_hidden_layers', self.mlp_hidden_layers['lower'], self.mlp_hidden_layers['upper'])
         # the number of units of the last gnn layer is the input dimension for the mlp
         mlp_units = [gnn_units[-1]]
-        #dropouts = []
+        mlp_dropout_rate = trial.suggest_float('mlp_dropout', self.mlp_dropout['lower'], self.mlp_dropout['upper'])
+        mlp_dropouts = []
         for l in range(mlp_layers):
             suggested_units = trial.suggest_int('mlp_units_{}'.format(l), self.mlp_hidden_layers['lower'], self.mlp_hidden_layers['upper'])
             #suggested_units = trial.suggest_int('mlp_units_{}'.format(l), 5, max_units)
             mlp_units.append(suggested_units)
             #max_units = suggested_units
-            #dropouts.append(trial.suggest_float('dropouts'+postfix, 0.1, 0.3))
+            mlp_dropouts.append(mlp_dropout_rate)
 
         # add output dimension 
         mlp_units.append(1)
@@ -89,9 +90,9 @@ class Objective(object):
         model_params =  {
             'conv_dim_list': gnn_units,
             'mlp_dim_list': mlp_units,
-            #'optimizer': trial.suggest_categorical('optimiser', self.optimiser), 
-            #'optimizer_lr': trial.suggest_float('optimizer_lr', 1e-5, 1e-1, log=True),
-            'learning_rate': trial.suggest_loguniform('learning_rate', self.learning_rate['lower'], self.learning_rate['upper']),
+            'mlp_dropout_list': mlp_dropouts,
+            'optimizer': trial.suggest_categorical('optimiser', self.optimiser), 
+            'optimizer_lr': trial.suggest_loguniform('learning_rate', self.learning_rate['lower'], self.learning_rate['upper']),
             # additional non-hyperparameter values
             'node_type_number': len(node2index),
             'padding_index': 0,

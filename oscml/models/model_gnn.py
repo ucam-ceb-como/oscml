@@ -93,7 +93,7 @@ def mol2seq_simple(df, column='SMILES_str'):
         m = smiles2mol(smiles)
         mol2seq(m)
     
-    logging.info('node2index dict:', len(mol2seq.node2index), mol2seq.node2index)
+    logging.info(concat('node2index dict:', len(mol2seq.node2index), mol2seq.node2index))
     
     return mol2seq
 
@@ -191,19 +191,13 @@ class GNNSimpleLayer(pl.LightningModule):
 
 class GNNSimple(oscml.utils.util_lightning.OscmlModule):
     
-    def __init__(self, node_type_number, conv_dim_list, mlp_dim_list, padding_index, target_mean, target_std, learning_rate):
+    def __init__(self, node_type_number, conv_dim_list, mlp_dim_list, padding_index, target_mean, target_std, optimizer, optimizer_lr, mlp_dropout_list=None):
 
-        #learning_rate = args['LEARNING_RATE']
-        super().__init__(learning_rate, target_mean, target_std)
+        super().__init__(optimizer, optimizer_lr, target_mean, target_std)
         logging.info('initializing ' + str(locals()))
 
         self.save_hyperparameters()
 
-        #node_type_number = args['NODE_TYPE_NUMBER']
-        #conv_dim_list = args['CONV_DIM_LIST']
-        #mlp_dim_list = args['MLP_DIM_LIST']
-        #if 'PADDING_INDEX' in args and (args['PADDING_INDEX'] is not None):
-        #    self.padding_index = args['PADDING_INDEX']
         if padding_index is not None:
             self.padding_index = padding_index
             logging.info(concat('padding index for embedding was set to ', self.padding_index, 
@@ -222,7 +216,7 @@ class GNNSimple(oscml.utils.util_lightning.OscmlModule):
             layer = GNNSimpleLayer(conv_dim_list[i], conv_dim_list[i+1], F.relu)
             self.conv_modules.append(layer)
             
-        self.mlp = oscml.utils.util_pytorch.create_mlp(mlp_dim_list)
+        self.mlp = oscml.utils.util_pytorch.create_mlp(mlp_dim_list, mlp_dropout_list)
         
         self.one = torch.Tensor([1]).long().to(cfg['PYTORCH_DEVICE'])
     

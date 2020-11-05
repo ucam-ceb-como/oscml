@@ -175,7 +175,7 @@ class BiLstmForPce(util_lightning.OscmlModule):
     
     def __init__(self, number_of_subgraphs, subgraph_embedding_dim, mlp_dim_list, padding_index, target_mean, target_std, learning_rate):
 
-        super().__init__(learning_rate, target_mean, target_std)
+        super().__init__('Adam', learning_rate, target_mean, target_std)
         self.save_hyperparameters()
         
         assert len(mlp_dim_list) > 0

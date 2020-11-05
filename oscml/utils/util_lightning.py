@@ -43,12 +43,14 @@ def get_standard_params_for_trainer(metric):
 
 class OscmlModule(pl.LightningModule):
 
-    def __init__(self, learning_rate, target_mean, target_std):
+    def __init__(self, optimizer, optimizer_lr, target_mean, target_std):
         super().__init__()
 
-        logging.info(concat('initializing OscmlModule with learning_rate=', learning_rate, ', target_mean=', target_mean, ', target_std=', target_std))
+        logging.info(concat('initializing OscmlModule with', {
+                'optimizer': optimizer, 'optimizer_lr': optimizer_lr, 'target_mean': target_mean, 'target_std': target_std}))
 
-        self.learning_rate = learning_rate
+        self.optimizer = optimizer
+        self.optimizer_lr = optimizer_lr
         self.target_mean = target_mean
         self.target_std = target_std
         if self.target_mean:
@@ -59,7 +61,8 @@ class OscmlModule(pl.LightningModule):
         self.test_predictions = None
 
     def configure_optimizers(self):
-        optimizer = torch.optim.Adam(self.parameters(), lr=self.learning_rate)
+        #optimizer = torch.optim.Adam(self.parameters(), lr=self.learning_rate)
+        optimizer = getattr(torch.optim, self.optimizer)(self.parameters(), lr=self.optimizer_lr)
         return optimizer
 
     def training_step(self, batch, batch_idx):

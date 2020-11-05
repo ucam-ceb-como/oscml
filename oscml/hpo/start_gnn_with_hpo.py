@@ -57,12 +57,13 @@ def objective(trial):
     mlp_layers =  trial.suggest_int('mlp_layers', 1, 4)
     # the number of units of the last gnn layer is the input dimension for the mlp
     mlp_units = [gnn_units[-1]]
-    #dropouts = []
+    mlp_dropout_rate = trial.suggest_float('mlp_dropout', 0.1, 0.3)
+    mlp_dropouts = []
     for l in range(mlp_layers):
         suggested_units = trial.suggest_int('mlp_units_{}'.format(l), 5, max_units)
         mlp_units.append(suggested_units)
         max_units = suggested_units
-        #dropouts.append(trial.suggest_float('dropouts'+postfix, 0.1, 0.3))
+        mlp_dropouts.append(mlp_dropout_rate)
 
     # add output dimension 
     mlp_units.append(1)
@@ -70,9 +71,9 @@ def objective(trial):
     model_params =  {
         'conv_dim_list': gnn_units,
         'mlp_dim_list': mlp_units,
-        #'optimizer': trial.suggest_categorical('optimizer', ['Adam', 'RMSprop', 'SGD']), 
-        #'optimizer_lr': trial.suggest_float('optimizer_lr', 1e-5, 1e-1, log=True),
-        'learning_rate': 0.001,
+        'mlp_dropout_list': mlp_dropouts,
+        'optimizer': trial.suggest_categorical('optimizer', ['Adam', 'RMSprop', 'SGD']), 
+        'optimizer_lr': trial.suggest_float('optimizer_lr', 1e-5, 1e-1, log=True),
         # additional non-hyperparameter values
         'node_type_number': len(node2index),
         'padding_index': 0,
@@ -95,12 +96,12 @@ def fixed_trial():
 
     return {
         'gnn_layers': 2,
-        'gnn_units_l0': 30,
-        'gnn_units_l1': 20, 
+        'gnn_units_0': 30,
+        'gnn_units_1': 20, 
         'mlp_layers': 3,
-        'mlp_units_l0': 20,
-        'mlp_units_l1': 10,
-        'mlp_units_l2': 5,
+        'mlp_units_0': 20,
+        'mlp_units_1': 10,
+        'mlp_units_2': 5,
         #'mlp_dropouts_l0': 0.2,
         #'mlp_dropouts_l1': 0.15,
         'optimizer': 'Adam',

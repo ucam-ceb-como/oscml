@@ -126,7 +126,7 @@ def load(model, optimizer, filename, filepath = './pth', cpu=False):
 
     model.eval()
 
-def create_mlp(mlp_dim_list):
+def create_mlp(mlp_dim_list, dropout_list=None):
     number_mlp_layers = len(mlp_dim_list) - 1
     mlp_modules = []
     for i in range(number_mlp_layers):
@@ -134,4 +134,6 @@ def create_mlp(mlp_dim_list):
         # no ReLU for the last layer
         if i < number_mlp_layers - 1:
             mlp_modules.append(nn.ReLU())
+            if dropout_list:
+                mlp_modules.append(nn.Dropout(dropout_list[i]))
     return nn.Sequential(*mlp_modules)

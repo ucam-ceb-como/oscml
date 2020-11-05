@@ -55,11 +55,13 @@ def process(src, dst, epochs, csv_logger):
     model_params =  {
         'node_type_number': len(node2index),
         'conv_dim_list': [10, 10, 10],
-        'mlp_dim_list': [10, 1],
+        'mlp_dim_list': [10, 5, 1],
+        'mlp_dropout_list': [0.2, 0.2],
         'padding_index': 0,
         'target_mean': transformer.target_mean, 
         'target_std': transformer.target_std,
-        'learning_rate': 0.001,
+        'optimizer': 'Adam'
+        'optimizer_lr': 0.001,
     }
 
 
