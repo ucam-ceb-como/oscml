@@ -1,5 +1,6 @@
 import argparse
 import datetime
+import json
 import logging
 import os
 
@@ -91,7 +92,7 @@ def create_objective_decorator(objective, n_trials):
             value = objective(trial)
             logging.info(concat('finished trial ', trial.number, ' / ', n_trials))
             return value
-            
+
         return decorator
 
 
@@ -116,6 +117,9 @@ def start_hpo(init, objective, metric, direction, fixed_trial=None, seed=200, ti
     parser.add_argument("--epochs", type=int, default=1)
     parser.add_argument("--trials", type=int, default=1)
     parser.add_argument("--jobs", type=int, default=1)
+    parser.add_argument("--config", type=str, default=None)
+    parser.add_argument("--model", type=str, default=None)
+    args = parser.parse_args()
     args = parser.parse_args()
 
     # init file logging
@@ -151,12 +155,21 @@ def start_hpo(init, objective, metric, direction, fixed_trial=None, seed=200, ti
             value = objective(trial)
             logging.info(concat('finished objective function call with ', metric, '=', value))
         else:
-            #study = optuna.create_study(direction=direction) #, pruner=pruner)
             study = create_study(direction, seed)
             for key, value in user_attrs.items():
                 study.set_user_attr(key, value)
+
+            if args.config:
+                with open(args.config) as config_json:
+                    #optuna_config = json.load(config_json)['HPO']['optuna']
+                    config_model = json.load(config_json)[args.model]
+                objective_fct = objective(config_model)
+            else:
+                objective_fct = objective
+
+            decorator = create_objective_decorator(objective_fct, args.trials)
+
             logging.info('starting HPO')
-            decorator = create_objective_decorator(objective, args.trials)
             study.optimize(decorator, n_trials=args.trials, n_jobs=args.jobs,
                     timeout=timeout_in_seconds, gc_after_trial=True)
             path = log_dir + '/hpo_result.csv'

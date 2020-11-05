@@ -48,22 +48,18 @@ def objective(trial):
     # define model and params   
     gnn_layers =  trial.suggest_int('gnn_layers', 1, 4)
     gnn_units = []
-    #dropouts = []
     max_units = 256
     for l in range(gnn_layers):
-        postfix = '_l' + str(l)
-        suggested_units = trial.suggest_int('gnn_units'+postfix, 10, max_units)
+        suggested_units = trial.suggest_int('gnn_units_{}'.format(l), 10, max_units)
         gnn_units.append(suggested_units)
         max_units = suggested_units
-        #dropouts.append(trial.suggest_float('dropouts'+postfix, 0.1, 0.3))
 
     mlp_layers =  trial.suggest_int('mlp_layers', 1, 4)
     # the number of units of the last gnn layer is the input dimension for the mlp
     mlp_units = [gnn_units[-1]]
     #dropouts = []
     for l in range(mlp_layers):
-        postfix = '_l' + str(l)
-        suggested_units = trial.suggest_int('mlp_units'+postfix, 5, max_units)
+        suggested_units = trial.suggest_int('mlp_units_{}'.format(l), 5, max_units)
         mlp_units.append(suggested_units)
         max_units = suggested_units
         #dropouts.append(trial.suggest_float('dropouts'+postfix, 0.1, 0.3))

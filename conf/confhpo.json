@@ -1,0 +1,20 @@
+{"GNN":
+	{
+	"model_specific":{
+		"embedding_dimension":"2",
+		"graph_conv":{
+			"number_of_layers":{"type":"int","lower":2,"upper":5},
+			"number_of_neurons":{"type":"int","lower":5,"upper":15},
+			"dropout":{"type":"uniform","lower":0.0,"upper":1.0}
+		},
+		"mlp":{
+			"number_of_hidden_layers":{"type":"int","lower":1,"upper":3},
+			"number_of_neurons":{"type":"int","lower":5,"upper":15},
+			"dropout":{"type":"uniform","lower":0.0,"upper":1.0}}
+		},
+		"training_specific":{
+			"learning_rate":{"type":"loguniform","lower":1e-5,"upper":1e-2},
+			"optimiser":["MomentumSGD", "Adam"]
+		}
+	}
+}

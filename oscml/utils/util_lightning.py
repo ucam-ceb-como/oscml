@@ -132,6 +132,7 @@ def shared_epoch_end(tensor_step_outputs, is_validation, epoch, inverse_transfor
 
     return (result, y_complete, y_hat_complete)
 
+#deprecated
 def fit_model(data_loader_fct, data_loader_params, model, model_params, trainer_params):
     
     if 'logger' in trainer_params:
