@@ -1,4 +1,4 @@
-name: osc_env
+name: <USER_DEFINED>
 channels:
   - rdkit
   - defaults
