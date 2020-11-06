@@ -49,6 +49,8 @@ def fit(model_instance, train_dl, val_dl, trainer_params, trial):
     metric = user_attrs['metric']
     log_dir = user_attrs['log_dir']
 
+    logging.info(concat('model for trial', trial.number, '=', model_instance))
+
     trial_number = trial.number
     logging.info(concat('fitting trial ', trial_number, ' / ', n_trials))
 
@@ -93,8 +95,12 @@ def create_objective_decorator(objective, n_trials):
                 value = objective(trial)
                 logging.info(concat('finished trial ', trial.number, ' / ', n_trials))
                 return value
+            except optuna.exceptions.TrialPruned as exc:
+                message = 'pruned trial, trial number=' + str(trial.number)
+                logging.info(message)
+                raise exc
             except Exception as exc:
-                message = 'finished trial with exception, trial number=' + str(trial.number)
+                message = 'failed trial, trial number=' + str(trial.number)
                 logging.exception(message, exc_info=True)
                 raise exc
 

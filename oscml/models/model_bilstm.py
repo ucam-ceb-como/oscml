@@ -1,3 +1,5 @@
+import logging
+
 import numpy as np
 import pandas as pd
 import pytorch_lightning as pl
@@ -12,30 +14,11 @@ import torch.utils.data
 
 import oscml.utils.params
 from oscml.utils.params import cfg
-from oscml.utils.util import log
 from oscml.utils.util import smiles2mol
 import oscml.utils.util_lightning as util_lightning
 import oscml.utils.util_pytorch
 import oscml.features.weisfeilerlehman
 
-def DEPRECATED_init_params(df, mol2seq=None):
-    log('initializing parameters for PyTorch model BiLSTM')
-    d = {}
-    cfg['BILSTM'] = d
-    if not mol2seq:
-        mol2seq = oscml.features.weisfeilerlehman.mol2seq(1, df)
-    d['MOL2SEQ'] = mol2seq
-    d['SUBGRAPH_NUMBER'] = len(mol2seq.fragment_dict)
-    d['SUBGRAPH_EMBEDDING_DIM'] = 128
-    d['MAX_SEQUENCE_LENGTH'] = 60 # max number of atoms = 52
-    d['BATCH_SIZE'] = 250
-    d['OUTPUT_DIM'] = 1
-    d['MLP_DIM_LIST'] = [256, 32, 32, 32, d['OUTPUT_DIM']]
-    d['LEARNING_RATE'] = 0.001
-    d['PADDING_INDEX'] = 0
-    #log('subgraph_number=', d['SUBGRAPH_NUMBER'])
-    #log('max sequence length=', d['MAX_SEQUENCE_LENGTH'])
-    log('parameters for PyTorch model BiLSTM:', d)
 
 class DatasetForBiLstmWithTransformer(torch.utils.data.Dataset):
     
@@ -95,7 +78,7 @@ def get_dataloaders(train, val, test, batch_size, mol2seq, max_sequence_length, 
    
     batch_func = (lambda dl : len(dl) if dl else 0)
     batch_numbers = list(map(batch_func, [train_dl, val_dl, test_dl]))
-    log('batch numbers - train val test=', batch_numbers)
+    logging.info('batch numbers - train val test=' + str(batch_numbers))
     
     if test is None:
         return train_dl, val_dl 
@@ -173,24 +156,27 @@ class Attention(pl.LightningModule):
     
 class BiLstmForPce(util_lightning.OscmlModule):
     
-    def __init__(self, number_of_subgraphs, subgraph_embedding_dim, mlp_dim_list, padding_index, target_mean, target_std, learning_rate):
+    def __init__(self, number_of_subgraphs, subgraph_embedding_dim, lstm_hidden_dim, mlp_units, padding_index, target_mean, target_std, optimizer, optimizer_lr, mlp_dropouts=None):
 
-        super().__init__('Adam', learning_rate, target_mean, target_std)
+        super().__init__(optimizer, optimizer_lr, target_mean, target_std)
+        logging.info('initializing ' + str(locals()))
+
         self.save_hyperparameters()
         
-        assert len(mlp_dim_list) > 0
-        # since the hidden state vectors of both LSTMs have the same dimension
-        # and are concatenated, the number of neurons in the first MLP layer
-        # must be even
-        assert mlp_dim_list[0] % 2 == 0 
+        assert len(mlp_units) > 0
         
         # we add +1 to number_of_subgraphs because
         # padding_idx = 0 in a sequences is mapped to zero vector
         self.embedding = nn.Embedding(number_of_subgraphs+1, subgraph_embedding_dim, padding_idx=padding_index)
-        lstm_output_dim = int(mlp_dim_list[0] / 2)
-        self.bilstm = nn.LSTM(subgraph_embedding_dim, lstm_output_dim, bidirectional=True)
-        self.attention = Attention(2 * lstm_output_dim, 2 * lstm_output_dim)
-        self.mlp = oscml.utils.util_pytorch.create_mlp(mlp_dim_list)
+        self.bilstm = nn.LSTM(input_size=subgraph_embedding_dim, hidden_size=lstm_hidden_dim, bidirectional=True)
+        # factor 2 because the LSTM is birectional
+        lstm_output_dim = 2 * lstm_hidden_dim
+        self.attention = Attention(lstm_output_dim, lstm_output_dim)
+
+        # add input dim for mlp at the beginning
+        mlp_units_with_input_dim = mlp_units.copy()
+        mlp_units_with_input_dim.insert(0, lstm_output_dim)
+        self.mlp = oscml.utils.util_pytorch.create_mlp(mlp_units_with_input_dim, mlp_dropouts)
     
     def forward(self, index_sequences):
         
