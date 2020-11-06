@@ -1,4 +1,4 @@
-name: <USER_DEFINED>
+name: osc_env
 channels:
   - rdkit
   - defaults
@@ -21,3 +21,4 @@ dependencies:
     - networkx==2.5
     - matplotlib==3.3.2
     - seaborn==0.11.0
+    - optuna==2.3.0
