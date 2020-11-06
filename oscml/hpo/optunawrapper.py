@@ -88,10 +88,15 @@ def fit(model_instance, train_dl, val_dl, trainer_params, trial):
 
 def create_objective_decorator(objective, n_trials):
         def decorator(trial):
-            logging.info(concat('starting trial ', trial.number, ' / ', n_trials))
-            value = objective(trial)
-            logging.info(concat('finished trial ', trial.number, ' / ', n_trials))
-            return value
+            try:
+                logging.info(concat('starting trial ', trial.number, ' / ', n_trials))
+                value = objective(trial)
+                logging.info(concat('finished trial ', trial.number, ' / ', n_trials))
+                return value
+            except Exception as exc:
+                message = 'finished trial with exception, trial number=' + str(trial.number)
+                logging.exception(message, exc_info=True)
+                raise exc
 
         return decorator
 
@@ -108,7 +113,7 @@ def create_study(direction, seed):
     return study
 
 
-def start_hpo(init, objective, metric, direction, fixed_trial=None, seed=200, timeout_in_seconds=600, post_hpo=None):
+def start_hpo(init, objective, metric, direction, fixed_trial=None, seed=200, post_hpo=None):
 
     print('current working directory=', os.getcwd())
     parser = argparse.ArgumentParser()
@@ -116,6 +121,7 @@ def start_hpo(init, objective, metric, direction, fixed_trial=None, seed=200, ti
     parser.add_argument("--dst", type=str, default='.')
     parser.add_argument("--epochs", type=int, default=1)
     parser.add_argument("--trials", type=int, default=1)
+    parser.add_argument("--timeout", type=int, default=None, help='Stop study after the given number of second(s). If this argument is not set, the study is executed without time limitation.') 
     parser.add_argument("--jobs", type=int, default=1)
     parser.add_argument("--config", type=str, default=None)
     parser.add_argument("--model", type=str, default=None)
@@ -129,6 +135,11 @@ def start_hpo(init, objective, metric, direction, fixed_trial=None, seed=200, ti
     oscml.utils.util.init_file_logging(log_config_file, log_dir + '/oscml.log')
 
     logging.info('current working directory=' + os.getcwd())
+
+    #optuna.logging.enable_default_handler()
+    #optuna.logging.enable_propagation()  # Propagate logs to the root logger.
+    #optuna.logging.disable_default_handler() 
+    #optuna.logging.set_verbosity(optuna.logging.DEBUG)
 
     user_attrs = vars(args).copy()
     user_attrs.update({
@@ -145,7 +156,7 @@ def start_hpo(init, objective, metric, direction, fixed_trial=None, seed=200, ti
         if init:
             init_attrs = init(user_attrs)
             user_attrs['init_attrs'] = init_attrs
-            logging.info('init finished with attributes=' + str(init_attrs))
+            logging.info('init finished')
 
         if fixed_trial:
             trial = optuna.trial.FixedTrial(params=fixed_trial)
@@ -170,8 +181,9 @@ def start_hpo(init, objective, metric, direction, fixed_trial=None, seed=200, ti
             decorator = create_objective_decorator(objective_fct, args.trials)
 
             logging.info('starting HPO')
-            study.optimize(decorator, n_trials=args.trials, n_jobs=args.jobs,
-                    timeout=timeout_in_seconds, gc_after_trial=True)
+            study.optimize(decorator, n_trials=args.trials, n_jobs=args.jobs, timeout=args.timeout, 
+                    catch = (RuntimeError, ValueError, TypeError),
+                    gc_after_trial=True)
             path = log_dir + '/hpo_result.csv'
             log_and_save(study, path)
 
