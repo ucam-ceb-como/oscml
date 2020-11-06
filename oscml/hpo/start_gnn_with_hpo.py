@@ -102,8 +102,7 @@ def fixed_trial():
         'mlp_units_0': 20,
         'mlp_units_1': 10,
         'mlp_units_2': 5,
-        #'mlp_dropouts_l0': 0.2,
-        #'mlp_dropouts_l1': 0.15,
+        'mlp_dropout': 0.2,
         'optimizer': 'Adam',
         'optimizer_lr': 0.001,
         #'batch_size': 20
@@ -111,5 +110,5 @@ def fixed_trial():
    
 
 if __name__ == '__main__':
-    oscml.hpo.optunawrapper.start_hpo(init=init, objective=objective, metric='val_loss', direction='minimize')
-    #oscml.hpo.optunawrapper.start_hpo(init=init, objective=objective, metric='val_loss', direction='minimize', fixed_trial=fixed_trial())
+    oscml.hpo.optunawrapper.start_hpo(init=init, objective=objective, metric='val_loss', direction='minimize',
+            fixed_trial_params=fixed_trial())

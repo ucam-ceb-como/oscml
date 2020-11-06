@@ -107,5 +107,5 @@ def fixed_trial():
 
 
 if __name__ == '__main__':
-    #oscml.hpo.optunawrapper.start_hpo(init=init, objective=objective, metric='val_loss', direction='minimize')
-    oscml.hpo.optunawrapper.start_hpo(init=init, objective=objective, metric='val_loss', direction='minimize', fixed_trial=fixed_trial())
+    oscml.hpo.optunawrapper.start_hpo(init=init, objective=objective, metric='val_loss', direction='minimize',
+        fixed_trial_params=fixed_trial())

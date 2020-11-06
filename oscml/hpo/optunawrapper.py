@@ -119,19 +119,19 @@ def create_study(direction, seed):
     return study
 
 
-def start_hpo(init, objective, metric, direction, fixed_trial=None, seed=200, post_hpo=None):
+def start_hpo(init, objective, metric, direction, fixed_trial_params=None, seed=200, post_hpo=None):
 
     print('current working directory=', os.getcwd())
     parser = argparse.ArgumentParser()
-    parser.add_argument("--src", type=str, default='.')
-    parser.add_argument("--dst", type=str, default='.')
-    parser.add_argument("--epochs", type=int, default=1)
-    parser.add_argument("--trials", type=int, default=1)
-    parser.add_argument("--timeout", type=int, default=None, help='Stop study after the given number of second(s). If this argument is not set, the study is executed without time limitation.') 
-    parser.add_argument("--jobs", type=int, default=1)
-    parser.add_argument("--config", type=str, default=None)
-    parser.add_argument("--model", type=str, default=None)
-    args = parser.parse_args()
+    parser.add_argument('--src', type=str, default='.')
+    parser.add_argument('--dst', type=str, default='.')
+    parser.add_argument('--epochs', type=int, default=1)
+    parser.add_argument('--trials', type=int, default=1)
+    parser.add_argument('--timeout', type=int, default=None, help='Stop study after the given number of second(s). If this argument is not set, the study is executed without time limitation.') 
+    parser.add_argument('--jobs', type=int, default=1)
+    parser.add_argument('--config', type=str, default=None)
+    parser.add_argument('--model', type=str, default=None)
+    parser.add_argument('--fixedtrial', type=bool, default=False)
     args = parser.parse_args()
 
     # init file logging
@@ -164,8 +164,9 @@ def start_hpo(init, objective, metric, direction, fixed_trial=None, seed=200, po
             user_attrs['init_attrs'] = init_attrs
             logging.info('init finished')
 
-        if fixed_trial:
-            trial = optuna.trial.FixedTrial(params=fixed_trial)
+        if args.fixedtrial:
+            assert args.trials == 1
+            trial = optuna.trial.FixedTrial(fixed_trial_params)
             for key, value in user_attrs.items():
                 trial.set_user_attr(key, value)
             logging.info('calling objective function with fixed trial')
@@ -190,6 +191,7 @@ def start_hpo(init, objective, metric, direction, fixed_trial=None, seed=200, po
             study.optimize(decorator, n_trials=args.trials, n_jobs=args.jobs, timeout=args.timeout, 
                     catch = (RuntimeError, ValueError, TypeError),
                     gc_after_trial=True)
+            logging.info('finished HPO')
             path = log_dir + '/hpo_result.csv'
             log_and_save(study, path)
 
@@ -202,6 +204,12 @@ def start_hpo(init, objective, metric, direction, fixed_trial=None, seed=200, po
 
 
 def log_and_save(study, path):
+
+    logging.info('Saving HPO results to ' + path)
+      
+    df = study.trials_dataframe()
+    df.to_csv(path)
+
     pruned_trials = [t for t in study.trials if t.state == optuna.trial.TrialState.PRUNED]
     complete_trials = [t for t in study.trials if t.state == optuna.trial.TrialState.COMPLETE]
 
@@ -212,7 +220,3 @@ def log_and_save(study, path):
     logging.info('Best trial number =' + str(trial.number))
     logging.info('Best trial value =' + str(trial.value))
     logging.info('Best trial params=' + str(trial.params))
-  
-    logging.info('Saving HPO results to ' + path)
-    df = study.trials_dataframe()
-    df.to_csv(path)
