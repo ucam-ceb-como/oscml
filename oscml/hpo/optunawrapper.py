@@ -170,8 +170,8 @@ def start_hpo(init, objective, metric, direction, fixed_trial_params=None, seed=
             for key, value in user_attrs.items():
                 trial.set_user_attr(key, value)
             logging.info('calling objective function with fixed trial')
-            value = objective(trial)
-            logging.info(concat('finished objective function call with ', metric, '=', value))
+            best_value = objective(trial)
+            logging.info(concat('finished objective function call with ', metric, '=', best_value))
         else:
             study = create_study(direction, seed)
             for key, value in user_attrs.items():
@@ -194,6 +194,9 @@ def start_hpo(init, objective, metric, direction, fixed_trial_params=None, seed=
             logging.info('finished HPO')
             path = log_dir + '/hpo_result.csv'
             log_and_save(study, path)
+            best_value = study.best_trial.value
+
+        return best_value
 
     except BaseException as exc:
         print(exc)

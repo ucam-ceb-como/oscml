@@ -108,7 +108,9 @@ def fixed_trial():
         #'batch_size': 20
     }
    
+def start():
+    return oscml.hpo.optunawrapper.start_hpo(init=init, objective=objective, metric='val_loss', direction='minimize',
+            fixed_trial_params=fixed_trial())
 
 if __name__ == '__main__':
-    oscml.hpo.optunawrapper.start_hpo(init=init, objective=objective, metric='val_loss', direction='minimize',
-            fixed_trial_params=fixed_trial())
+    start()

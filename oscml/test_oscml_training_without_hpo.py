@@ -58,6 +58,6 @@ if __name__ == '__main__':
     #unittest.main()
 
     test = Test_Oscml_Training_Without_HPO()
-    test.test_train_mlp_mnist_without_hpo()
-    test.test_train_gnn_hopv_without_hpo()
+    #test.test_train_mlp_mnist_without_hpo()
+    #test.test_train_gnn_hopv_without_hpo()
     test.test_train_bilstm_cepdb_without_hpo()

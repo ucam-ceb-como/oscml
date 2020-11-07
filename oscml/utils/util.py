@@ -103,7 +103,7 @@ def calculate_metrics(y_true_np, y_pred_np):
 
     This method calculates all three metrics for two numpy arrays of $y_1,\dots,y_n$ and $\hat{y}_1,\dots,\hat{y}_n$.
 
-    When using normalized values such as 'pcez' instead of 'pce' for training, we have to transform back the predicted values (on the validation and training set) before calling calculate_metrics.
+    When using normalized values for training, we have to transform back the predicted values (on the validation and training set) before calling calculate_metrics.
     """
     mae = sklearn.metrics.mean_absolute_error(y_true_np, y_pred_np)
     # mse is the mean squared error because squared=True by default
