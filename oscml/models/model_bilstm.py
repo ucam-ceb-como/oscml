@@ -59,7 +59,7 @@ class DatasetForBiLstmWithTransformer(torch.utils.data.Dataset):
         return len(self.df)
 
 def get_dataloaders(train, val, test, batch_size, mol2seq, max_sequence_length, padding_index,
-        smiles_fct='SMILES_str', target_fct='pcez'):
+        smiles_fct, target_fct):
 
     train_dl = None
     if train is not None:

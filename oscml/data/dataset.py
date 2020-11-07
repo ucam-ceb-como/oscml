@@ -12,6 +12,18 @@ import oscml.models.model_gnn
 from oscml.utils.util import concat
 from oscml.utils.util import smiles2mol
 
+def path_cepdb_valid_smiles(root='.'):
+    return root + '/data/processed/CPEDB_valid_SMILES.csv'
+
+def path_cepdb_25000(root='.'):
+    return root + '/data/processed/CEPDB_25000.csv'
+
+def path_hopv_15(root='.'):
+    return root + '/data/raw/HOPV_15_revised_2.data'
+
+def path_osaka(root='.'):
+    return root + '/data/raw/Nagasawa_RF_SI.txt'
+
 class DataTransformer():
     
     def __init__(self, column_target, target_mean, target_std, column_x=None):

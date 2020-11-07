@@ -129,7 +129,6 @@ def skip_all_small_pce_values(df, threshold):
 def sample_down_small_pce_values(df, threshold, percentage):
     """skip each sample with PCE value < DOWN_THRESHOLD 
     with probability DOWN_SKIP_PERCENTAGE
-    DEPRECATED
     """
     mask = (df['pce'] < threshold)
     st = len(df[mask])
@@ -139,7 +138,7 @@ def sample_down_small_pce_values(df, threshold, percentage):
     df['skip'] = binomial
     mask = (df['pce'] >= threshold) | (1 - df['skip'])
     df = df[mask]
-    df = df.drop(['skip'], axis=1)
+    df = df.drop(columns=['skip'])
     logging.info('number of selected DB entries=' + str(len(df)))
     return df.copy()
 
@@ -170,8 +169,30 @@ def sample_without_replacement(df, number_samples):
                                                   random_state=0, stratify=column_bin)
     logging.info('number of selected DB entries=' + str(len(df_sampled)))
     return df_sampled
-    
-def split_and_normalize(df, train_ratio, val_ratio, test_ratio):
+
+def read(filepath, threshold, number_samples):
+    logging.info('reading data from ' + filepath)
+    df_cleaned = pd.read_csv(filepath)
+    df_cleaned = skip_all_small_pce_values(df_cleaned, threshold)
+    df_cleaned = sample_without_replacement(df_cleaned, number_samples)
+    logging.info('reading finished, number of molecules=' + str(len(df_cleaned)))
+    return df_cleaned
+
+def store_CEP_cleaned_and_stratified(src, dst, number_samples, threshold_skip):
+    df = read(src, threshold_skip, number_samples)
+    df = df.drop(columns=['bin'])
+    oscml.data.dataset.store(df, dst)
+
+def store_CEP_cleaned_down_sampled_and_stratified(src, dst, number_samples, threshold_skip, threshold_downsampling = None, threshold_percentage = None):
+    logging.info('reading data from ' + src)
+    df = pd.read_csv(src)
+    df = skip_all_small_pce_values(df, threshold_skip)
+    df = sample_down_small_pce_values(df, threshold_downsampling, threshold_percentage)
+    df = sample_without_replacement(df, number_samples)
+    logging.info('reading finished, number of molecules=' + str(len(df)))
+    oscml.data.dataset.store(df, dst)
+
+def DEPRECATED_split_and_normalize(df, train_ratio, val_ratio, test_ratio):
     df_train_plus_val_plus_test = df.copy()
     # sklearn is able to split pandas dataframe into smaller dataframes
     df_train_plus_val, df_test = train_test_split(df, test_size=test_ratio, shuffle=True) #, random_state=0)
@@ -200,20 +221,7 @@ def split_and_normalize(df, train_ratio, val_ratio, test_ratio):
     
     return transformer, df_train, df_val, df_test, df_train_plus_val, df_train_plus_val_plus_test
 
-def read(filepath, threshold, number_samples):
-    logging.info('reading data from' + filepath)
-    df_cleaned = pd.read_csv(filepath)
-    df_cleaned = skip_all_small_pce_values(df_cleaned, threshold)
-    df_cleaned = sample_without_replacement(df_cleaned, number_samples)
-    logging.info('reading finished, number of molecules=' + str(len(df_cleaned)))
-    return df_cleaned
-
-def store_CEP_cleaned_and_stratified(src, dst, threshold, number_samples):
-    df = read(src, threshold, number_samples)
-    df = df.drop(columns=['bin'])
-    oscml.data.dataset.store(df, dst)
-
-def preprocess_CEP(filepath, threshold, number_samples, train_ratio, val_ratio, test_ratio):
+def DEPRECATED_preprocess_CEP(filepath, threshold, number_samples, train_ratio, val_ratio, test_ratio):
     logging.info('preprocessing data for args=' + str(locals()))
     df_train_plus_val_plus_test = read(filepath, threshold, number_samples)
-    return split_and_normalize(df_train_plus_val_plus_test, train_ratio, val_ratio, test_ratio)
+    return DEPRECATED_split_and_normalize(df_train_plus_val_plus_test, train_ratio, val_ratio, test_ratio)

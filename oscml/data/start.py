@@ -29,14 +29,16 @@ if __name__ == '__main__':
             oscml.data.dataset_cep.store_CEP_with_valid_SMILES(args.src, args.dst, numbersamples=1000)
         elif args.task==2:
             # python ./oscml/data/start.py --task 2 --src ./data/processed/CEPDB_valid_SMILES.csv --dst ./data/processed/CEPDB_25000_stratified.csv
+            # skip all samples with PCE values <= 0.0001
             oscml.data.dataset_cep.store_CEP_cleaned_and_stratified(
-                    args.src, args.dst, number_samples=25000, threshold=0.0001)
-        """    
+                    args.src, args.dst, number_samples=25000, threshold_skip=0.0001)  
         elif args.task==3:
             # python ./oscml/data/start.py --task 2 --src ./data/processed/CEPDB_valid_SMILES.csv --dst ./data/processed/CEPDB_25000_stratified.csv
-            oscml.data.dataset_cep.store_CEP_cleaned_and_stratified(
-                    args.src, args.dst, number_samples=25000, threshold=0.0001)
-        """
+            # 1. skip all samples with PCE values <= 0.0001
+            # 2. remove 30% of all samples with PCE values <= 4.0
+            oscml.data.dataset_cep.store_CEP_cleaned_down_sampled_and_stratified(
+                    args.src, args.dst, number_samples=25000, threshold_skip=0.0001, 
+                    threshold_downsampling=4.0, threshold_percentage=0.3)
         
     except Exception as exc:
         logging.exception('task failed', exc_info=True)
