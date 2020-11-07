@@ -1,11 +1,11 @@
 import collections
+import logging
 from time import sleep
 
 import numpy as np
 from tqdm import tqdm
 
-from oscml.utils.util import log
-from oscml.utils.util import smiles2mol
+from oscml.utils.util import smiles2mol, concat
 
 def get_atoms_BFS(graph):
     def bfs(visited, graph, node):
@@ -99,7 +99,7 @@ class Mol2seq_WL():
         return descriptor_BFS
 
 def mol2seq(radius, df, column='SMILES_str'):
-    log('filling mol2seq according to Weisfeiler Lehman algorithm with radius=', radius)
+    logging.info('filling mol2seq according to Weisfeiler Lehman algorithm with radius=' + str(radius))
     sleep(1)
     
     mol2seq = Mol2seq_WL(radius)
@@ -108,9 +108,9 @@ def mol2seq(radius, df, column='SMILES_str'):
         m = smiles2mol(smiles)
         mol2seq(m)
     
-    log('atom dict:', len(mol2seq.atom_dict), mol2seq.atom_dict)
-    log('bond dict:', len(mol2seq.bond_dict), mol2seq.bond_dict)
-    log('fragment dict:', len(mol2seq.fragment_dict), mol2seq.fragment_dict)
-    log('edge dict:', len(mol2seq.edge_dict), mol2seq.edge_dict)
+    logging.info(concat('atom dict:', len(mol2seq.atom_dict), mol2seq.atom_dict))
+    logging.info(concat('bond dict:', len(mol2seq.bond_dict), mol2seq.bond_dict))
+    logging.info(concat('fragment dict:', len(mol2seq.fragment_dict), mol2seq.fragment_dict))
+    logging.info(concat('edge dict:', len(mol2seq.edge_dict), mol2seq.edge_dict))
     
     return mol2seq

@@ -1,5 +1,7 @@
 import collections
+import logging
 from time import sleep
+
 import numpy as np
 import pandas as pd
 import rdkit
@@ -8,9 +10,9 @@ import rdkit.Chem
 import rdkit.Chem.AllChem
 import rdkit.Chem.rdMHFPFingerprint
 import sklearn
-import fingerprint_ertl_ifg
-import util
-from oscml.utils.util import log
+
+import oscml.features.fingerprint_ertl_ifg
+
 
 def create_functional_group_ertl_dictionary(df):
     
@@ -74,7 +76,7 @@ def create_fingerprint_function(params_fingerprint):
         raise RuntimeError('unknown fingerprint type=' + type)
         
 def get_fingerprints(df, column, params_fingerprint, as_numpy_array = True):
-    log('generating fingerprints, params=', params_fingerprint)
+    logging.info('generating fingerprints, params=' + str(params_fingerprint))
     fp_func = create_fingerprint_function(params_fingerprint)
     x = []
     for i in range(len(df)):
