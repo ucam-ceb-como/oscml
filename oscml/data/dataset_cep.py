@@ -1,5 +1,6 @@
 import collections
 import logging
+import math
 from time import sleep
 
 import numpy as np
@@ -155,42 +156,59 @@ def clean_data(df, skip_invalid_smiles = False, min_row = None, max_row = None,
         df_cleaned = sample_down_small_pce_values(df_cleaned, threshold_downsampling, threshold_percentage)
     return df_cleaned, max_smiles_length, max_smiles_atoms
 
-def sample_without_replacement(df, number_samples):
-    # including endpoint 11.2
-    bins = np.arange(0.0, 11.3, step=0.2)
+def sample_without_replacement(df, number_samples, step=0.2, add_bin=False):
+    if not isinstance(number_samples, int):
+        df_array=[]
+        df_rest = df
+        for n in number_samples:
+            df_sampled, df_rest = sample_without_replacement(df_rest.copy(), n, step)
+            df_array.append(df_sampled)
+        return df_array
+
+    max_value = df['pce'].max()
+    logging.info('max PCE value=' + str(max_value))
+    # add 0.0005 to avoid problems with the including the endpoint in np.arange below
+    factor = math.ceil(max_value / step) + 0.0005
+    upper = factor * step
+    bins = np.arange(0.0, upper, step)
     number_bins = len(bins)-1
     logging.info('sampling without replacement, number of bins=' + str(number_bins))
-    #logging.info('bins=' + str(bins))
+    logging.info('bins=' + str(bins))
     labels = np.arange(number_bins)
     column_bin = pd.cut(df['pce'], bins=bins, labels=labels)
-    # the next line is only for visualizing a bin diagram, you may comment it out
-    df['bin'] = column_bin
-    df_sampled, _ = train_test_split(df, train_size=number_samples, shuffle=True, 
-                                                  random_state=0, stratify=column_bin)
-    logging.info('number of selected DB entries=' + str(len(df_sampled)))
-    return df_sampled
 
-def read(filepath, threshold, number_samples):
+    if add_bin:
+        # only for visualization of the distribution with a histogram
+        df['bin'] = column_bin
+    df_sampled, df_rest = train_test_split(df, train_size=number_samples, shuffle=True, 
+                                                random_state=0, stratify=column_bin)
+    logging.info('number of selected DB entries=' + str(len(df_sampled)))
+    logging.info('remaining DB entries for sampling=' + str(len(df_rest)))
+    return df_sampled, df_rest
+
+def read(filepath, threshold, number_samples, add_bin=False):
     logging.info('reading data from ' + filepath)
     df_cleaned = pd.read_csv(filepath)
     df_cleaned = skip_all_small_pce_values(df_cleaned, threshold)
-    df_cleaned = sample_without_replacement(df_cleaned, number_samples)
+    df_cleaned = sample_without_replacement(df_cleaned, number_samples, add_bin)
     logging.info('reading finished, number of molecules=' + str(len(df_cleaned)))
     return df_cleaned
 
-def store_CEP_cleaned_and_stratified(src, dst, number_samples, threshold_skip):
-    df = read(src, threshold_skip, number_samples)
-    df = df.drop(columns=['bin'])
-    oscml.data.dataset.store(df, dst)
-
-def store_CEP_cleaned_down_sampled_and_stratified(src, dst, number_samples, threshold_skip, threshold_downsampling = None, threshold_percentage = None):
+def store_CEP_cleaned_and_stratified(src, dst, number_samples, threshold_skip, threshold_downsampling = None, threshold_percentage = None):
     logging.info('reading data from ' + src)
     df = pd.read_csv(src)
     df = skip_all_small_pce_values(df, threshold_skip)
-    df = sample_down_small_pce_values(df, threshold_downsampling, threshold_percentage)
-    df = sample_without_replacement(df, number_samples)
+    if threshold_downsampling:
+        df = sample_down_small_pce_values(df, threshold_downsampling, threshold_percentage)
+    df_train, df_val, df_test = sample_without_replacement(df, number_samples)
+    df_train['ml_phase'] = 'train'
+    df_val['ml_phase'] = 'val'
+    df_test['ml_phase'] = 'test'
+    df = pd.concat([df_train, df_val, df_test])
     logging.info('reading finished, number of molecules=' + str(len(df)))
-    oscml.data.dataset.store(df, dst)
+    if dst:
+        oscml.data.dataset.store(df, dst)
+    return df
 
 def DEPRECATED_split_and_normalize(df, train_ratio, val_ratio, test_ratio):
     df_train_plus_val_plus_test = df.copy()

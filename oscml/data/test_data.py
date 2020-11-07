@@ -6,7 +6,6 @@ import pandas as pd
 
 import oscml.data.dataset
 import oscml.data.dataset_cep
-import oscml.start
 import oscml.utils.util
 from oscml.utils.util import smiles2mol
 
@@ -24,9 +23,8 @@ class TestData(unittest.TestCase):
         oscml.utils.util.init_logging('.', './tmp')
 
     def setUp(self):
-        PATH = '.'
-        self.path_CEPDB = PATH + '/data/raw/CEPDB.csv'
-        self.path_CEPDB_25000 = PATH + '/data/processed/CEPDB_25000.csv'
+        self.path_CEPDB = oscml.data.dataset.path_cepdb_valid_smiles()
+        self.path_CEPDB_25000 = oscml.data.dataset.path_cepdb_25000()
 
     def test_dataset_read_cep_25000(self):
         df_train, df_val, df_test = oscml.data.dataset.read_and_split(self.path_CEPDB_25000)
@@ -87,7 +85,7 @@ class TestData(unittest.TestCase):
             'val_ratio': 0.2,
             'test_ratio': 0.2}
         self.internal_test_no_randomness_in_preprocessing_CEP(
-            oscml.start.path_cepdb_valid_smiles(), **args)
+            self.path_CEPDB, **args)
 
     def test_dataset_update_state(self):
 
@@ -122,11 +120,30 @@ class TestData(unittest.TestCase):
         assert info.max_smiles_length == 63
         assert len(info.mol2seq.fragment_dict) == 54
 
+    def test_sample_without_replacement(self):
+        df = pd.read_csv(self.path_CEPDB)
+        df_cleaned = oscml.data.dataset_cep.skip_all_small_pce_values(df.copy(), 0.0001)
+        df_train, _ = oscml.data.dataset_cep.sample_without_replacement(df_cleaned, number_samples=1000, step=1.)
+        assert len(df_train) == 1000
+
+        df_cleaned = oscml.data.dataset_cep.skip_all_small_pce_values(df.copy(), 0.0001)
+        df_train, df_val, df_test = oscml.data.dataset_cep.sample_without_replacement(df_cleaned, number_samples=[1000, 200, 300], step=.2)
+        assert len(df_train) == 1000
+        assert len(df_val) == 200
+        assert len(df_test) == 300
+
+    def store_CEP_cleaned_and_stratified(self):
+        df = oscml.data.dataset_cep.store_CEP_cleaned_and_stratified(
+            self.path_CEPDB, dst=None, number_samples=[15000, 5000, 5000], threshold_skip=0.0001)
+        assert len(df) == 25000
+        mask = (df['ml_phase'] == 'train')
+        assert len(df[mask]) ==15000
+
 
 if __name__ == '__main__':
     #unittest.main()
   
     suite = unittest.TestSuite()
-    suite.addTest(TestData("test_dataset_skip_invalid_smiles"))
+    suite.addTest(TestData('store_CEP_cleaned_and_stratified'))
     runner = unittest.TextTestRunner()
     runner.run(suite)
