@@ -151,3 +151,17 @@ class DatasetInfo:
             self.node_types[node_type]
         self.max_molecule_size = max(self.max_molecule_size, len(mol.GetAtoms()))
         self.max_smiles_length = max(self.max_smiles_length, len(smiles))
+
+    def as_dict(self):
+        d = {}
+        d['max_molecule_size'] = self.max_molecule_size
+        d['max_smiles_length'] = self.max_smiles_length
+        d['node_types'] = dict(self.node_types)
+        d['wf_r1'] = {
+            'atom_dict': dict(self.mol2seq.atom_dict),
+            'bond_dict': dict(self.mol2seq.bond_dict),
+            'fragment_dict': dict(self.mol2seq.fragment_dict),
+            'edge_dict': dict(self.mol2seq.edge_dict)
+        }
+        return d
+

@@ -35,7 +35,7 @@ def init_file_logging(log_config_file, log_file):
     try:
         os.makedirs(dir_name, exist_ok=True)
     except FileExistsError:
-        print('dir existiert bereits, dir=', dir_name)
+        print('dir already exists, dir=', dir_name)
 
     # use logging configuration with dictionary
     logging.config.dictConfig(log_cfg)

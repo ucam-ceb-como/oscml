@@ -112,6 +112,7 @@ def store_CEP_with_valid_SMILES(path_source, path_dest, numbersamples=-1):
     if numbersamples > 0:
         df_source = df_source[:numbersamples]
     df_dest, info = skip_invalid_smiles(df_source, 'SMILES_str')
+    logging.info('returned DatasetInfo=\n' + str(info.as_dict()))
     logging.info('storing ' + path_dest)
     df_dest.to_csv(path_dest)
 
