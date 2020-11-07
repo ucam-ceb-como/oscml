@@ -7,12 +7,6 @@ SPATH="$( cd  "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )/"
 
 DATA_LOCAL="./data/raw"
 DATA_REMOTE="vienna.cheng.cam.ac.uk:/home/userspace/CoMoCommon/Ongoing/Projects/c4e-jps-OSC/Data/Raw/*.*"
-# Read project conda environment name from the environment.yml file
-OLDIFS=$IFS
-IFS=': '
-read tag CONDA_ENV_NAME < "./environment.yml"
-IFS=$OLDIFS
-
 echo
 
 function check_conda {
@@ -23,7 +17,7 @@ function check_conda {
         echo
         echo "INFO: Found "$conda_version
     else
-        echo "ERROR: Couldn't find conda installation. On Windows, you must run this script from Anaconda Prompt for conda to be correctly located. Aborting installation."
+        echo "ERROR: Could not find conda installation. On Windows, you must run this script from Anaconda Prompt for conda to be correctly located. Aborting installation."
         read -n 1 -s -r -p "Press any key to continue"
         exit -1
     fi
@@ -32,17 +26,17 @@ function check_conda {
 }
 
 function recreate_conda_env {
-    echo "2. Creating / updating conda project '"$CONDA_ENV_NAME"' environment."
+    echo "2. Creating / updating conda environment."
     echo "-------------------------------------------------------------"
-    # This will create a new environment if one doesn't exist or update the existing one by installing packages listed in the environment.yml file and removing those packaged that are not listed. The environment name will be as specified in the environment.yml file.
-    echo
-    conda env update -f environment.yml --prune
-    if [ $? -ne 0 ]; then
-        echo
-        echo "ERROR: Couldn't create / update conda '"$CONDA_ENV_NAME"' environment. Aborting installation."
-        read -n 1 -s -r -p "Press any key to continue"
-        exit -1
-    fi
+    # This will recreate conda environment
+	echo -n "Provide conda environment name to be created for this project: "	
+    read CONDA_ENV_NAME
+	# Remove the environment (if one already exists)
+	conda remove --name $CONDA_ENV_NAME --all
+	# Update the environment name in the yml file
+    sed -i '1s/.*/name: '$CONDA_ENV_NAME'/' environment.yml
+    # Create the new environment
+    conda env create -f environment.yml
     echo
     echo
 }
@@ -56,11 +50,11 @@ function install_ZhouLiML_package {
     if [ $? -eq 0 ]; then
         pip install -e .
         if [ $? -ne 0 ]; then
-			echo "ERROR: Couldn't install the OSCML project. Please check the pip log."
+			echo "ERROR: Could not install the OSCML project. Please check the pip log."
 			exit -1
         fi
     else
-        echo "Couldn't activate conda '"$CONDA_ENV_NAME"' environment. Aborting installation."
+        echo "Couldnt activate conda environment. Aborting installation."
         read -n 1 -s -r -p "Press any key to continue"
         exit -1
     fi
