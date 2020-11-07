@@ -7,6 +7,7 @@ import sklearn
 from time import sleep
 from tqdm import tqdm
 
+import oscml.features.weisfeilerlehman
 import oscml.models.model_gnn
 from oscml.utils.util import concat
 from oscml.utils.util import smiles2mol
@@ -129,3 +130,24 @@ def read_and_split(filepath, split_column='ml_phase'):
     df_test = df[(df[split_column] == 'test')].copy()
     logging.info(concat('split data into sets of size (train val test)=', len(df_train), len(df_val), len(df_test)))
     return df_train, df_val, df_test
+
+class DatasetInfo:
+    def __init__(self, mol2seq=None, node_types=None, max_molecule_size=0, max_smiles_length=0):
+        if mol2seq:
+            self.mol2seq = mol2seq
+        else:    
+            self.mol2seq = oscml.features.weisfeilerlehman.Mol2seq_WL(radius=1)
+        if node_types:
+            self.node_types = node_types
+        else:
+            self.node_types = collections.defaultdict(lambda:len(self.node_types))
+        self.max_molecule_size = max_molecule_size
+        self.max_smiles_length = max_smiles_length
+    
+    def update(self, mol, smiles):
+        self.mol2seq(mol)
+        for a in mol.GetAtoms():
+            node_type = (a.GetSymbol(), a.GetIsAromatic())
+            self.node_types[node_type]
+        self.max_molecule_size = max(self.max_molecule_size, len(mol.GetAtoms()))
+        self.max_smiles_length = max(self.max_smiles_length, len(smiles))

@@ -9,7 +9,6 @@ import oscml.start
 import oscml.start_bilstm
 import oscml.start_gnn
 import oscml.start_mnist
-import oscml.test_oscml
 import oscml.data.dataset
 import oscml.data.dataset_cep
 import oscml.data.dataset_hopv15
@@ -40,8 +39,8 @@ class Test_Oscml_Training_Without_HPO(unittest.TestCase):
         metrics_reloaded = trainer.test(model_reloaded, test_dataloaders=test_dl)[0]
         logging.info('actual metrics on test set=' + str(metrics_reloaded))
 
-        oscml.test_oscml.assertNearlyEqual(metrics['mse'], metrics_reloaded['mse'])
-        oscml.test_oscml.assertNearlyEqual(metrics['r'], metrics_reloaded['r'])
+        self.assertAlmostEqual(metrics['mse'], metrics_reloaded['mse'], 3)
+        self.assertAlmostEqual(metrics['r'], metrics_reloaded['r'], 3)
 
     def test_train_mlp_mnist_without_hpo(self):
         oscml.start_mnist.start('.', '.', epochs=2)

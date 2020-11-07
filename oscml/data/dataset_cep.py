@@ -13,6 +13,7 @@ from oscml.features.weisfeilerlehman import mol2seq
 from oscml.utils.util import concat
 from oscml.utils.util import smiles2mol
 
+
 ATOM_TYPES_CEP = {
      ('C', False): 0,
      ('C', True): 1,
@@ -78,19 +79,20 @@ def mol2seq_precalculated_with_OOV(df, radius, oov, column_smiles='UNKNOWN'):
     
     return mol2seq
 
+
 def skip_invalid_smiles(df, smiles_column_name):
+
+    logging.info('checking SMILES')
+    info = oscml.data.dataset.DatasetInfo()
+
     smiles_valid = []
-    max_smiles_length = 0
-    max_atoms = 0
     for i in tqdm(range(len(df))):
         smiles = df.iloc[i][smiles_column_name]
         m = smiles2mol(smiles)
         valid = bool(m)
         smiles_valid.append(valid)
-        i += 1
         if valid:
-            max_smiles_length = max(max_smiles_length, len(smiles))
-            max_atoms = max(max_atoms, len(m.GetAtoms()))
+            info.update(m, smiles)
 
     df['SMILES_valid'] = smiles_valid      
     number_invalid_smiles = (df['SMILES_valid'] == False).sum()
@@ -99,10 +101,19 @@ def skip_invalid_smiles(df, smiles_column_name):
     mask = df['SMILES_valid']
     df = df[mask]
     logging.info('number of selected DB entries=' + str(len(df)))
-    logging.info('max length of valid SMILES=' + str(max_smiles_length))
-    logging.info('max number of atoms in molecules with valid SMILES=' + str(max_atoms))
+    logging.info('max length of valid SMILES=' + str(info.max_smiles_length))
+    logging.info('max number of atoms in molecules with valid SMILES=' + str(info.max_molecule_size))
     
-    return df.copy(), max_smiles_length, max_atoms
+    return df.copy(), info
+
+def store_CEP_with_valid_SMILES(path_source, path_dest, numbersamples=-1):
+    logging.info('reading ' + path_source)
+    df_source = pd.read_csv(path_source)
+    if numbersamples > 0:
+        df_source = df_source[:numbersamples]
+    df_dest, info = skip_invalid_smiles(df_source, 'SMILES_str')
+    logging.info('storing ' + path_dest)
+    df_dest.to_csv(path_dest)
 
 def skip_all_small_pce_values(df, threshold):
     mask = (df['pce'] >= threshold) 
@@ -199,12 +210,3 @@ def preprocess_CEP(filepath, threshold, number_samples, train_ratio, val_ratio, 
     logging.info('preprocessing data for args=' + str(locals()))
     df_train_plus_val_plus_test = read(filepath, threshold, number_samples)
     return split_and_normalize(df_train_plus_val_plus_test, train_ratio, val_ratio, test_ratio)
-
-def store_CEP_with_valid_SMILES(path_source, path_dest, numbersamples=-1):
-    logging.info('reading ' + path_source)
-    df_source = pd.read_csv(path_source)
-    if numbersamples > 0:
-        df_source = df_source[:numbersamples]
-    df_dest, max_smiles_length, max_atoms = skip_invalid_smiles(df_source, 'SMILES_str')
-    logging.info('storing ' + path_dest)
-    df_dest.to_csv(path_dest)
