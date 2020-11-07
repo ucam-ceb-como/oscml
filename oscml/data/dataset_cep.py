@@ -100,11 +100,13 @@ def skip_invalid_smiles(df, smiles_column_name):
     logging.info('number of invalid SMILES=' + str(number_invalid_smiles))
     mask = df['SMILES_valid']
     df = df[mask]
+    df = df.copy()
+    df = df.drop(columns=['SMILES_valid'])
     logging.info('number of selected DB entries=' + str(len(df)))
     logging.info('max length of valid SMILES=' + str(info.max_smiles_length))
     logging.info('max number of atoms in molecules with valid SMILES=' + str(info.max_molecule_size))
     
-    return df.copy(), info
+    return df, info
 
 def store_CEP_with_valid_SMILES(path_source, path_dest, numbersamples=-1):
     logging.info('reading ' + path_source)
@@ -113,8 +115,7 @@ def store_CEP_with_valid_SMILES(path_source, path_dest, numbersamples=-1):
         df_source = df_source[:numbersamples]
     df_dest, info = skip_invalid_smiles(df_source, 'SMILES_str')
     logging.info('returned DatasetInfo=\n' + str(info.as_dict()))
-    logging.info('storing ' + path_dest)
-    df_dest.to_csv(path_dest)
+    oscml.data.dataset.store(df_dest, path_dest)
 
 def skip_all_small_pce_values(df, threshold):
     mask = (df['pce'] >= threshold) 
@@ -206,6 +207,11 @@ def read(filepath, threshold, number_samples):
     df_cleaned = sample_without_replacement(df_cleaned, number_samples)
     logging.info('reading finished, number of molecules=' + str(len(df_cleaned)))
     return df_cleaned
+
+def store_CEP_cleaned_and_stratified(src, dst, threshold, number_samples):
+    df = read(src, threshold, number_samples)
+    df = df.drop(columns=['bin'])
+    oscml.data.dataset.store(df, dst)
 
 def preprocess_CEP(filepath, threshold, number_samples, train_ratio, val_ratio, test_ratio):
     logging.info('preprocessing data for args=' + str(locals()))

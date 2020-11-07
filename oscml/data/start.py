@@ -10,7 +10,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--src', type=str, default='.')
     parser.add_argument('--dst', type=str, default='.')
-    parser.add_argument('--task', type=int, choices=range(1,3), required=True)
+    parser.add_argument('--task', type=int, choices=range(1,4), required=True)
     args = parser.parse_args()
 
     oscml.utils.util.init_logging('.', '.')
@@ -25,9 +25,19 @@ if __name__ == '__main__':
             logging.info('destination dir already exists, dir=' + dir_name)
 
         if args.task==1:
-            # python ./oscml/data/start.py --task 1 --src ./data/raw/CEPDB.csv --dst ./data/processed/CEPDB_valid_SMILES_tmp.csv
-            oscml.data.dataset_cep.store_CEP_with_valid_SMILES(args.src, args.dst, numbersamples=-1)
-    
+            # python ./oscml/data/start.py --task 1 --src ./data/raw/CEPDB.csv --dst ./data/processed/CEPDB_valid_SMILES.csv
+            oscml.data.dataset_cep.store_CEP_with_valid_SMILES(args.src, args.dst, numbersamples=1000)
+        elif args.task==2:
+            # python ./oscml/data/start.py --task 2 --src ./data/processed/CEPDB_valid_SMILES.csv --dst ./data/processed/CEPDB_25000_stratified.csv
+            oscml.data.dataset_cep.store_CEP_cleaned_and_stratified(
+                    args.src, args.dst, number_samples=25000, threshold=0.0001)
+        """    
+        elif args.task==3:
+            # python ./oscml/data/start.py --task 2 --src ./data/processed/CEPDB_valid_SMILES.csv --dst ./data/processed/CEPDB_25000_stratified.csv
+            oscml.data.dataset_cep.store_CEP_cleaned_and_stratified(
+                    args.src, args.dst, number_samples=25000, threshold=0.0001)
+        """
+        
     except Exception as exc:
         logging.exception('task failed', exc_info=True)
         raise exc

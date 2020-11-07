@@ -110,6 +110,11 @@ def get_dataloaders_with_calculated_normalized_data(df, column_smiles, column_ta
     
     return train_dl, val_dl, test_dl, transformer.inverse_transform
 
+def store(df, filepath):
+    logging.info('storing ' + filepath)
+    # store without the internal index of Pandas Dataframe
+    df.to_csv(filepath, index=False)
+
 def split_data_frames_and_transform(df, column_smiles, column_target, train_size, test_size):
     
     df_train, df_test = sklearn.model_selection.train_test_split(df, 
