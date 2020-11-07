@@ -65,15 +65,6 @@ def concat(*args):
     
 def log(*args):
     logging.info(concat(*args))
-
-def DEPRECATED_log(*args):
-    if len(args) == 1:
-        logging.getLogger().info(args[0])
-    else:
-        message = ''
-        for m in args:
-            message += str(m) + ' '
-        logging.getLogger().info(message)
        
 def logm(*args):
     logging.getLogger().info(args)
