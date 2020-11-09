@@ -56,6 +56,9 @@ def fixed_trial():
     }
    
 
+def start():
+    return oscml.hpo.optunawrapper.start_hpo(init=None, objective=objective, metric='val_acc', direction='maximize',
+        fixed_trial_params=fixed_trial())
+
 if __name__ == '__main__':
-    oscml.hpo.optunawrapper.start_hpo(init=None, objective=objective, metric='val_acc', direction='maximize')
-    #oscml.hpo.optunawrapper.start_hpo(init=None, objective=objective, metric='val_acc', direction='maximize', fixed_trial=fixed_trial())
+    start()

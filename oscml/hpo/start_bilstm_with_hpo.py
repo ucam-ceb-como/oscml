@@ -1,7 +1,6 @@
 import logging
 import types
 
-import oscml.start
 import oscml.data.dataset
 import oscml.data.dataset_cep
 import oscml.hpo.optunawrapper
@@ -12,7 +11,7 @@ def init(user_attrs):
 
     # read data and preprocess, e.g. standarization, splitting into train, validation and test set
     src = user_attrs['src']
-    path = oscml.start.path_cepdb_25000(src)
+    path = oscml.data.dataset.path_cepdb_25000(src)
     df_train, df_val, df_test = oscml.data.dataset.read_and_split(path)
     # just for development: use 10% of the 25000 samples
     #df_train = df_train[:1500].copy()
@@ -106,6 +105,9 @@ def fixed_trial():
     }
 
 
-if __name__ == '__main__':
-    oscml.hpo.optunawrapper.start_hpo(init=init, objective=objective, metric='val_loss', direction='minimize',
+def start():
+    return oscml.hpo.optunawrapper.start_hpo(init=init, objective=objective, metric='val_loss', direction='minimize',
         fixed_trial_params=fixed_trial())
+
+if __name__ == '__main__':
+    start()

@@ -1,7 +1,6 @@
 import logging
 import types
 
-import oscml.start
 import oscml.data.dataset
 import oscml.data.dataset_hopv15
 import oscml.hpo.optunawrapper
@@ -12,7 +11,7 @@ def init(user_attrs):
 
     # read data and preprocess, e.g. standarization, splitting into train, validation and test set
     src_dir = user_attrs['src']
-    path = oscml.start.path_hopv_15(src_dir)
+    path = oscml.data.dataset.path_hopv_15(src_dir)
     df = oscml.data.dataset_hopv15.read(path)
     df = oscml.data.dataset.clean_data(df, None, 'smiles', 'pce')
 
@@ -108,7 +107,9 @@ def fixed_trial():
         #'batch_size': 20
     }
    
+def start():
+    return oscml.hpo.optunawrapper.start_hpo(init=init, objective=objective, metric='val_loss', direction='minimize',
+            fixed_trial_params=fixed_trial())
 
 if __name__ == '__main__':
-    oscml.hpo.optunawrapper.start_hpo(init=init, objective=objective, metric='val_loss', direction='minimize',
-            fixed_trial_params=fixed_trial())
+    start()

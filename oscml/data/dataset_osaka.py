@@ -1,3 +1,4 @@
+import logging
 from time import sleep
 
 import numpy as np
@@ -5,8 +6,6 @@ import pandas as pd
 from sklearn.model_selection import train_test_split
 from tqdm import tqdm
 
-from oscml.utils.util import log
-from oscml.utils.util import smiles2mol
 
 COLUMNS_OSAKA = ['id','nickname','refno','pcemax','pceave','voc','jsc','ff',
         'mw','mn','pdi','monomer','neghomo', 'neglumo', 'bandgap', 'smiles']
@@ -29,9 +28,11 @@ ATOM_TYPES_OSAKA =  {('C', False): 0,
              ('Cl', False): 15,
              ('B', False): 16} 
 
+
 def read(filepath):
-    log('reading data from', filepath)
+    logging.info('reading data from ' + filepath)
     df = pd.read_csv(filepath, sep='\t', encoding='ISO-8859-1')
     df.columns = COLUMNS_OSAKA
-    log('reading finished, number of molecules =', len(df))
+    logging.info('reading finished, number of molecules=' + str(len(df)))
     return df
+        

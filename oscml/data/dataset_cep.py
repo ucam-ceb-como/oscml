@@ -1,4 +1,6 @@
 import collections
+import logging
+import math
 from time import sleep
 
 import numpy as np
@@ -9,8 +11,9 @@ from tqdm import tqdm
 import oscml.data.dataset
 import oscml.features.weisfeilerlehman
 from oscml.features.weisfeilerlehman import mol2seq
-from oscml.utils.util import log
+from oscml.utils.util import concat
 from oscml.utils.util import smiles2mol
+
 
 ATOM_TYPES_CEP = {
      ('C', False): 0,
@@ -43,7 +46,7 @@ class Mol2seq_precalculated_with_OOV():
         self.oov = oov
         # fragment index starts with 0, thus -1
         self.max_index = len(self.fragment_dict) - 1
-        log('initialized Mol2seq_precalculated_with_OOV with max_index=', self.max_index)
+        logging.info('initialized Mol2seq_precalculated_with_OOV with max_index=' +str(self.max_index))
         
     def apply_OOV(self, index):
         return (index if index <= self.max_index else -1)
@@ -63,70 +66,81 @@ def mol2seq_precalculated_with_OOV(df, radius, oov, column_smiles='UNKNOWN'):
     mol2seq = Mol2seq_precalculated_with_OOV(radius, oov)
     
     if df is not None:
-        log('filling mol2seq according to Weisfeiler Lehman algorithm with radius=', radius)
+        logging.info('filling mol2seq according to Weisfeiler Lehman algorithm with radius=' + str(radius))
         sleep(1)
         for i in tqdm(range(len(df))):
             smiles = df.iloc[i][column_smiles]
             m = smiles2mol(smiles)
             mol2seq(m)
     
-    log('atom dict:', len(mol2seq.atom_dict), mol2seq.atom_dict)
-    log('bond dict:', len(mol2seq.bond_dict), mol2seq.bond_dict)
-    log('fragment dict:', len(mol2seq.fragment_dict), mol2seq.fragment_dict)
-    log('edge dict:', len(mol2seq.edge_dict), mol2seq.edge_dict)
+    logging.info(concat('atom dict:', len(mol2seq.atom_dict), mol2seq.atom_dict))
+    logging.info(concat('bond dict:', len(mol2seq.bond_dict), mol2seq.bond_dict))
+    logging.info(concat('fragment dict:', len(mol2seq.fragment_dict), mol2seq.fragment_dict))
+    logging.info(concat('edge dict:', len(mol2seq.edge_dict), mol2seq.edge_dict))
     
     return mol2seq
 
+
 def skip_invalid_smiles(df, smiles_column_name):
+
+    logging.info('checking SMILES')
+    info = oscml.data.dataset.DatasetInfo()
+
     smiles_valid = []
-    max_smiles_length = 0
-    max_atoms = 0
     for i in tqdm(range(len(df))):
         smiles = df.iloc[i][smiles_column_name]
         m = smiles2mol(smiles)
         valid = bool(m)
         smiles_valid.append(valid)
-        i += 1
         if valid:
-            max_smiles_length = max(max_smiles_length, len(smiles))
-            max_atoms = max(max_atoms, len(m.GetAtoms()))
+            info.update(m, smiles)
 
     df['SMILES_valid'] = smiles_valid      
     number_invalid_smiles = (df['SMILES_valid'] == False).sum()
     sleep(1)
-    log('number of invalid SMILES=', number_invalid_smiles)
+    logging.info('number of invalid SMILES=' + str(number_invalid_smiles))
     mask = df['SMILES_valid']
     df = df[mask]
-    log('number of selected DB entries==', len(df))
-    log('max length of valid SMILES=', max_smiles_length)
-    log('max number of atoms in molecules with valid SMILES=', max_atoms)
+    df = df.copy()
+    df = df.drop(columns=['SMILES_valid'])
+    logging.info('number of selected DB entries=' + str(len(df)))
+    logging.info('max length of valid SMILES=' + str(info.max_smiles_length))
+    logging.info('max number of atoms in molecules with valid SMILES=' + str(info.max_molecule_size))
     
-    return df.copy(), max_smiles_length, max_atoms
+    return df, info
+
+def store_CEP_with_valid_SMILES(path_source, path_dest, numbersamples=-1):
+    logging.info('reading ' + path_source)
+    df_source = pd.read_csv(path_source)
+    if numbersamples > 0:
+        df_source = df_source[:numbersamples]
+    df_dest, info = skip_invalid_smiles(df_source, 'SMILES_str')
+    logging.info('returned DatasetInfo=\n' + str(info.as_dict()))
+    oscml.data.dataset.store(df_dest, path_dest)
 
 def skip_all_small_pce_values(df, threshold):
     mask = (df['pce'] >= threshold) 
     size_total = len(df)
     df = df[mask]
     size_larger = len(df)
-    log('number of pce values smaller threshold=', size_total - size_larger)
-    log('number of selected DB entries=', size_larger)
+    logging.info('number of pce values smaller threshold=' + str(size_total - size_larger))
+    logging.info('number of selected DB entries=' + str(size_larger))
     return df.copy()
 
 def sample_down_small_pce_values(df, threshold, percentage):
     """skip each sample with PCE value < DOWN_THRESHOLD 
     with probability DOWN_SKIP_PERCENTAGE
-    DEPRECATED
     """
     mask = (df['pce'] < threshold)
     st = len(df[mask])
-    log('ST = number of pce values smaller threshold =', st)
-    log('expected number to skip = ST * percentage =', st * percentage)
+    logging.info('ST = number of pce values smaller threshold =' + str(st))
+    logging.info('expected number to skip = ST * percentage =' + str(st * percentage))
     binomial = np.random.binomial(1, percentage, len(df))
     df['skip'] = binomial
     mask = (df['pce'] >= threshold) | (1 - df['skip'])
     df = df[mask]
-    df = df.drop(['skip'], axis=1)
-    log('number of selected DB entries=', len(df))
+    df = df.drop(columns=['skip'])
+    logging.info('number of selected DB entries=' + str(len(df)))
     return df.copy()
 
 def clean_data(df, skip_invalid_smiles = False, min_row = None, max_row = None, 
@@ -142,22 +156,61 @@ def clean_data(df, skip_invalid_smiles = False, min_row = None, max_row = None,
         df_cleaned = sample_down_small_pce_values(df_cleaned, threshold_downsampling, threshold_percentage)
     return df_cleaned, max_smiles_length, max_smiles_atoms
 
-def sample_without_replacement(df, number_samples):
-    # including endpoint 11.2
-    bins = np.arange(0.0, 11.3, step=0.2)
+def sample_without_replacement(df, number_samples, step=0.2, add_bin=False):
+    if not isinstance(number_samples, int):
+        df_array=[]
+        df_rest = df
+        for n in number_samples:
+            df_sampled, df_rest = sample_without_replacement(df_rest.copy(), n, step)
+            df_array.append(df_sampled)
+        return df_array
+
+    max_value = df['pce'].max()
+    logging.info('max PCE value=' + str(max_value))
+    # add 0.0005 to avoid problems with the including the endpoint in np.arange below
+    factor = math.ceil(max_value / step) + 0.0005
+    upper = factor * step
+    bins = np.arange(0.0, upper, step)
     number_bins = len(bins)-1
-    log('sampling without replacement, number of bins=', number_bins)
-    #log('bins=', bins)
+    logging.info('sampling without replacement, number of bins=' + str(number_bins))
+    logging.info('bins=' + str(bins))
     labels = np.arange(number_bins)
     column_bin = pd.cut(df['pce'], bins=bins, labels=labels)
-    # the next line is only for visualizing a bin diagram, you may comment it out
-    df['bin'] = column_bin
-    df_sampled, _ = train_test_split(df, train_size=number_samples, shuffle=True, 
-                                                  random_state=0, stratify=column_bin)
-    log('number of selected DB entries=', len(df_sampled))
-    return df_sampled
-    
-def split_and_normalize(df, train_ratio, val_ratio, test_ratio):
+
+    if add_bin:
+        # only for visualization of the distribution with a histogram
+        df['bin'] = column_bin
+    df_sampled, df_rest = train_test_split(df, train_size=number_samples, shuffle=True, 
+                                                random_state=0, stratify=column_bin)
+    logging.info('number of selected DB entries=' + str(len(df_sampled)))
+    logging.info('remaining DB entries for sampling=' + str(len(df_rest)))
+    return df_sampled, df_rest
+
+def read(filepath, threshold, number_samples, add_bin=False):
+    logging.info('reading data from ' + filepath)
+    df_cleaned = pd.read_csv(filepath)
+    df_cleaned = skip_all_small_pce_values(df_cleaned, threshold)
+    df_cleaned = sample_without_replacement(df_cleaned, number_samples, add_bin)
+    logging.info('reading finished, number of molecules=' + str(len(df_cleaned)))
+    return df_cleaned
+
+def store_CEP_cleaned_and_stratified(src, dst, number_samples, threshold_skip, threshold_downsampling = None, threshold_percentage = None):
+    logging.info('reading data from ' + src)
+    df = pd.read_csv(src)
+    df = skip_all_small_pce_values(df, threshold_skip)
+    if threshold_downsampling:
+        df = sample_down_small_pce_values(df, threshold_downsampling, threshold_percentage)
+    df_train, df_val, df_test = sample_without_replacement(df, number_samples)
+    df_train['ml_phase'] = 'train'
+    df_val['ml_phase'] = 'val'
+    df_test['ml_phase'] = 'test'
+    df = pd.concat([df_train, df_val, df_test])
+    logging.info('reading finished, number of molecules=' + str(len(df)))
+    if dst:
+        oscml.data.dataset.store(df, dst)
+    return df
+
+def DEPRECATED_split_and_normalize(df, train_ratio, val_ratio, test_ratio):
     df_train_plus_val_plus_test = df.copy()
     # sklearn is able to split pandas dataframe into smaller dataframes
     df_train_plus_val, df_test = train_test_split(df, test_size=test_ratio, shuffle=True) #, random_state=0)
@@ -167,12 +220,12 @@ def split_and_normalize(df, train_ratio, val_ratio, test_ratio):
     df_train, df_val = train_test_split(df_train_plus_val, test_size=val_ratio, shuffle=True) #, random_state=0)
     df_train = df_train.copy()
     df_val = df_val.copy()
-    log('split data into sets of size (train val test)=', len(df_train), len(df_val), len(df_test))
+    logging.info(concat('split data into sets of size (train val test)=', len(df_train), len(df_val), len(df_test)))
     
     # normalize 
     pce_mean = df_train_plus_val['pce'].mean()
     pce_std = df_train_plus_val['pce'].std(ddof=0)
-    log('normalizing PCE values with pce_mean=', pce_mean, 'pce_std=', pce_std)
+    logging.info(concat('normalizing PCE values with pce_mean=', pce_mean, 'pce_std=', pce_std))
     transformer = oscml.data.dataset.DataTransformer(None, pce_mean, pce_std)
     transform = transformer.transform
     
@@ -186,24 +239,7 @@ def split_and_normalize(df, train_ratio, val_ratio, test_ratio):
     
     return transformer, df_train, df_val, df_test, df_train_plus_val, df_train_plus_val_plus_test
 
-def read(filepath, threshold, number_samples):
-    log('reading data from', filepath)
-    df_cleaned = pd.read_csv(filepath)
-    df_cleaned = skip_all_small_pce_values(df_cleaned, threshold)
-    df_cleaned = sample_without_replacement(df_cleaned, number_samples)
-    log('reading finished, number of molecules =', len(df_cleaned))
-    return df_cleaned
-
-def preprocess_CEP(filepath, threshold, number_samples, train_ratio, val_ratio, test_ratio):
-    log('preprocessing data for args=', locals())
+def DEPRECATED_preprocess_CEP(filepath, threshold, number_samples, train_ratio, val_ratio, test_ratio):
+    logging.info('preprocessing data for args=' + str(locals()))
     df_train_plus_val_plus_test = read(filepath, threshold, number_samples)
-    return split_and_normalize(df_train_plus_val_plus_test, train_ratio, val_ratio, test_ratio)
-
-def store_CEP_with_valid_SMILES(path_source, path_dest, numbersamples=-1):
-    log('reading', path_source)
-    df_source = pd.read_csv(path_source)
-    if numbersamples > 0:
-        df_source = df_source[:numbersamples]
-    df_dest, max_smiles_length, max_atoms = skip_invalid_smiles(df_source, 'SMILES_str')
-    log('storing', path_dest)
-    df_dest.to_csv(path_dest)
+    return DEPRECATED_split_and_normalize(df_train_plus_val_plus_test, train_ratio, val_ratio, test_ratio)

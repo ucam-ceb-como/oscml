@@ -1,12 +1,10 @@
+import logging
 from time import sleep
 
 import numpy as np
 import pandas as pd
 from sklearn.model_selection import train_test_split
 from tqdm import tqdm
-
-from oscml.utils.util import log
-from oscml.utils.util import smiles2mol
 
 COLUMNS_HOPV15 = ['smiles', 'inchi', 
                   # experimental data:
@@ -30,7 +28,7 @@ ATOM_TYPES_HOPV15 = {('C', False): 0,
              ('O', True): 11}
 
 def read(filepath):
-    log('reading data from', filepath)
+    logging.info('reading data from ' + filepath)
     
     molecules = []
     with open(filepath) as f:
@@ -60,11 +58,10 @@ def read(filepath):
                     # TODO: read DFT functional data
                     line = f.readline().strip()
 
-            #log('read ', molecule)
             molecules.append(molecule)
 
     df = pd.DataFrame(molecules, columns = COLUMNS_HOPV15)
-    log('reading finished, number of molecules =', len(df))
+    logging.info('reading finished, number of molecules=' + str(len(df)))
     return df
 
 def clean_hopv15(df):

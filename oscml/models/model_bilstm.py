@@ -39,7 +39,6 @@ class DatasetForBiLstmWithTransformer(torch.utils.data.Dataset):
             self.target_fct = target_fct
     
     def __getitem__(self, index):
-        #smiles = self.df.iloc[index]['SMILES_str']
         row = self.df.iloc[index]
         smiles = self.smiles_fct(row)
         m = smiles2mol(smiles)
@@ -51,7 +50,6 @@ class DatasetForBiLstmWithTransformer(torch.utils.data.Dataset):
         device = cfg[oscml.utils.params.PYTORCH_DEVICE]
         x = torch.as_tensor(x, dtype = torch.long, device = device)
 
-        #y = torch.as_tensor(np.array(self.df.iloc[index]['pcez'], dtype=np.float32), device = device)
         y = self.target_fct(row)
         y = torch.as_tensor(np.array(y, dtype=np.float32), device = device)
 
@@ -61,7 +59,7 @@ class DatasetForBiLstmWithTransformer(torch.utils.data.Dataset):
         return len(self.df)
 
 def get_dataloaders(train, val, test, batch_size, mol2seq, max_sequence_length, padding_index,
-        smiles_fct='SMILES_str', target_fct='pcez'):
+        smiles_fct, target_fct):
 
     train_dl = None
     if train is not None:
