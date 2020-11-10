@@ -63,7 +63,6 @@ function install_ZhouLiML_package {
 }
 
 function redownload_data_from_server {
-    rm -r $DATA_LOCAL
 	mkdir -p $DATA_LOCAL
 	echo -n "Please provide your Vienna user-name: "
 	read USERNM
@@ -81,6 +80,7 @@ function get_data_from_server {
         read REDOWNLOAD
         if [ "$REDOWNLOAD" = "y" ]
         then
+            rm -r $DATA_LOCAL
             redownload_data_from_server
         fi
     else
