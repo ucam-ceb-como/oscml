@@ -5,8 +5,8 @@
 AUTHOR="Daniel Nurkowski <danieln@cmclinnovations.com>"
 SPATH="$( cd  "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )/"
 
-DATA_LOCAL="./data/raw"
-DATA_REMOTE="vienna.cheng.cam.ac.uk:/home/userspace/CoMoCommon/Ongoing/Projects/c4e-jps-OSC/Data/Raw/*.*"
+DATA_LOCAL="./data/"
+DATA_REMOTE="vienna.cheng.cam.ac.uk:/home/userspace/CoMoCommon/Ongoing/Projects/c4e-jps-OSC/Data/ZhouLi_Data/*"
 echo
 
 function check_conda {
@@ -62,18 +62,29 @@ function install_ZhouLiML_package {
     echo
 }
 
+function redownload_data_from_server {
+    rm -r $DATA_LOCAL
+	mkdir -p $DATA_LOCAL
+	echo -n "Please provide your Vienna user-name: "
+	read USERNM
+	scp -r $USERNM"@"$DATA_REMOTE $DATA_LOCAL
+}
+
 function get_data_from_server {
     echo "4. Downloading required project data from the server..."
     echo "-------------------------------------------------------------"
     echo
     if [ -d $DATA_LOCAL ]
     then
-        echo "INFO: Directory" $DATA_LOCAL "already exists. Remove it if you wish to re-download data from the server."
+        echo "INFO: Directory" $DATA_LOCAL " already exists. Would you like to remove it and re-download project data from the server:"
+        echo -n "y/[n]:"
+        read REDOWNLOAD
+        if [ "$REDOWNLOAD" = "y" ]
+        then
+            redownload_data_from_server
+        fi
     else
-        mkdir -p $DATA_LOCAL
-        echo -n "Please provide your Vienna user-name: "
-        read USERNM
-        scp $USERNM"@"$DATA_REMOTE $DATA_LOCAL"/."
+        redownload_data_from_server
     fi
     echo
     echo
