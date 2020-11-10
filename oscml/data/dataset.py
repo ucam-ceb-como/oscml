@@ -13,6 +13,9 @@ from oscml.utils.util import concat
 from oscml.utils.util import smiles2mol
 
 def path_cepdb_valid_smiles(root='.'):
+    return root + '/data/raw/CEPDB.csv'
+
+def path_cepdb_valid_smiles(root='.'):
     return root + '/data/processed/CEPDB_valid_SMILES.csv'
 
 def path_cepdb_25000(root='.'):
@@ -104,6 +107,7 @@ def clean_data(df, mol2seq, column_smiles, column_target):
     
     return df_cleaned
 
+"""
 def get_dataloaders_with_calculated_normalized_data(df, column_smiles, column_target, args, train_size, test_size):
     
     mean = df[column_target].mean()
@@ -121,6 +125,7 @@ def get_dataloaders_with_calculated_normalized_data(df, column_smiles, column_ta
                                                         column_smiles, transformer.transform)
     
     return train_dl, val_dl, test_dl, transformer.inverse_transform
+"""
 
 def store(df, filepath):
     logging.info('storing ' + filepath)
@@ -149,7 +154,10 @@ def read_and_split(filepath, split_column='ml_phase'):
     return df_train, df_val, df_test
 
 class DatasetInfo:
-    def __init__(self, mol2seq=None, node_types=None, max_molecule_size=0, max_smiles_length=0):
+    def __init__(self, id=None, column_smiles=None, column_target=None, mol2seq=None, node_types=None, max_molecule_size=0, max_smiles_length=0):
+        self.id=id
+        self.column_smiles = column_smiles
+        self.column_target = column_target
         if mol2seq:
             self.mol2seq = mol2seq
         else:    
@@ -171,6 +179,9 @@ class DatasetInfo:
 
     def as_dict(self):
         d = {}
+        d['id'] = self.id
+        d['column_smiles'] = self.column_smiles
+        d['column_target'] = self.column_target
         d['max_molecule_size'] = self.max_molecule_size
         d['max_smiles_length'] = self.max_smiles_length
         d['node_types'] = dict(self.node_types)
@@ -182,3 +193,10 @@ class DatasetInfo:
         }
         return d
 
+def get_dataset_info(dataset):
+    if dataset == oscml.data.dataset_cep.CEP25000:
+        return oscml.data.dataset_cep.create_dataset_info_for_CEP25000()
+    elif dataset == oscml.data.dataset_hopv15.HOPV15:
+        return oscml.data.dataset_hopv15.create_dataset_info_for_HOPV15()
+    
+    raise RuntimeError('unknown dataset=' + str(dataset))

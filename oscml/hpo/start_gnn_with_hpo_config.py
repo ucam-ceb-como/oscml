@@ -47,8 +47,6 @@ class Objective(object):
         transformer = init_attrs[3]
 
         # define data loader and params
-        node2index = oscml.data.dataset_hopv15.ATOM_TYPES_HOPV15
-        mol2seq = oscml.models.model_gnn.Mol2seq_simple(node2index, fix=True, oov=True)
 
         data_loader_params = {
             'train':df_train,
@@ -56,10 +54,9 @@ class Objective(object):
             'test': None, 
             'transformer': transformer,
             'batch_size': 20, 
-            'mol2seq': mol2seq
         }
 
-        train_dl, val_dl = oscml.models.model_gnn.get_dataloaders(**data_loader_params)
+        train_dl, val_dl = oscml.models.model_gnn.get_dataloaders_HOPV15(**data_loader_params)
 
 
         # define model and params   

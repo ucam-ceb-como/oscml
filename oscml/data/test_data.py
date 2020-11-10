@@ -3,6 +3,7 @@ import unittest
 
 import numpy as np
 import pandas as pd
+from tqdm import tqdm
 
 import oscml.data.dataset
 import oscml.data.dataset_cep
@@ -33,64 +34,16 @@ class TestData(unittest.TestCase):
         assert len(df_test) == 5000
 
     def test_dataset_transform_cep_25000(self):
+
         df_train, _, _ = oscml.data.dataset.read_and_split(self.path_CEPDB_25000)
         transformer = oscml.data.dataset.create_transformer(df_train, column_target='pce', column_x='SMILES_str')
-        self.assertAlmostEqual(4.120434375131375, transformer.target_mean, 3)
-        self.assertAlmostEqual(2.405561853258728, transformer.target_std, 3)
-
-    def internal_test_no_randomness_in_preprocessing_CEP(self, file_path, threshold, number_samples, train_ratio, val_ratio, test_ratio):
-        seed_1 = 100
-        logging.info('preprocessing for seed=' + str(seed_1))
-        np.random.seed(seed_1)
-        transformer, _, _, _, df_train_plus_val, _ = oscml.data.dataset_cep.preprocess_CEP(file_path, threshold, 
-                                    number_samples, train_ratio, val_ratio, test_ratio)
-        df_100 = df_train_plus_val.copy()
-        df_100_pce_mean = transformer.target_mean
-        df_100_pce_std = transformer.target_std
-        # df_100 is just a copy of df_train_plus_val; thus their PCE values must be the same
-        assert_PCE_values(df_100, df_train_plus_val)
-        
-        seed_2 = 200
-        logging.info('preprocessing for seed=' + str(seed_2))
-        np.random.seed(seed_2)
-        transformer, _, _, _, df_train_plus_val, _ = oscml.data.dataset_cep.preprocess_CEP(file_path, threshold, 
-                                    number_samples, train_ratio, val_ratio, test_ratio)    
-        # very very unlikely to be the same; thus, the compare method will throw an error
-        exception = None
-        try:
-            assert_PCE_values(df_100, df_train_plus_val)
-        except AssertionError as exc:
-            exception = exc
-        assert exception
-        
-        np.random.seed(seed_1)
-        logging.info('preprocessing for seed=' + str(seed_1))
-        transformer, _, _, _, df_train_plus_val, _ = oscml.data.dataset_cep.preprocess_CEP(file_path, threshold, 
-                                    number_samples, train_ratio, val_ratio, test_ratio)    
-        # check that PCE values coincide with the result of the first run for the same seed
-        assert_PCE_values(df_100, df_train_plus_val)
-        assert df_100_pce_mean == transformer.target_mean
-        assert df_100_pce_std == transformer.target_std  
-
-    def test_no_randomness_in_preprocessing_CEP(self):
-        """
-        The following methods will call the method preprocess_CEP three times 
-        with seed 100, 200, and again 100 and compare the first and third result. 
-        An error occurs if both results don't coincide.
-        """
-        args = {
-            'threshold': 0.0001,
-            'number_samples': 25000,
-            'train_ratio': 0.6,
-            'val_ratio': 0.2,
-            'test_ratio': 0.2}
-        self.internal_test_no_randomness_in_preprocessing_CEP(
-            self.path_CEPDB, **args)
+        self.assertAlmostEqual(4.120434375131375, transformer.target_mean, 1)
+        self.assertAlmostEqual(2.405561853258728, transformer.target_std, 1)
 
     def test_dataset_update_state(self):
 
         mol2seq = oscml.features.weisfeilerlehman.Mol2seq_WL(radius=1)
-        info = oscml.data.dataset.DatasetInfo(mol2seq)
+        info = oscml.data.dataset.DatasetInfo(mol2seq=mol2seq)
         
         smiles = '[SiH2]1C=c2c3cc([se]c3c3cc4ccccc4cc3c2=C1)-c1cncs1'
         mol = smiles2mol(smiles)
@@ -106,19 +59,28 @@ class TestData(unittest.TestCase):
         assert info.max_molecule_size == 39
         assert info.max_smiles_length == 52
         assert len(info.node_types) == 7
-        
-    def test_dataset_skip_invalid_smiles(self):
-        df = pd.read_csv(self.path_CEPDB)
-        # all invalid SMIlES are in rows between row number 250000 and 300000
-        # restrict to a small subset to speed up the test
-        df = df[258000:259000]
-        df_cleaned, info = oscml.data.dataset_cep.skip_invalid_smiles(
-                df, 'SMILES_str')
-        # number of invalid SMILES 
-        assert 1000 - len(df_cleaned) == 139
-        assert info.max_molecule_size == 51
-        assert info.max_smiles_length == 63
-        assert len(info.mol2seq.fragment_dict) == 54
+
+    def test_dataset_info_for_cepdb_25000(self):
+
+        # check the correct size of dictionaries
+        info = oscml.data.dataset_cep.create_dataset_info_for_CEP25000()
+        number_node_types = len(info.node_types)
+        self.assertEqual(8, number_node_types)
+        number_fragment_types = len(info.mol2seq.fragment_dict)
+        self.assertEqual(56, number_fragment_types)
+
+        # read subset from CEPDB
+        df = pd.read_csv(self.path_CEPDB_25000)
+        for i in tqdm(range(len(df))):
+            smiles = df.iloc[i]['SMILES_str']
+            m = smiles2mol(smiles)
+            info.update(m, smiles)
+
+        # check that there are no additional node or fragment types
+        number_node_types = len(info.node_types)
+        self.assertEqual(8, number_node_types)
+        number_fragment_types = len(info.mol2seq.fragment_dict)
+        self.assertEqual(56, number_fragment_types)
 
     def test_sample_without_replacement(self):
         df = pd.read_csv(self.path_CEPDB)
@@ -132,7 +94,7 @@ class TestData(unittest.TestCase):
         assert len(df_val) == 200
         assert len(df_test) == 300
 
-    def store_CEP_cleaned_and_stratified(self):
+    def test_store_CEP_cleaned_and_stratified(self):
         df = oscml.data.dataset_cep.store_CEP_cleaned_and_stratified(
             self.path_CEPDB, dst=None, number_samples=[15000, 5000, 5000], threshold_skip=0.0001)
         assert len(df) == 25000
@@ -140,10 +102,13 @@ class TestData(unittest.TestCase):
         assert len(df[mask]) ==15000
 
 
+
 if __name__ == '__main__':
-    #unittest.main()
+    unittest.main()
   
-    suite = unittest.TestSuite()
-    suite.addTest(TestData('store_CEP_cleaned_and_stratified'))
-    runner = unittest.TextTestRunner()
-    runner.run(suite)
+    #suite = unittest.TestSuite()
+    #suite.addTest(TestData('test_dataset_info_for_cepdb_25000'))
+    #suite.addTest(TestData('test_dataset_transform_cep_25000'))
+    #suite.addTest(TestData('test_dataset_skip_invalid_smiles'))
+    #runner = unittest.TextTestRunner()
+    #runner.run(suite)

@@ -83,7 +83,7 @@ class Mol2seq_simple():
             seq.append(index)
         return seq
 
-def mol2seq_simple(df, column='SMILES_str'):
+def DEPRECATED_mol2seq_simple(df, column='SMILES_str'):
     logging.info('filling mol2seq_simple')
     sleep(1)
     
@@ -145,7 +145,7 @@ def collate_fn(data):
     y_batch = torch.as_tensor(y, device = device)
     return [g_batch, y_batch]
 
-def get_dataloaders(train, val, test, batch_size, mol2seq, transformer):
+def get_dataloaders_internal(train, val, test, batch_size, mol2seq, transformer):
  
     smiles_fct = transformer.transform_x
     target_fct = transformer.transform
@@ -170,6 +170,57 @@ def get_dataloaders(train, val, test, batch_size, mol2seq, transformer):
     if test is None:
         return train_dl, val_dl 
     return train_dl, val_dl, test_dl
+
+def get_dataloaders_HOPV15(train, val, test, batch_size, transformer):
+    node2index = oscml.data.dataset_hopv15.ATOM_TYPES_HOPV15
+    mol2seq = oscml.models.model_gnn.Mol2seq_simple(node2index, fix=True, oov=True)
+    return get_dataloaders_internal(train, val, test, batch_size, mol2seq, transformer)
+
+"""
+def get_dataloaders_CEP(train, val, test, batch_size, transformer):
+    node2index = oscml.data.dataset_cep.ATOM_TYPES_CEP
+    mol2seq = oscml.models.model_gnn.Mol2seq_simple(node2index, fix=True, oov=True)
+    return get_dataloaders_internal(train, val, test, batch_size, mol2seq, transformer)
+"""
+
+def get_dataloaders(dataset, df_train, df_val, df_test, transformer, batch_size):
+
+    if dataset == oscml.data.dataset_hopv15.HOPV15:
+
+        data_loader_params = {
+            'train':df_train,
+            'val': df_val,
+            'test': df_test, 
+            'transformer': transformer,
+            'batch_size': batch_size, 
+        }
+
+        train_dl, val_dl  = oscml.models.model_gnn.get_dataloaders_HOPV15(**data_loader_params)
+        return train_dl, val_dl
+
+    elif dataset == oscml.data.dataset_cep.CEP25000:
+
+        info = oscml.data.dataset.get_dataset_info(dataset)
+
+        """
+        data_loader_params = {
+            'train': df_train,
+            'val': df_val,
+            'test': df_test, 
+            'batch_size': batch_size, 
+            'transformer': transformer,
+        }
+        """
+
+        #train_dl, val_dl, test_dl = oscml.models.model_gnn.get_dataloaders_CEP(**data_loader_params)
+        #node2index = oscml.data.dataset_cep.ATOM_TYPES_CEP
+        node2index = info.node_types
+        mol2seq = oscml.models.model_gnn.Mol2seq_simple(node2index, fix=True, oov=True)
+        return get_dataloaders_internal(df_train, df_val, df_test, batch_size, mol2seq, transformer)
+
+    else:
+        raise RuntimeError('unknown dataset=' + str(dataset))
+
 
 class GNNSimpleLayer(pl.LightningModule):
     

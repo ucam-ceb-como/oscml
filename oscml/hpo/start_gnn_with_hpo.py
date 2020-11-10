@@ -2,47 +2,58 @@ import logging
 import types
 
 import oscml.data.dataset
+import oscml.data.dataset_cep
 import oscml.data.dataset_hopv15
 import oscml.hpo.optunawrapper
 import oscml.models.model_gnn
 
+def get_dataframes(dataset, src, train_size=-1, test_size=-1):
 
-def init(user_attrs):
+    if dataset == oscml.data.dataset_hopv15.HOPV15:
+        path = oscml.data.dataset.path_hopv_15(src)
+        df = oscml.data.dataset_hopv15.read(path)
+        df = oscml.data.dataset.clean_data(df, None, 'smiles', 'pce')
 
-    # read data and preprocess, e.g. standarization, splitting into train, validation and test set
-    src_dir = user_attrs['src']
-    path = oscml.data.dataset.path_hopv_15(src_dir)
-    df = oscml.data.dataset_hopv15.read(path)
-    df = oscml.data.dataset.clean_data(df, None, 'smiles', 'pce')
-
-    df_train, df_val, df_test, transformer = oscml.data.dataset.split_data_frames_and_transform(
-            df, column_smiles='smiles', column_target='pce', train_size=283, test_size=30)
+        df_train, df_val, df_test, transformer = oscml.data.dataset.split_data_frames_and_transform(
+                df, column_smiles='smiles', column_target='pce', train_size=train_size, test_size=test_size)
     
-    return (df_train, df_val, df_test, transformer)
+        return (df_train, df_val, df_test, transformer)
+
+    elif dataset == oscml.data.dataset_cep.CEP25000:
+        info = oscml.data.dataset.get_dataset_info(dataset)
+        path = oscml.data.dataset.path_cepdb_25000(src)
+        df_train, df_val, df_test = oscml.data.dataset.read_and_split(path)
+        # only for testing
+        #df_train, df_val, df_test = df_train[:1500], df_val[:500], df_test[:500]
+        transformer = oscml.data.dataset.create_transformer(df_train, 
+                column_target=info.column_target, column_x=info.column_smiles)
+
+        return (df_train, df_val, df_test, transformer)
+    
+    else:
+        raise RuntimeError('unknown dataset=' + str(dataset))
+
+
+
+ 
+def init(user_attrs):
+    # read data and preprocess, e.g. standarization, splitting into train, validation and test set
+    src= user_attrs['src']
+    dataset = user_attrs['dataset']
+    return get_dataframes(dataset=dataset, src=src, train_size=283, test_size=30)
 
 
 def objective(trial):
 
-    _, init_attrs = oscml.hpo.optunawrapper.get_attrs(trial)
+    user_attrs, init_attrs = oscml.hpo.optunawrapper.get_attrs(trial)
+
+    dataset = user_attrs['dataset']
     df_train = init_attrs[0]
     df_val = init_attrs[1]
+    df_test = None
     transformer = init_attrs[3]
 
-    # define data loader and params
-    node2index = oscml.data.dataset_hopv15.ATOM_TYPES_HOPV15
-    mol2seq = oscml.models.model_gnn.Mol2seq_simple(node2index, fix=True, oov=True)
-
-    data_loader_params = {
-        'train':df_train,
-        'val': df_val,
-        'test': None, 
-        'transformer': transformer,
-        'batch_size': 20, 
-        'mol2seq': mol2seq
-    }
-
-    train_dl, val_dl = oscml.models.model_gnn.get_dataloaders(**data_loader_params)
-
+    train_dl, val_dl = oscml.models.model_gnn.get_dataloaders(dataset, df_train, df_val, df_test, transformer, batch_size=250)
 
     # define model and params   
     gnn_layers =  trial.suggest_int('gnn_layers', 1, 4)
@@ -74,7 +85,7 @@ def objective(trial):
         'optimizer': trial.suggest_categorical('optimizer', ['Adam', 'RMSprop', 'SGD']), 
         'optimizer_lr': trial.suggest_float('optimizer_lr', 1e-5, 1e-1, log=True),
         # additional non-hyperparameter values
-        'node_type_number': len(node2index),
+        'node_type_number': len(oscml.data.dataset_hopv15.ATOM_TYPES_HOPV15),
         'padding_index': 0,
         'target_mean': transformer.target_mean, 
         'target_std': transformer.target_std,
@@ -82,17 +93,42 @@ def objective(trial):
 
     logging.info('model params=' + str(model_params))
 
-    model_instance = oscml.models.model_gnn.GNNSimple(**model_params)
+    model = oscml.models.model_gnn.GNNSimple(**model_params)
     
     # fit on training set and calculate metric on validation set
-    trainer_params = {
-    }
-    metric_value =  oscml.hpo.optunawrapper.fit(model_instance, train_dl, val_dl, trainer_params, trial)
+    trainer_params = {}
+    metric_value =  oscml.hpo.optunawrapper.fit(model, train_dl, val_dl, trainer_params, trial)
     return metric_value
 
 
-def fixed_trial():
+def resume(ckpt, src, log_dir, dataset, epochs, metric):
 
+    model_class = oscml.models.model_gnn.GNNSimple
+    model = model_class.load_from_checkpoint(ckpt)
+
+    info = oscml.data.dataset.get_dataset_info(dataset)
+
+    transformer = oscml.data.dataset.DataTransformer(info.column_target, model.target_mean, 
+            model.target_std, info.column_smiles)
+
+    df_train, df_val, df_test, _ = get_dataframes(dataset, src=src)
+    train_dl, val_dl, test_dl = oscml.models.model_gnn.get_dataloaders(dataset, df_train, df_val, df_test, transformer, 
+            batch_size=250)
+
+    if epochs > 0:
+        trainer_params = {}
+        result = oscml.hpo.optunawrapper.fit_or_test(model, train_dl, val_dl, None, trainer_params,
+                epochs, metric, log_dir)
+
+    else:
+        trainer_params = {}
+        result = oscml.hpo.optunawrapper.fit_or_test(model, None, None, test_dl, trainer_params,
+                epochs, metric, log_dir)
+    
+    return result
+
+
+def fixed_trial():
     return {
         'gnn_layers': 2,
         'gnn_units_0': 30,
@@ -106,10 +142,17 @@ def fixed_trial():
         'optimizer_lr': 0.001,
         #'batch_size': 20
     }
-   
+
+
 def start():
-    return oscml.hpo.optunawrapper.start_hpo(init=init, objective=objective, metric='val_loss', direction='minimize',
-            fixed_trial_params=fixed_trial())
+    return oscml.hpo.optunawrapper.start_hpo(
+            init=init, 
+            objective=objective, 
+            metric='val_loss', 
+            direction='minimize',
+            fixed_trial_params=fixed_trial(),
+            model_class=oscml.models.model_gnn.GNNSimple)
+
 
 if __name__ == '__main__':
     start()

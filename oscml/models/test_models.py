@@ -1,13 +1,14 @@
+import logging
 import unittest
 
+import pytorch_lightning as pl
 import torch
 
-import oscml.test_oscml  
 import oscml.data.dataset
 import oscml.data.dataset_cep
 import oscml.data.dataset_hopv15
 import oscml.models.model_bilstm
-import oscml.start
+import oscml.models.model_gnn
 import oscml.utils.util
 from oscml.utils.util import log, smiles2mol
 
@@ -15,7 +16,7 @@ class TestModels(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        oscml.utils.util.init_standard_logging()
+        oscml.utils.util.init_logging('.', './tmp')
 
     def test_out_of_vocabulary(self):
         """
@@ -25,14 +26,17 @@ class TestModels(unittest.TestCase):
         contain different fragment types and the number of different atom types
         has increased to 12.
         """
-        path = oscml.start.path_hopv_15()
+        path = oscml.data.dataset.path_hopv_15()
         df_hopv15 = oscml.data.dataset_hopv15.read(path)
-        mol2seq_without_OOV = oscml.data.dataset_cep.mol2seq_precalculated_with_OOV(None, radius=1, oov=False, column_smiles='smiles')
-        mol2seq_with_OOV = oscml.data.dataset_cep.mol2seq_precalculated_with_OOV(None, radius=1, oov=True, column_smiles='smiles')
-        log(mol2seq_with_OOV.atom_dict)
+
+        info_cep = oscml.data.dataset_cep.create_dataset_info_for_CEP25000()
+        wf = info_cep.mol2seq.wf
+        mol2seq_without_OOV = oscml.data.dataset_cep.Mol2seq(radius=1, oov=False, wf=wf)
+        mol2seq_with_OOV = oscml.data.dataset_cep.Mol2seq(radius=1, oov=True, wf=wf)
+        logging.info(mol2seq_with_OOV.atom_dict)
         assert len(mol2seq_with_OOV.atom_dict) == 8
         
-        max_index = len(oscml.data.dataset_cep.WL_R1_FRAGMENT_DICT)-1
+        max_index = len(wf['fragment_dict'])-1
         count_larger = 0
         for i in range(len(df_hopv15)):
             smiles = df_hopv15.iloc[i]['smiles']
@@ -55,26 +59,31 @@ class TestModels(unittest.TestCase):
             if larger_max_index:
                 count_larger += 1
         
-        log(mol2seq_with_OOV.atom_dict)
+        logging.info(mol2seq_with_OOV.atom_dict)
         assert len(mol2seq_with_OOV.atom_dict) == 12
         
-        log('number of molecules with at least one new atom type=', count_larger)
+        logging.info('number of molecules with at least one new atom type=' + str(count_larger))
         assert count_larger == 340
 
     def test_bilstm_model_forward(self):
-        path = oscml.start.path_cepdb_25000()
+        path = oscml.data.dataset.path_cepdb_25000()
         df_train, df_val, df_test = oscml.data.dataset.read_and_split(path)
         transformer = oscml.data.dataset.create_transformer(df_train, column_target='pce', column_x='SMILES_str')
-        mol2seq = oscml.data.dataset_cep.mol2seq_precalculated_with_OOV(None, radius=1, oov=True)
+        
+        info_cep = oscml.data.dataset_cep.create_dataset_info_for_CEP25000()
+        wf = info_cep.mol2seq.wf
+        mol2seq = oscml.data.dataset_cep.Mol2seq(radius=1, oov=True, wf=wf)
 
         model_params =  {
             'number_of_subgraphs': 60,
             'subgraph_embedding_dim': 128,
-            'mlp_dim_list': [256, 32, 32, 32, 1],
+            'lstm_hidden_dim': 128,
+            'mlp_units': [256, 32, 32, 32, 1],
             'padding_index': 0,
             'target_mean': transformer.target_mean, 
             'target_std': transformer.target_std,
-            'learning_rate': 0.001,
+            'optimizer': 'Adam',
+            'optimizer_lr': 0.001,
         }
 
         model = oscml.models.model_bilstm.BiLstmForPce(**model_params)
@@ -82,6 +91,7 @@ class TestModels(unittest.TestCase):
         batch = torch.LongTensor([[1,2,3], [4,5,6]]) #.to(device)
         output = model(batch)
         print(output)
+
 
 if __name__ == '__main__':
     unittest.main()

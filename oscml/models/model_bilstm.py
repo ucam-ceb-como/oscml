@@ -58,7 +58,8 @@ class DatasetForBiLstmWithTransformer(torch.utils.data.Dataset):
     def __len__(self):
         return len(self.df)
 
-def get_dataloaders(train, val, test, batch_size, mol2seq, max_sequence_length, padding_index,
+"""
+def get_dataloaders_OLD(train, val, test, batch_size, mol2seq, max_sequence_length, padding_index,
         smiles_fct, target_fct):
 
     train_dl = None
@@ -81,7 +82,38 @@ def get_dataloaders(train, val, test, batch_size, mol2seq, max_sequence_length, 
     if test is None:
         return train_dl, val_dl 
     return train_dl, val_dl, test_dl
+"""
+
+def get_dataloaders(train, val, test, batch_size, dataset_info, max_sequence_length, smiles_fct, target_fct):
+
+    padding_index = 0
+    mol2seq = dataset_info.mol2seq
+
+    train_dl = None
+    if train is not None:
+        train_ds = DatasetForBiLstmWithTransformer(train, max_sequence_length, mol2seq, padding_index, smiles_fct, target_fct)
+        train_dl = torch.utils.data.DataLoader(train_ds, batch_size, shuffle=True)
+    val_dl = None
+    if val is not None:
+        val_ds = DatasetForBiLstmWithTransformer(val, max_sequence_length, mol2seq, padding_index, smiles_fct, target_fct)
+        val_dl = torch.utils.data.DataLoader(val_ds, batch_size, shuffle=False)
+    test_dl = None
+    if test is not None:
+        test_ds = DatasetForBiLstmWithTransformer(test, max_sequence_length, mol2seq, padding_index, smiles_fct, target_fct)
+        test_dl = torch.utils.data.DataLoader(test_ds, batch_size, shuffle=False)
+   
+    batch_func = (lambda dl : len(dl) if dl else 0)
+    batch_numbers = list(map(batch_func, [train_dl, val_dl, test_dl]))
+    logging.info('batch numbers - train val test=' + str(batch_numbers))
     
+    return train_dl, val_dl, test_dl
+
+
+def get_dataloaders_CEP(train, val, test, batch_size, max_sequence_length, smiles_fct, target_fct):
+    dataset_info = oscml.data.dataset_cep.create_dataset_info_for_CEP25000()
+    return get_dataloaders(train, val, test, batch_size, dataset_info, max_sequence_length, smiles_fct, target_fct)
+
+
 class Attention(pl.LightningModule):
     
     def __init__(self, vector_dim, sub_fragment_context_vector_dim):
