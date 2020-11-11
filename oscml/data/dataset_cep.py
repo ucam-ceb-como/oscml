@@ -1,4 +1,3 @@
-import collections
 import logging
 import math
 from time import sleep
@@ -13,56 +12,8 @@ import oscml.features.weisfeilerlehman
 from oscml.utils.util import concat
 from oscml.utils.util import smiles2mol
 
-"""
-ATOM_TYPES_CEP = {
-     ('C', False): 0,
-     ('C', True): 1,
-     ('N', True): 2,
-     ('S', True): 3,
-     ('H', False): 4,
-     ('Si', False): 5,
-     ('O', True): 6,
-     ('Se', True): 7
-}
-"""
-
 CEP25000 = 'CEP25000'
 
-class Mol2seq():
-    
-    def __init__(self, radius, oov, wf=None):
-
-        self.radius = radius
-        self.oov = oov
-        self.wf = wf
-
-        if wf:
-            atom_dict = wf['atom_dict']
-            bond_dict = wf['bond_dict']
-            fragment_dict = wf['fragment_dict']
-            edge_dict = wf['edge_dict']
-
-        self.atom_dict = collections.defaultdict(lambda:len(self.atom_dict), atom_dict)
-        self.bond_dict = collections.defaultdict(lambda:len(self.bond_dict), bond_dict)
-        self.fragment_dict = collections.defaultdict(lambda:len(self.fragment_dict), fragment_dict)
-        self.edge_dict = collections.defaultdict(lambda: len(self.edge_dict), edge_dict)
-    
-        # fragment index starts with 0, thus -1
-        self.max_index = len(self.fragment_dict) - 1
-        logging.info(concat('initialized Mol2Seq with radius=', radius, ', oov=', oov, ', max_index=', self.max_index))
-        
-    def apply_OOV(self, index):
-        return (index if index <= self.max_index else -1)
-        
-    def __call__(self, m):
-        atoms, i_jbond_dict = oscml.features.weisfeilerlehman.get_atoms_and_bonds(m, self.atom_dict, self.bond_dict)
-        descriptor = oscml.features.weisfeilerlehman.extract_fragments(self.radius, atoms, i_jbond_dict, self.fragment_dict, self.edge_dict)
-        atoms_BFS_order = oscml.features.weisfeilerlehman.get_atoms_BFS(m)
-        if self.oov:
-            descriptor_BFS = [self.apply_OOV(descriptor[i]) for i in atoms_BFS_order]
-        else:
-            descriptor_BFS = [descriptor[i] for i in atoms_BFS_order]
-        return descriptor_BFS
 
 
 def skip_invalid_smiles(df, smiles_column_name):
@@ -112,7 +63,8 @@ def skip_all_small_pce_values(df, threshold):
     return df.copy()
 
 def sample_down_small_pce_values(df, threshold, percentage):
-    """skip each sample with PCE value < DOWN_THRESHOLD 
+    """
+    skip each sample with PCE value < DOWN_THRESHOLD 
     with probability DOWN_SKIP_PERCENTAGE
     """
     mask = (df['pce'] < threshold)
@@ -194,46 +146,12 @@ def store_CEP_cleaned_and_stratified(src, dst, number_samples, threshold_skip, t
         oscml.data.dataset.store(df, dst)
     return df
 
-def DEPRECATED_split_and_normalize(df, train_ratio, val_ratio, test_ratio):
-    df_train_plus_val_plus_test = df.copy()
-    # sklearn is able to split pandas dataframe into smaller dataframes
-    df_train_plus_val, df_test = train_test_split(df, test_size=test_ratio, shuffle=True) #, random_state=0)
-    df_train_plus_val = df_train_plus_val.copy()
-    df_test = df_test.copy()
-    val_ratio = val_ratio / (train_ratio + val_ratio) 
-    df_train, df_val = train_test_split(df_train_plus_val, test_size=val_ratio, shuffle=True) #, random_state=0)
-    df_train = df_train.copy()
-    df_val = df_val.copy()
-    logging.info(concat('split data into sets of size (train val test)=', len(df_train), len(df_val), len(df_test)))
-    
-    # normalize 
-    pce_mean = df_train_plus_val['pce'].mean()
-    pce_std = df_train_plus_val['pce'].std(ddof=0)
-    logging.info(concat('normalizing PCE values with pce_mean=', pce_mean, 'pce_std=', pce_std))
-    transformer = oscml.data.dataset.DataTransformer(None, pce_mean, pce_std)
-    transform = transformer.transform
-    
-    df_train_plus_val_plus_test['pcez'] = transform(df_train_plus_val_plus_test['pce'])
-    df_train_plus_val['pcez'] = transform(df_train_plus_val['pce'])
-    df_train['pcez'] = transform(df_train['pce'])
-    df_val['pcez'] = transform(df_val['pce'])
-    # we also add column 'pcez' to df_test because normalizing the PCE values back and forth 
-    # in the same way for train, val and test set simplifies some of the code
-    df_test['pcez'] = transform(df_test['pce'])
-    
-    return transformer, df_train, df_val, df_test, df_train_plus_val, df_train_plus_val_plus_test
-
-def DEPRECATED_preprocess_CEP(filepath, threshold, number_samples, train_ratio, val_ratio, test_ratio):
-    logging.info('preprocessing data for args=' + str(locals()))
-    df_train_plus_val_plus_test = read(filepath, threshold, number_samples)
-    return DEPRECATED_split_and_normalize(df_train_plus_val_plus_test, train_ratio, val_ratio, test_ratio)
-
 def create_dataset_info_for_CEP25000():
 
     # the dictionary was created and logged during preprossing the entire CEPDB
     # it was copied manually here from the log file to fix the fragment-to-embedding-index mapping
     d = {'max_molecule_size': 53, 'max_smiles_length': 83, 'node_types': {('C', False): 0, ('C', True): 1, ('Se', True): 2, ('O', True): 3, ('N', True): 4, ('S', True): 5, ('H', False): 6, ('Si', False): 7}, 'wf_r1': {'atom_dict': {'C': 0, ('C', 'aromatic'): 1, ('Se', 'aromatic'): 2, ('O', 'aromatic'): 3, ('N', 'aromatic'): 4, ('S', 'aromatic'): 5, 'H': 6, 'Si': 7}, 'bond_dict': {'SINGLE': 0, 'DOUBLE': 1, 'AROMATIC': 2}, 'fragment_dict': {(0, ((0, 0), (0, 0), (6, 0), (6, 0))): 0, (0, ((0, 0), (0, 1), (6, 0))): 1, (0, ((0, 0), (0, 1), (1, 0))): 2, (1, ((0, 0), (1, 2), (4, 2))): 3, (1, ((1, 2), (1, 2), (6, 0))): 4, (1, ((1, 2), (1, 2), (2, 2))): 5, (2, ((1, 2), (1, 2))): 6, (1, ((1, 2), (1, 2), (3, 2))): 7, (3, ((1, 2), (1, 2))): 8, (1, ((1, 2), (3, 2), (6, 0))): 9, (1, ((1, 2), (1, 2), (1, 2))): 10, (1, ((1, 2), (1, 2), (4, 2))): 11, (4, ((1, 2), (5, 2))): 12, (5, ((4, 2), (4, 2))): 13, (1, ((1, 2), (4, 2), (6, 0))): 14, (4, ((1, 2), (1, 2))): 15, (6, ((0, 0),)): 16, (6, ((1, 0),)): 17, (1, ((0, 0), (1, 2), (1, 2))): 18, (1, ((0, 1), (1, 2), (1, 2))): 19, (0, ((1, 1), (6, 0), (7, 0))): 20, (7, ((0, 0), (0, 0), (6, 0), (6, 0))): 21, (6, ((7, 0),)): 22, (0, ((0, 0), (1, 1), (6, 0))): 23, (4, ((1, 2), (1, 2), (6, 0))): 24, (1, ((1, 2), (1, 2), (7, 0))): 25, (7, ((0, 0), (1, 0), (6, 0), (6, 0))): 26, (0, ((0, 0), (0, 1), (7, 0))): 27, (0, ((0, 1), (1, 0), (6, 0))): 28, (1, ((0, 0), (1, 2), (3, 2))): 29, (0, ((0, 0), (0, 0), (0, 1))): 30, (6, ((4, 0),)): 31, (0, ((0, 1), (6, 0), (7, 0))): 32, (1, ((0, 0), (1, 2), (2, 2))): 33, (1, ((1, 2), (2, 2), (6, 0))): 34, (1, ((1, 2), (5, 2), (6, 0))): 35, (5, ((1, 2), (1, 2))): 36, (1, ((1, 2), (1, 2), (5, 2))): 37, (1, ((0, 0), (1, 2), (5, 2))): 38, (0, ((0, 0), (1, 0), (6, 0), (6, 0))): 39, (0, ((0, 1), (1, 0), (7, 0))): 40, (1, ((4, 2), (5, 2), (6, 0))): 41, (1, ((0, 0), (4, 2), (4, 2))): 42, (1, ((4, 2), (4, 2), (6, 0))): 43, (1, ((0, 0), (4, 2), (5, 2))): 44, (1, ((1, 0), (1, 2), (4, 2))): 45, (1, ((1, 0), (1, 2), (3, 2))): 46, (1, ((1, 0), (1, 2), (5, 2))): 47, (1, ((1, 0), (1, 2), (1, 2))): 48, (1, ((1, 0), (1, 2), (2, 2))): 49, (1, ((1, 0), (4, 2), (4, 2))): 50, (1, ((1, 0), (4, 2), (5, 2))): 51, (0, ((4, 0), (6, 0), (6, 0), (6, 0))): 52, (4, ((0, 0), (1, 2), (1, 2))): 53, (0, ((1, 0), (1, 0), (6, 0), (6, 0))): 54, (7, ((1, 0), (1, 0), (6, 0), (6, 0))): 55}, 'edge_dict': {((0, 0), 0): 0, ((0, 6), 0): 1, ((0, 0), 1): 2, ((0, 1), 0): 3, ((1, 1), 2): 4, ((1, 4), 2): 5, ((1, 6), 0): 6, ((1, 2), 2): 7, ((1, 3), 2): 8, ((4, 5), 2): 9, ((0, 1), 1): 10, ((0, 7), 0): 11, ((6, 7), 0): 12, ((4, 6), 0): 13, ((1, 7), 0): 14, ((1, 5), 2): 15, ((1, 1), 0): 16, ((0, 4), 0): 17}}}
-    mol2seq = Mol2seq(radius=1, oov=True, wf=d['wf_r1'])
+    mol2seq = oscml.models.model_bilstm.Mol2seq(radius=1, oov=True, wf=d['wf_r1'])
     logging.info('number of fragment types=' + str(len(mol2seq.fragment_dict)))         # 56
     logging.info('number_node_types=' + str(len(d['node_types'])))                      # 8
 

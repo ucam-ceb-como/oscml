@@ -44,19 +44,12 @@ class Objective(object):
         _, init_attrs = oscml.hpo.optunawrapper.get_attrs(trial)
         df_train = init_attrs[0]
         df_val = init_attrs[1]
+        df_train = init_attrs[2]
         transformer = init_attrs[3]
 
         # define data loader and params
-
-        data_loader_params = {
-            'train':df_train,
-            'val': df_val,
-            'test': None, 
-            'transformer': transformer,
-            'batch_size': 20, 
-        }
-
-        train_dl, val_dl = oscml.models.model_gnn.get_dataloaders_HOPV15(**data_loader_params)
+        dataset = oscml.data.dataset_hopv15.HOPV15
+        train_dl, val_dl, test_dl = oscml.data.model_gnn.get_dataloaders(dataset, df_train, df_val, df_test, transformer, batch_size=20)
 
 
         # define model and params   

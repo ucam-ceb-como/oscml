@@ -31,8 +31,8 @@ class TestModels(unittest.TestCase):
 
         info_cep = oscml.data.dataset_cep.create_dataset_info_for_CEP25000()
         wf = info_cep.mol2seq.wf
-        mol2seq_without_OOV = oscml.data.dataset_cep.Mol2seq(radius=1, oov=False, wf=wf)
-        mol2seq_with_OOV = oscml.data.dataset_cep.Mol2seq(radius=1, oov=True, wf=wf)
+        mol2seq_without_OOV = oscml.models.model_bilstm.Mol2seq(radius=1, oov=False, wf=wf)
+        mol2seq_with_OOV = oscml.models.model_bilstm.Mol2seq(radius=1, oov=True, wf=wf)
         logging.info(mol2seq_with_OOV.atom_dict)
         assert len(mol2seq_with_OOV.atom_dict) == 8
         
@@ -72,7 +72,7 @@ class TestModels(unittest.TestCase):
         
         info_cep = oscml.data.dataset_cep.create_dataset_info_for_CEP25000()
         wf = info_cep.mol2seq.wf
-        mol2seq = oscml.data.dataset_cep.Mol2seq(radius=1, oov=True, wf=wf)
+        mol2seq = oscml.models.model_bilstm.Mol2seq(radius=1, oov=True, wf=wf)
 
         model_params =  {
             'number_of_subgraphs': 60,

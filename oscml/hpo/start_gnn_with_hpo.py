@@ -33,8 +33,6 @@ def get_dataframes(dataset, src, train_size=-1, test_size=-1):
     else:
         raise RuntimeError('unknown dataset=' + str(dataset))
 
-
-
  
 def init(user_attrs):
     # read data and preprocess, e.g. standarization, splitting into train, validation and test set
@@ -53,7 +51,11 @@ def objective(trial):
     df_test = None
     transformer = init_attrs[3]
 
-    train_dl, val_dl = oscml.models.model_gnn.get_dataloaders(dataset, df_train, df_val, df_test, transformer, batch_size=250)
+    info = oscml.data.dataset.get_dataset_info(dataset)
+    node_type_number = len(info.node_types)
+
+    train_dl, val_dl = oscml.models.model_gnn.get_dataloaders(dataset, df_train, df_val, df_test, 
+            transformer, batch_size=250)
 
     # define model and params   
     gnn_layers =  trial.suggest_int('gnn_layers', 1, 4)
@@ -85,7 +87,7 @@ def objective(trial):
         'optimizer': trial.suggest_categorical('optimizer', ['Adam', 'RMSprop', 'SGD']), 
         'optimizer_lr': trial.suggest_float('optimizer_lr', 1e-5, 1e-1, log=True),
         # additional non-hyperparameter values
-        'node_type_number': len(oscml.data.dataset_hopv15.ATOM_TYPES_HOPV15),
+        'node_type_number': node_type_number, #len(oscml.data.dataset_hopv15.ATOM_TYPES_HOPV15),
         'padding_index': 0,
         'target_mean': transformer.target_mean, 
         'target_std': transformer.target_std,

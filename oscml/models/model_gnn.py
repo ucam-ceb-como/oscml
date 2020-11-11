@@ -28,28 +28,6 @@ from oscml.utils.util import smiles2mol
 import oscml.utils.util_pytorch
 import oscml.utils.util_lightning
 
-def DEPRECATED_init_params(df, node2index=None):
-        
-    log('initializing parameters for PyTorch model GNNSIMPLE')
-    d = {}
-    cfg['GNNSIMPLE'] = d
-    if node2index:
-        mol2seq = Mol2seq_simple(node2index, fix=True, oov=True)
-    else:
-        mol2seq = mol2seq_simple(df)
-    d['MOL2SEQ'] = mol2seq       
-    #print('MY', list(mol2seq.node2index.values()))
-    node_type_number = 1 + max(list(mol2seq.node2index.values()))
-    #print('MY', node_type_number)
-    d['NODE_TYPE_NUMBER'] = node_type_number
-    #d['NODE_TYPE_NUMBER'] = len(mol2seq.node2index)
-    d['CONV_DIM_LIST'] = [128, 128, 128, 128, 128]
-    d['MLP_DIM_LIST'] = [128, 128, 64, 64, 1]
-    d['BATCH_SIZE'] = 250
-    d['LEARNING_RATE'] = 0.001
-    d['PADDING_INDEX'] = 0
-    log('parameters for PyTorch model GNNSIMPLE:', d)
-
 class Mol2seq_simple():
     
     def __init__(self, node2index={}, fix=False, oov=False):
@@ -82,20 +60,6 @@ class Mol2seq_simple():
                     raise keyerror
             seq.append(index)
         return seq
-
-def DEPRECATED_mol2seq_simple(df, column='SMILES_str'):
-    logging.info('filling mol2seq_simple')
-    sleep(1)
-    
-    mol2seq = Mol2seq_simple() 
-    for i in tqdm(range(len(df))):
-        smiles = df.iloc[i][column]
-        m = smiles2mol(smiles)
-        mol2seq(m)
-    
-    logging.info(concat('node2index dict:', len(mol2seq.node2index), mol2seq.node2index))
-    
-    return mol2seq
 
 def create_dgl_graph(smiles, mol2seq_fct):
     m = smiles2mol(smiles)
@@ -171,56 +135,31 @@ def get_dataloaders_internal(train, val, test, batch_size, mol2seq, transformer)
         return train_dl, val_dl 
     return train_dl, val_dl, test_dl
 
-def get_dataloaders_HOPV15(train, val, test, batch_size, transformer):
-    node2index = oscml.data.dataset_hopv15.ATOM_TYPES_HOPV15
-    mol2seq = oscml.models.model_gnn.Mol2seq_simple(node2index, fix=True, oov=True)
-    return get_dataloaders_internal(train, val, test, batch_size, mol2seq, transformer)
-
-"""
-def get_dataloaders_CEP(train, val, test, batch_size, transformer):
-    node2index = oscml.data.dataset_cep.ATOM_TYPES_CEP
-    mol2seq = oscml.models.model_gnn.Mol2seq_simple(node2index, fix=True, oov=True)
-    return get_dataloaders_internal(train, val, test, batch_size, mol2seq, transformer)
-"""
-
 def get_dataloaders(dataset, df_train, df_val, df_test, transformer, batch_size):
 
+    info = oscml.data.dataset.get_dataset_info(dataset)
+    node2index = info.node_types
+    mol2seq = oscml.models.model_gnn.Mol2seq_simple(node2index, fix=True, oov=True)
+    return get_dataloaders_internal(df_train, df_val, df_test, batch_size, mol2seq, transformer)
+
+    """
     if dataset == oscml.data.dataset_hopv15.HOPV15:
 
-        data_loader_params = {
-            'train':df_train,
-            'val': df_val,
-            'test': df_test, 
-            'transformer': transformer,
-            'batch_size': batch_size, 
-        }
-
-        train_dl, val_dl  = oscml.models.model_gnn.get_dataloaders_HOPV15(**data_loader_params)
-        return train_dl, val_dl
+        info = oscml.data.dataset.get_dataset_info(dataset)
+        node2index = info.node_types
+        mol2seq = oscml.models.model_gnn.Mol2seq_simple(node2index, fix=True, oov=True)
+        return get_dataloaders_internal(df_train, df_val, df_test, batch_size, mol2seq, transformer)
 
     elif dataset == oscml.data.dataset_cep.CEP25000:
 
         info = oscml.data.dataset.get_dataset_info(dataset)
-
-        """
-        data_loader_params = {
-            'train': df_train,
-            'val': df_val,
-            'test': df_test, 
-            'batch_size': batch_size, 
-            'transformer': transformer,
-        }
-        """
-
-        #train_dl, val_dl, test_dl = oscml.models.model_gnn.get_dataloaders_CEP(**data_loader_params)
-        #node2index = oscml.data.dataset_cep.ATOM_TYPES_CEP
         node2index = info.node_types
         mol2seq = oscml.models.model_gnn.Mol2seq_simple(node2index, fix=True, oov=True)
         return get_dataloaders_internal(df_train, df_val, df_test, batch_size, mol2seq, transformer)
 
     else:
         raise RuntimeError('unknown dataset=' + str(dataset))
-
+    """
 
 class GNNSimpleLayer(pl.LightningModule):
     

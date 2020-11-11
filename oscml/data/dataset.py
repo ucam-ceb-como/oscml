@@ -13,9 +13,6 @@ from oscml.utils.util import concat
 from oscml.utils.util import smiles2mol
 
 def path_cepdb_valid_smiles(root='.'):
-    return root + '/data/raw/CEPDB.csv'
-
-def path_cepdb_valid_smiles(root='.'):
     return root + '/data/processed/CEPDB_valid_SMILES.csv'
 
 def path_cepdb_25000(root='.'):
@@ -60,19 +57,6 @@ def create_transformer(df, column_target, column_x=None):
     std = float(df[column_target].std(ddof=0))
     logging.info(concat('calculated target mean=', mean, ', target std=', std))
     return DataTransformer(column_target, mean, std, column_x)
-
-def create_atom_dictionary(df, column_smiles, initial_dict = {}, with_aromaticity=True):
-    
-    # start with index 1 because index 0 is the padding index for embeddings
-    d = collections.defaultdict(lambda:len(d) + 1, initial_dict)
-    for i in tqdm(range(len(df))):
-        smiles = df.iloc[i][column_smiles]
-        m = smiles2mol(smiles)
-        for a in m.GetAtoms():
-            node_type = (a.GetSymbol(), a.GetIsAromatic())
-            d[node_type]
-    
-    return d
 
 def add_node2index(original, new, zero_index_for_new):
              

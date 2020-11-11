@@ -7,6 +7,7 @@ from tqdm import tqdm
 
 import oscml.data.dataset
 import oscml.data.dataset_cep
+import oscml.data.dataset_hopv15
 import oscml.utils.util
 from oscml.utils.util import smiles2mol
 
@@ -82,6 +83,22 @@ class TestData(unittest.TestCase):
         number_fragment_types = len(info.mol2seq.fragment_dict)
         self.assertEqual(56, number_fragment_types)
 
+    def test_dataset_info_for_hopv15(self):
+        # check the correct size of dictionaries
+        info = oscml.data.dataset_hopv15.create_dataset_info_for_HOPV15()
+        number_node_types = len(info.node_types)
+        self.assertEqual(12, number_node_types)
+        number_fragment_types = len(info.mol2seq.fragment_dict)
+        self.assertEqual(150, number_fragment_types)       
+        
+        # the fragments and node type were added to existing ones from CEP DB
+        # compare the results when starting from scratich
+        path = oscml.data.dataset.path_hopv_15()
+        info_from_scratch = oscml.data.dataset_hopv15.generate_dictionaries(path, 'smiles', None)
+        number_fragment_types = len(info_from_scratch.mol2seq.fragment_dict)
+        self.assertEqual(134, number_fragment_types)       
+        # that means there are 16 fragments in CEP DB that are not used in HOPV15
+
     def test_sample_without_replacement(self):
         df = pd.read_csv(self.path_CEPDB)
         df_cleaned = oscml.data.dataset_cep.skip_all_small_pce_values(df.copy(), 0.0001)
@@ -108,6 +125,7 @@ if __name__ == '__main__':
   
     #suite = unittest.TestSuite()
     #suite.addTest(TestData('test_dataset_info_for_cepdb_25000'))
+    #suite.addTest(TestData('test_dataset_info_for_hopv15'))
     #suite.addTest(TestData('test_dataset_transform_cep_25000'))
     #suite.addTest(TestData('test_dataset_skip_invalid_smiles'))
     #runner = unittest.TextTestRunner()
