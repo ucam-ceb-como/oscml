@@ -3,47 +3,30 @@ import types
 
 import oscml.data.dataset
 import oscml.data.dataset_cep
+import oscml.data.dataset_hopv15
 import oscml.hpo.optunawrapper
 import oscml.models.model_bilstm
 
-
+ 
 def init(user_attrs):
-
     # read data and preprocess, e.g. standarization, splitting into train, validation and test set
-    src = user_attrs['src']
-    path = oscml.data.dataset.path_cepdb_25000(src)
-    df_train, df_val, df_test = oscml.data.dataset.read_and_split(path)
-    # just for development: use 10% of the 25000 samples
-    #df_train = df_train[:1500].copy()
-    #df_val = df_val[:500].copy()
-    #df_test = df_test[:500].copy()
-    transformer = oscml.data.dataset.create_transformer(df_train, column_target='pce', column_x='SMILES_str')
-    
-    return (df_train, df_val, df_test, transformer)
+    src= user_attrs['src']
+    dataset = user_attrs['dataset']
+    return oscml.data.dataset.get_dataframes(dataset=dataset, src=src, train_size=283, test_size=30)
 
 
 def objective(trial):
 
-    _, init_attrs = oscml.hpo.optunawrapper.get_attrs(trial)
+    user_attrs, init_attrs = oscml.hpo.optunawrapper.get_attrs(trial)
+
+    dataset = user_attrs['dataset']
     df_train = init_attrs[0]
     df_val = init_attrs[1]
-    df_test = init_attrs[2]
+    df_test = None
     transformer = init_attrs[3]
 
-    # define data loader and params
-
-    data_loader_params = {
-        'train': df_train,
-        'val': df_val,
-        'test': None, 
-        'batch_size': 250, 
-        'max_sequence_length': 60,
-        'smiles_fct': transformer.transform_x,
-        'target_fct': transformer.transform, 
-    }
-
-    train_dl, val_dl, test_dl = oscml.models.model_bilstm.get_dataloaders_CEP(**data_loader_params)
-
+    train_dl, val_dl, _ = oscml.models.model_bilstm.get_dataloaders(dataset, df_train, df_val, df_test, 
+            transformer, batch_size=250, max_sequence_length=60)
 
     # define models and params
     subgraph_embedding_dim = trial.suggest_int('subgraph_embedding_dim', 8, 256)
@@ -78,14 +61,39 @@ def objective(trial):
 
     logging.info('model params=' + str(model_params))
 
-    model_instance = oscml.models.model_bilstm.BiLstmForPce(**model_params)
-
+    model = oscml.models.model_bilstm.BiLstmForPce(**model_params)
     
     # fit on training set and calculate metric on validation set
-    trainer_params = {
-    }
-    metric_value =  oscml.hpo.optunawrapper.fit(model_instance, train_dl, val_dl, trainer_params, trial)
+    trainer_params = {}
+    metric_value =  oscml.hpo.optunawrapper.fit(model, train_dl, val_dl, trainer_params, trial)
     return metric_value
+
+
+def resume(ckpt, src, log_dir, dataset, epochs, metric):
+
+    model_class = oscml.models.model_bilstm.BiLstmForPce
+    model = model_class.load_from_checkpoint(ckpt)
+
+    info = oscml.data.dataset.get_dataset_info(dataset)
+
+    transformer = oscml.data.dataset.DataTransformer(info.column_target, model.target_mean, 
+            model.target_std, info.column_smiles)
+
+    df_train, df_val, df_test, _ = oscml.data.dataset.get_dataframes(dataset, src=src, train_size=283, test_size=30)
+    train_dl, val_dl, test_dl = oscml.models.model_bilstm.get_dataloaders(dataset, df_train, df_val, df_test, 
+            transformer, batch_size=250, max_sequence_length=60)
+
+    if epochs > 0:
+        trainer_params = {}
+        result = oscml.hpo.optunawrapper.fit_or_test(model, train_dl, val_dl, None, trainer_params,
+                epochs, metric, log_dir)
+
+    else:
+        trainer_params = {}
+        result = oscml.hpo.optunawrapper.fit_or_test(model, None, None, test_dl, trainer_params,
+                epochs, metric, log_dir)
+    
+    return result
 
 
 def fixed_trial():
@@ -104,8 +112,14 @@ def fixed_trial():
 
 
 def start():
-    return oscml.hpo.optunawrapper.start_hpo(init=init, objective=objective, metric='val_loss', direction='minimize',
-        fixed_trial_params=fixed_trial())
+    return oscml.hpo.optunawrapper.start_hpo(
+            init=init, 
+            objective=objective, 
+            metric='val_loss', 
+            direction='minimize',
+            fixed_trial_params=fixed_trial(),
+            resume=resume)
+
 
 if __name__ == '__main__':
     start()

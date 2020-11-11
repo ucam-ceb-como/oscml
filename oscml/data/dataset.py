@@ -91,26 +91,6 @@ def clean_data(df, mol2seq, column_smiles, column_target):
     
     return df_cleaned
 
-"""
-def get_dataloaders_with_calculated_normalized_data(df, column_smiles, column_target, args, train_size, test_size):
-    
-    mean = df[column_target].mean()
-    std = df[column_target].std(ddof=0)
-    logging.info(concat('target mean=', mean, 'target std=', std))
-    transformer = DataTransformer(column_target, mean, std)
-    
-    x_train, x_test = sklearn.model_selection.train_test_split(df, 
-                    train_size=(train_size + test_size), shuffle=True, random_state=0)
-    x_train, x_val = sklearn.model_selection.train_test_split(x_train, 
-                    train_size=train_size, shuffle=True, random_state=0)
-    logging.info(concat('train=', len(x_train), ', val=', len(x_val), ', test=', len(x_test)))
-    
-    train_dl, val_dl, test_dl = oscml.models.model_gnn.get_dataloaders(x_train, x_val, x_test, args, 
-                                                        column_smiles, transformer.transform)
-    
-    return train_dl, val_dl, test_dl, transformer.inverse_transform
-"""
-
 def store(df, filepath):
     logging.info('storing ' + filepath)
     # store without the internal index of Pandas Dataframe
@@ -153,7 +133,7 @@ def get_dataframes(dataset, src, train_size=-1, test_size=-1):
         info = oscml.data.dataset.get_dataset_info(dataset)
         path = oscml.data.dataset.path_cepdb_25000(src)
         df_train, df_val, df_test = oscml.data.dataset.read_and_split(path)
-        # only for testing
+        # for testing only
         #df_train, df_val, df_test = df_train[:1500], df_val[:500], df_test[:500]
         transformer = oscml.data.dataset.create_transformer(df_train, 
                 column_target=info.column_target, column_x=info.column_smiles)

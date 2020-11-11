@@ -135,7 +135,7 @@ def create_study(direction, seed):
     return study
 
 
-def start_hpo(init, objective, metric, direction, fixed_trial_params=None, seed=200, resume=None, post_hpo=None, model_class=None):
+def start_hpo(init, objective, metric, direction, fixed_trial_params=None, seed=200, resume=None, post_hpo=None):
 
     print('current working directory=', os.getcwd())
     parser = argparse.ArgumentParser()

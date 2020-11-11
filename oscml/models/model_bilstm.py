@@ -65,7 +65,8 @@ class DatasetForBiLstmWithTransformer(torch.utils.data.Dataset):
         self.df = df
         self.max_sequence_length = max_sequence_length
         self.m2seq_fct = m2seq_fct
-        self.padding_sequence = [padding_index]*100
+        # TODO: use torch.nn.utils.rnn.pack_padded_sequence instead
+        self.padding_sequence = [padding_index]*1000
 
         if isinstance(smiles_fct, str):
             self.smiles_fct = lambda data: data[smiles_fct]
@@ -85,6 +86,7 @@ class DatasetForBiLstmWithTransformer(torch.utils.data.Dataset):
         x = np.array(x) + 1
         # fill up the sequence with padding index 0
         x = np.append(x, self.padding_sequence[:self.max_sequence_length-len(x)])
+
         device = cfg[oscml.utils.params.PYTORCH_DEVICE]
         x = torch.as_tensor(x, dtype = torch.long, device = device)
 
@@ -96,10 +98,9 @@ class DatasetForBiLstmWithTransformer(torch.utils.data.Dataset):
     def __len__(self):
         return len(self.df)
 
-def get_dataloaders(train, val, test, batch_size, dataset_info, max_sequence_length, smiles_fct, target_fct):
+def get_dataloaders_internal(train, val, test, batch_size, mol2seq, max_sequence_length, smiles_fct, target_fct):
 
     padding_index = 0
-    mol2seq = dataset_info.mol2seq
 
     train_dl = None
     if train is not None:
@@ -121,9 +122,19 @@ def get_dataloaders(train, val, test, batch_size, dataset_info, max_sequence_len
     return train_dl, val_dl, test_dl
 
 
-def get_dataloaders_CEP(train, val, test, batch_size, max_sequence_length, smiles_fct, target_fct):
+def get_dataloaders(dataset, df_train, df_val, df_test, transformer, batch_size, max_sequence_length):
+
+    info = oscml.data.dataset.get_dataset_info(dataset)
+    mol2seq = info.mol2seq
+    return get_dataloaders_internal(df_train, df_val, df_test, batch_size, mol2seq, max_sequence_length, 
+                smiles_fct = transformer.transform_x,
+                target_fct = transformer.transform)
+
+
+def DEPRECATED_get_dataloaders_CEP(train, val, test, batch_size, max_sequence_length, smiles_fct, target_fct):
     dataset_info = oscml.data.dataset_cep.create_dataset_info_for_CEP25000()
-    return get_dataloaders(train, val, test, batch_size, dataset_info, max_sequence_length, smiles_fct, target_fct)
+    mol2seq = dataset_info.mol2seq
+    return get_dataloaders_internal(train, val, test, batch_size, mol2seq, max_sequence_length, smiles_fct, target_fct)
 
 
 class Attention(pl.LightningModule):

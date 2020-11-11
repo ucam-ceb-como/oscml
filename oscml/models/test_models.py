@@ -92,6 +92,23 @@ class TestModels(unittest.TestCase):
         output = model(batch)
         print(output)
 
+    def test_bilstm_dataloader(self):
+        dataset = oscml.data.dataset_cep.CEP25000
+        df_train, df_val, df_test, transformer = oscml.data.dataset.get_dataframes(dataset=dataset, src='.')
+
+        train_dl, val_dl, test_dl = oscml.models.model_bilstm.get_dataloaders(dataset, df_train, df_val, df_test, 
+            transformer, batch_size=250, max_sequence_length=130) #60)
+
+        for i, batch in enumerate(train_dl):
+            self.assertEquals(250, len(batch[0]))
+            self.assertEquals(250, len(batch[1]))
+            break
+
 
 if __name__ == '__main__':
     unittest.main()
+
+    #suite = unittest.TestSuite()
+    #suite.addTest(TestModels('test_bilstm_dataloader'))
+    #runner = unittest.TextTestRunner()
+    #runner.run(suite)
