@@ -7,38 +7,14 @@ import oscml.data.dataset_hopv15
 import oscml.hpo.optunawrapper
 import oscml.models.model_gnn
 
-def get_dataframes(dataset, src, train_size=-1, test_size=-1):
 
-    if dataset == oscml.data.dataset_hopv15.HOPV15:
-        path = oscml.data.dataset.path_hopv_15(src)
-        df = oscml.data.dataset_hopv15.read(path)
-        df = oscml.data.dataset.clean_data(df, None, 'smiles', 'pce')
-
-        df_train, df_val, df_test, transformer = oscml.data.dataset.split_data_frames_and_transform(
-                df, column_smiles='smiles', column_target='pce', train_size=train_size, test_size=test_size)
-    
-        return (df_train, df_val, df_test, transformer)
-
-    elif dataset == oscml.data.dataset_cep.CEP25000:
-        info = oscml.data.dataset.get_dataset_info(dataset)
-        path = oscml.data.dataset.path_cepdb_25000(src)
-        df_train, df_val, df_test = oscml.data.dataset.read_and_split(path)
-        # only for testing
-        #df_train, df_val, df_test = df_train[:1500], df_val[:500], df_test[:500]
-        transformer = oscml.data.dataset.create_transformer(df_train, 
-                column_target=info.column_target, column_x=info.column_smiles)
-
-        return (df_train, df_val, df_test, transformer)
-    
-    else:
-        raise RuntimeError('unknown dataset=' + str(dataset))
 
  
 def init(user_attrs):
     # read data and preprocess, e.g. standarization, splitting into train, validation and test set
     src= user_attrs['src']
     dataset = user_attrs['dataset']
-    return get_dataframes(dataset=dataset, src=src, train_size=283, test_size=30)
+    return oscml.data.dataset.get_dataframes(dataset=dataset, src=src, train_size=283, test_size=30)
 
 
 def objective(trial):
@@ -113,9 +89,9 @@ def resume(ckpt, src, log_dir, dataset, epochs, metric):
     transformer = oscml.data.dataset.DataTransformer(info.column_target, model.target_mean, 
             model.target_std, info.column_smiles)
 
-    df_train, df_val, df_test, _ = get_dataframes(dataset, src=src)
+    df_train, df_val, df_test, _ = oscml.data.dataset.get_dataframes(dataset, src=src, train_size=283, test_size=30)
     train_dl, val_dl, test_dl = oscml.models.model_gnn.get_dataloaders(dataset, df_train, df_val, df_test, transformer, 
-            batch_size=250)
+            batch_size=20)
 
     if epochs > 0:
         trainer_params = {}
@@ -153,6 +129,7 @@ def start():
             metric='val_loss', 
             direction='minimize',
             fixed_trial_params=fixed_trial(),
+            resume=resume,
             model_class=oscml.models.model_gnn.GNNSimple)
 
 

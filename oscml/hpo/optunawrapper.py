@@ -150,6 +150,7 @@ def start_hpo(init, objective, metric, direction, fixed_trial_params=None, seed=
     parser.add_argument('--fixedtrial', type=bool, default=False)
     parser.add_argument('--ckpt', type=str)
     parser.add_argument('--dataset', type=str)
+    parser.add_argument('--seed', type=int)
     args = parser.parse_args()
 
     # init file logging
@@ -164,6 +165,9 @@ def start_hpo(init, objective, metric, direction, fixed_trial_params=None, seed=
     #optuna.logging.enable_propagation()  # Propagate logs to the root logger.
     #optuna.logging.disable_default_handler() 
     #optuna.logging.set_verbosity(optuna.logging.DEBUG)
+
+    if args.seed:
+        seed = args.seed
 
     user_attrs = vars(args).copy()
     user_attrs.update({
