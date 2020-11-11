@@ -1,5 +1,6 @@
 import logging
 import os
+import time
 import unittest
 from unittest.mock import patch
 
@@ -27,7 +28,7 @@ class Test_HPO(unittest.TestCase):
         testargs = ['test', 
             '--fixedtrial', 'True',
             '--dataset', 'HOPV15',
-            '--epochs', '2'
+            '--epochs', '1'
         ]
         with unittest.mock.patch('sys.argv', testargs):
             best_value = oscml.hpo.start_gnn_with_hpo.start()
@@ -126,20 +127,60 @@ class Test_HPO(unittest.TestCase):
                 direction='minimize',
                 resume=oscml.hpo.start_gnn_with_hpo.resume
             )
+    
+    def test_infinite_trials_and_time_out_gnn(self):
+        testargs = ['test', 
+            '--dataset', 'HOPV15',
+            '--epochs', '1',
+            '--timeout', '60'
+        ]
+        with unittest.mock.patch('sys.argv', testargs):
+            best_value = oscml.hpo.start_gnn_with_hpo.start()
+
+    def test_infinite_trials_and_time_out_bilstm(self):
+        testargs = ['test', 
+            '--dataset', 'CEP25000',
+            '--epochs', '1',
+            '--timeout', '60'
+        ]
+        with unittest.mock.patch('sys.argv', testargs):
+            best_value = oscml.hpo.start_gnn_with_hpo.start()
+
+    def objective_raising_error(self, trial):
+        #time.sleep(1)
+        raise RuntimeError('some fance error')
+
+    def test_objective_raising_error(self):
+
+        testargs = ['test', 
+            '--dataset', 'CEP25000',
+            '--epochs', '1',
+            '--timeout', '20'
+        ]
+        with unittest.mock.patch('sys.argv', testargs):
+            best_value = oscml.hpo.optunawrapper.start_hpo(
+                    init=None, 
+                    objective=self.objective_raising_error, 
+                    metric='val_loss', 
+                    direction='minimize'
+                )
 
 if __name__ == '__main__':
 
-    #unittest.main()
+    unittest.main()
 
     
-    suite = unittest.TestSuite()
+    #suite = unittest.TestSuite()
     #suite.addTest(Test_HPO('test_train_mnist_with_fixed_trial'))
     #suite.addTest(Test_HPO('test_train_gnn_hopv15_with_fixed_trial'))
-    suite.addTest(Test_HPO('test_train_bilstm_cepdb_with_fixed_trial'))
+    #suite.addTest(Test_HPO('test_train_bilstm_cepdb_with_fixed_trial'))
     #suite.addTest(Test_HPO('test_train_bilstm_hopv15_with_fixed_trial'))
     #suite.addTest(Test_HPO('test_load_model_from_checkpoint'))
     #suite.addTest(Test_HPO('test_gnn_cep25000_ckpt_test_only'))
     #suite.addTest(Test_HPO('test_gnn_cep25000_ckpt_resume_training'))
-    runner = unittest.TextTestRunner()
-    runner.run(suite)
+    #suite.addTest(Test_HPO('test_infinite_trials_and_time_out_gnn'))
+    #suite.addTest(Test_HPO('test_infinite_trials_and_time_out_bilstm'))
+    #suite.addTest(Test_HPO('test_objective_raising_error'))
+    #runner = unittest.TextTestRunner()
+    #runner.run(suite)
     

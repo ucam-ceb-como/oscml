@@ -16,6 +16,8 @@ from oscml.utils.util import concat
 import oscml.utils.util_lightning
 
 
+
+
 class MetricsCallback(pl.Callback):
 
     def __init__(self):
@@ -135,6 +137,17 @@ def create_study(direction, seed):
     return study
 
 
+def callback_on_trial_finished(study, trial):
+    pruned_trials = [t for t in study.trials if t.state == optuna.trial.TrialState.PRUNED]
+    complete_trials = [t for t in study.trials if t.state == optuna.trial.TrialState.COMPLETE]
+    failed = len(study.trials) - len(pruned_trials) - len(complete_trials)
+    message = 'current study statistics: number of finished / pruned / completed / failed trials='
+    logging.info(concat(message, len(study.trials), len(pruned_trials), len(complete_trials), failed))
+    if failed >= 50:
+        logging.error('THE MAXIMUM NUMBER OF FAILED TRIALS HAS BEEN REACHED, AND THE STUDY WILL STOP NOW.')
+        study.stop()
+
+
 def start_hpo(init, objective, metric, direction, fixed_trial_params=None, seed=200, resume=None, post_hpo=None):
 
     print('current working directory=', os.getcwd())
@@ -142,7 +155,7 @@ def start_hpo(init, objective, metric, direction, fixed_trial_params=None, seed=
     parser.add_argument('--src', type=str, default='.')
     parser.add_argument('--dst', type=str, default='.')
     parser.add_argument('--epochs', type=int, default=1)
-    parser.add_argument('--trials', type=int, default=1)
+    parser.add_argument('--trials', type=int, default=None)
     parser.add_argument('--timeout', type=int, default=None, help='Stop study after the given number of second(s). If this argument is not set, the study is executed without time limitation.') 
     parser.add_argument('--jobs', type=int, default=1)
     parser.add_argument('--config', type=str, default=None)
@@ -221,7 +234,7 @@ def start_hpo(init, objective, metric, direction, fixed_trial_params=None, seed=
 
             logging.info('starting HPO')
             study.optimize(decorator, n_trials=args.trials, n_jobs=args.jobs, timeout=args.timeout, 
-                    catch = (RuntimeError, ValueError, TypeError),
+                    catch = (RuntimeError, ValueError, TypeError), callbacks=[callback_on_trial_finished],
                     gc_after_trial=True)
             logging.info('finished HPO')
             path = log_dir + '/hpo_result.csv'
@@ -247,11 +260,11 @@ def log_and_save(study, path):
 
     pruned_trials = [t for t in study.trials if t.state == optuna.trial.TrialState.PRUNED]
     complete_trials = [t for t in study.trials if t.state == optuna.trial.TrialState.COMPLETE]
-
-    message = 'Study statistics: number of finished / pruned / complete trials='
-    logging.info(concat(message, len(study.trials), len(pruned_trials), len(complete_trials)))
+    failed = len(study.trials) - len(pruned_trials) - len(complete_trials)
+    message = 'final study statistics: number of finished / pruned / completed / failed trials='
+    logging.info(concat(message, len(study.trials), len(pruned_trials), len(complete_trials), failed))
 
     trial = study.best_trial
-    logging.info('Best trial number =' + str(trial.number))
-    logging.info('Best trial value =' + str(trial.value))
-    logging.info('Best trial params=' + str(trial.params))
+    logging.info('best trial number =' + str(trial.number))
+    logging.info('best trial value =' + str(trial.value))
+    logging.info('best trial params=' + str(trial.params))
