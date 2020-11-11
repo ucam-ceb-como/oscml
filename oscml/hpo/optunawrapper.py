@@ -15,6 +15,8 @@ import oscml.utils.util
 from oscml.utils.util import concat
 import oscml.utils.util_lightning
 
+os.environ["SLURM_JOB_NAME"]="bash"
+
 
 
 
