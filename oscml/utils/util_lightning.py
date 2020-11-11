@@ -136,6 +136,7 @@ def shared_epoch_end(tensor_step_outputs, is_validation, epoch, inverse_transfor
     return (result, y_complete, y_hat_complete)
 
 #deprecated
+"""
 def fit_model(data_loader_fct, data_loader_params, model, model_params, trainer_params):
     
     if 'logger' in trainer_params:
@@ -148,3 +149,4 @@ def fit_model(data_loader_fct, data_loader_params, model, model_params, trainer_
     trainer = pl.Trainer(**trainer_params)
     trainer.fit(model_instance, train_dataloader=train_dl, val_dataloaders=val_dl)
     return model_instance, trainer
+"""

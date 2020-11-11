@@ -27,24 +27,22 @@ def objective(trial):
     _, init_attrs = oscml.hpo.optunawrapper.get_attrs(trial)
     df_train = init_attrs[0]
     df_val = init_attrs[1]
+    df_test = init_attrs[2]
     transformer = init_attrs[3]
 
     # define data loader and params
-    mol2seq = oscml.data.dataset_cep.mol2seq_precalculated_with_OOV(None, radius=1, oov=True)
 
     data_loader_params = {
         'train': df_train,
         'val': df_val,
         'test': None, 
         'batch_size': 250, 
-        'mol2seq': mol2seq,
         'max_sequence_length': 60,
-        'padding_index': 0,
         'smiles_fct': transformer.transform_x,
         'target_fct': transformer.transform, 
     }
 
-    train_dl, val_dl = oscml.models.model_bilstm.get_dataloaders(**data_loader_params)
+    train_dl, val_dl, test_dl = oscml.models.model_bilstm.get_dataloaders_CEP(**data_loader_params)
 
 
     # define models and params

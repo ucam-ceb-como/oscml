@@ -1,3 +1,4 @@
+import collections
 import logging
 
 import numpy as np
@@ -14,10 +15,47 @@ import torch.utils.data
 
 import oscml.utils.params
 from oscml.utils.params import cfg
-from oscml.utils.util import smiles2mol
+from oscml.utils.util import smiles2mol, concat
 import oscml.utils.util_lightning as util_lightning
 import oscml.utils.util_pytorch
 import oscml.features.weisfeilerlehman
+
+
+class Mol2seq():
+    
+    def __init__(self, radius, oov, wf=None):
+
+        self.radius = radius
+        self.oov = oov
+        self.wf = wf
+
+        if wf:
+            atom_dict = wf['atom_dict']
+            bond_dict = wf['bond_dict']
+            fragment_dict = wf['fragment_dict']
+            edge_dict = wf['edge_dict']
+
+        self.atom_dict = collections.defaultdict(lambda:len(self.atom_dict), atom_dict)
+        self.bond_dict = collections.defaultdict(lambda:len(self.bond_dict), bond_dict)
+        self.fragment_dict = collections.defaultdict(lambda:len(self.fragment_dict), fragment_dict)
+        self.edge_dict = collections.defaultdict(lambda: len(self.edge_dict), edge_dict)
+    
+        # fragment index starts with 0, thus -1
+        self.max_index = len(self.fragment_dict) - 1
+        logging.info(concat('initialized Mol2Seq with radius=', radius, ', oov=', oov, ', max_index=', self.max_index))
+        
+    def apply_OOV(self, index):
+        return (index if index <= self.max_index else -1)
+        
+    def __call__(self, m):
+        atoms, i_jbond_dict = oscml.features.weisfeilerlehman.get_atoms_and_bonds(m, self.atom_dict, self.bond_dict)
+        descriptor = oscml.features.weisfeilerlehman.extract_fragments(self.radius, atoms, i_jbond_dict, self.fragment_dict, self.edge_dict)
+        atoms_BFS_order = oscml.features.weisfeilerlehman.get_atoms_BFS(m)
+        if self.oov:
+            descriptor_BFS = [self.apply_OOV(descriptor[i]) for i in atoms_BFS_order]
+        else:
+            descriptor_BFS = [descriptor[i] for i in atoms_BFS_order]
+        return descriptor_BFS
 
 
 class DatasetForBiLstmWithTransformer(torch.utils.data.Dataset):
@@ -58,8 +96,10 @@ class DatasetForBiLstmWithTransformer(torch.utils.data.Dataset):
     def __len__(self):
         return len(self.df)
 
-def get_dataloaders(train, val, test, batch_size, mol2seq, max_sequence_length, padding_index,
-        smiles_fct, target_fct):
+def get_dataloaders(train, val, test, batch_size, dataset_info, max_sequence_length, smiles_fct, target_fct):
+
+    padding_index = 0
+    mol2seq = dataset_info.mol2seq
 
     train_dl = None
     if train is not None:
@@ -78,10 +118,14 @@ def get_dataloaders(train, val, test, batch_size, mol2seq, max_sequence_length, 
     batch_numbers = list(map(batch_func, [train_dl, val_dl, test_dl]))
     logging.info('batch numbers - train val test=' + str(batch_numbers))
     
-    if test is None:
-        return train_dl, val_dl 
     return train_dl, val_dl, test_dl
-    
+
+
+def get_dataloaders_CEP(train, val, test, batch_size, max_sequence_length, smiles_fct, target_fct):
+    dataset_info = oscml.data.dataset_cep.create_dataset_info_for_CEP25000()
+    return get_dataloaders(train, val, test, batch_size, dataset_info, max_sequence_length, smiles_fct, target_fct)
+
+
 class Attention(pl.LightningModule):
     
     def __init__(self, vector_dim, sub_fragment_context_vector_dim):

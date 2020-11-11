@@ -4,13 +4,14 @@ import os
 
 import oscml.utils.util
 import oscml.data.dataset_cep
+import oscml.data.dataset_hopv15
 
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser()
     parser.add_argument('--src', type=str, default='.')
     parser.add_argument('--dst', type=str, default='.')
-    parser.add_argument('--task', type=int, choices=range(1,4), required=True)
+    parser.add_argument('--task', type=int, choices=range(1,5), required=True)
     args = parser.parse_args()
 
     oscml.utils.util.init_logging('.', '.')
@@ -18,11 +19,12 @@ if __name__ == '__main__':
     try:
         logging.info('starting task=' + str(vars(args)))
 
-        dir_name = os.path.dirname(args.dst)
-        try:
-            os.makedirs(dir_name, exist_ok=True)
-        except FileExistsError:
-            logging.info('destination dir already exists, dir=' + dir_name)
+        if not args.dst == '.':
+            dir_name = os.path.dirname(args.dst)
+            try:
+                os.makedirs(dir_name, exist_ok=True)
+            except FileExistsError:
+                logging.info('destination dir already exists, dir=' + dir_name)
 
         if args.task==1:
             # python ./oscml/data/start.py --task 1 --src ./data/raw/CEPDB.csv --dst ./data/processed/CEPDB_valid_SMILES.csv
@@ -39,6 +41,9 @@ if __name__ == '__main__':
             oscml.data.dataset_cep.store_CEP_cleaned_and_stratified(
                     args.src, args.dst, number_samples=[15000, 5000, 5000], threshold_skip=0.0001,
                     threshold_downsampling=4.0, threshold_percentage=0.3)
+        elif args.task==4:
+            info_cep = oscml.data.dataset_cep.create_dataset_info_for_CEP25000()
+            oscml.data.dataset_hopv15.generate_dictionaries(args.src, 'smiles', info_cep)
 
     except Exception as exc:
         logging.exception('task failed', exc_info=True)

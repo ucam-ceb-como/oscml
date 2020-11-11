@@ -1,0 +1,19 @@
+conv_dim_list:
+- 30
+- 20
+mlp_dim_list:
+- 20
+- 20
+- 10
+- 5
+- 1
+mlp_dropout_list:
+- 0.2
+- 0.2
+- 0.2
+node_type_number: 12
+optimizer: Adam
+optimizer_lr: 0.001
+padding_index: 0
+target_mean: 4.126659584567247
+target_std: 2.407382175602577

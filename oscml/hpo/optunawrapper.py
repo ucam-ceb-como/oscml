@@ -49,10 +49,25 @@ def fit(model_instance, train_dl, val_dl, trainer_params, trial):
     metric = user_attrs['metric']
     log_dir = user_attrs['log_dir']
 
-    logging.info(concat('model for trial', trial.number, '=', model_instance))
-
     trial_number = trial.number
-    logging.info(concat('fitting trial ', trial_number, ' / ', n_trials))
+
+    return fit_or_test(model_instance, train_dl, val_dl, None, trainer_params, 
+                epochs, metric, log_dir, trial, trial_number, n_trials)
+
+
+def fit_or_test(model, train_dl, val_dl, test_dl, trainer_params, 
+                epochs, metric, log_dir, trial=None, trial_number=-1, n_trials=0):
+
+    # create callbacks for Optuna for receiving the metric values from Lightning and for
+    # pruning trials
+    metrics_callback = MetricsCallback()
+    callbacks = [metrics_callback] 
+    if trial:
+        pruning_callback = optuna.integration.PyTorchLightningPruningCallback(trial, monitor=metric)
+        callbacks.append(pruning_callback)
+        
+    logging.info(concat('model for trial', trial_number, '=', model))
+ 
 
     # create standard params for Ligthning trainer
     trainer_params = oscml.utils.util_lightning.get_standard_params_for_trainer(metric)
@@ -63,12 +78,6 @@ def fit(model_instance, train_dl, val_dl, trainer_params, trial):
                                       name='trial_' + str(trial_number), 
                                       version='')     
 
-    # create callbacks for Optuna for receiving the metric values from Lightning and for
-    # pruning trials
-    metrics_callback = MetricsCallback()
-    pruning_callback = optuna.integration.PyTorchLightningPruningCallback(trial, monitor=metric)
-    callbacks = [metrics_callback, pruning_callback]
-  
     # put all trainer params together
     trainer_params.update({
         'max_epochs': epochs,
@@ -78,15 +87,22 @@ def fit(model_instance, train_dl, val_dl, trainer_params, trial):
 
     logging.info(concat('params for Lightning trainer=', trainer_params))
     
-    # start fitting
     trainer = pl.Trainer(**trainer_params)
-    trainer.fit(model_instance, train_dataloader=train_dl, val_dataloaders=val_dl)
 
-    # return the value for the metric specified in the start script
-    value =  metrics_callback.metrics[-1][metric].item()
-    logging.info(concat('finished fitting for trial ', trial_number, ' with ', metric, '=', value))
-    return value
+    if epochs > 0:
+        logging.info(concat('fitting trial ', trial_number, ' / ', n_trials))
+        trainer.fit(model, train_dataloader=train_dl, val_dataloaders=val_dl)
 
+        # return the value for the metric specified in the start script
+        value =  metrics_callback.metrics[-1][metric].item()
+        logging.info(concat('finished fitting for trial ', trial_number, ' with ', metric, '=', value))
+        return value
+
+    else:
+        logging.info(concat('testing trial ', trial_number, ' / ', n_trials))
+        result = trainer.test(model, test_dataloaders=test_dl)
+        logging.info('result=' + str(result[0]))
+        return result[0]
 
 def create_objective_decorator(objective, n_trials):
         def decorator(trial):
@@ -119,7 +135,7 @@ def create_study(direction, seed):
     return study
 
 
-def start_hpo(init, objective, metric, direction, fixed_trial_params=None, seed=200, post_hpo=None):
+def start_hpo(init, objective, metric, direction, fixed_trial_params=None, seed=200, resume=None, post_hpo=None, model_class=None):
 
     print('current working directory=', os.getcwd())
     parser = argparse.ArgumentParser()
@@ -132,6 +148,9 @@ def start_hpo(init, objective, metric, direction, fixed_trial_params=None, seed=
     parser.add_argument('--config', type=str, default=None)
     parser.add_argument('--model', type=str, default=None)
     parser.add_argument('--fixedtrial', type=bool, default=False)
+    parser.add_argument('--ckpt', type=str)
+    parser.add_argument('--dataset', type=str)
+    parser.add_argument('--seed', type=int)
     args = parser.parse_args()
 
     # init file logging
@@ -146,6 +165,9 @@ def start_hpo(init, objective, metric, direction, fixed_trial_params=None, seed=
     #optuna.logging.enable_propagation()  # Propagate logs to the root logger.
     #optuna.logging.disable_default_handler() 
     #optuna.logging.set_verbosity(optuna.logging.DEBUG)
+
+    if args.seed:
+        seed = args.seed
 
     user_attrs = vars(args).copy()
     user_attrs.update({
@@ -172,6 +194,16 @@ def start_hpo(init, objective, metric, direction, fixed_trial_params=None, seed=
             logging.info('calling objective function with fixed trial')
             best_value = objective(trial)
             logging.info(concat('finished objective function call with ', metric, '=', best_value))
+        elif args.ckpt:
+            resume_attrs = {
+                'ckpt': args.ckpt, 
+                'src': args.src, 
+                'log_dir': log_dir, 
+                'dataset': args.dataset,
+                'epochs': args.epochs, 
+                'metric': metric
+            }
+            best_value = resume(**resume_attrs)
         else:
             study = create_study(direction, seed)
             for key, value in user_attrs.items():

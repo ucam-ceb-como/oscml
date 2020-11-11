@@ -58,19 +58,6 @@ def create_transformer(df, column_target, column_x=None):
     logging.info(concat('calculated target mean=', mean, ', target std=', std))
     return DataTransformer(column_target, mean, std, column_x)
 
-def create_atom_dictionary(df, column_smiles, initial_dict = {}, with_aromaticity=True):
-    
-    # start with index 1 because index 0 is the padding index for embeddings
-    d = collections.defaultdict(lambda:len(d) + 1, initial_dict)
-    for i in tqdm(range(len(df))):
-        smiles = df.iloc[i][column_smiles]
-        m = smiles2mol(smiles)
-        for a in m.GetAtoms():
-            node_type = (a.GetSymbol(), a.GetIsAromatic())
-            d[node_type]
-    
-    return d
-
 def add_node2index(original, new, zero_index_for_new):
              
     added = original.copy()
@@ -104,6 +91,7 @@ def clean_data(df, mol2seq, column_smiles, column_target):
     
     return df_cleaned
 
+"""
 def get_dataloaders_with_calculated_normalized_data(df, column_smiles, column_target, args, train_size, test_size):
     
     mean = df[column_target].mean()
@@ -121,6 +109,7 @@ def get_dataloaders_with_calculated_normalized_data(df, column_smiles, column_ta
                                                         column_smiles, transformer.transform)
     
     return train_dl, val_dl, test_dl, transformer.inverse_transform
+"""
 
 def store(df, filepath):
     logging.info('storing ' + filepath)
@@ -148,8 +137,37 @@ def read_and_split(filepath, split_column='ml_phase'):
     logging.info(concat('split data into sets of size (train val test)=', len(df_train), len(df_val), len(df_test)))
     return df_train, df_val, df_test
 
+def get_dataframes(dataset, src, train_size=-1, test_size=-1):
+
+    if dataset == oscml.data.dataset_hopv15.HOPV15:
+        path = oscml.data.dataset.path_hopv_15(src)
+        df = oscml.data.dataset_hopv15.read(path)
+        df = oscml.data.dataset.clean_data(df, None, 'smiles', 'pce')
+
+        df_train, df_val, df_test, transformer = oscml.data.dataset.split_data_frames_and_transform(
+                df, column_smiles='smiles', column_target='pce', train_size=train_size, test_size=test_size)
+    
+        return (df_train, df_val, df_test, transformer)
+
+    elif dataset == oscml.data.dataset_cep.CEP25000:
+        info = oscml.data.dataset.get_dataset_info(dataset)
+        path = oscml.data.dataset.path_cepdb_25000(src)
+        df_train, df_val, df_test = oscml.data.dataset.read_and_split(path)
+        # only for testing
+        #df_train, df_val, df_test = df_train[:1500], df_val[:500], df_test[:500]
+        transformer = oscml.data.dataset.create_transformer(df_train, 
+                column_target=info.column_target, column_x=info.column_smiles)
+
+        return (df_train, df_val, df_test, transformer)
+    
+    else:
+        raise RuntimeError('unknown dataset=' + str(dataset))
+
 class DatasetInfo:
-    def __init__(self, mol2seq=None, node_types=None, max_molecule_size=0, max_smiles_length=0):
+    def __init__(self, id=None, column_smiles=None, column_target=None, mol2seq=None, node_types=None, max_molecule_size=0, max_smiles_length=0):
+        self.id=id
+        self.column_smiles = column_smiles
+        self.column_target = column_target
         if mol2seq:
             self.mol2seq = mol2seq
         else:    
@@ -171,6 +189,9 @@ class DatasetInfo:
 
     def as_dict(self):
         d = {}
+        d['id'] = self.id
+        d['column_smiles'] = self.column_smiles
+        d['column_target'] = self.column_target
         d['max_molecule_size'] = self.max_molecule_size
         d['max_smiles_length'] = self.max_smiles_length
         d['node_types'] = dict(self.node_types)
@@ -182,3 +203,10 @@ class DatasetInfo:
         }
         return d
 
+def get_dataset_info(dataset):
+    if dataset == oscml.data.dataset_cep.CEP25000:
+        return oscml.data.dataset_cep.create_dataset_info_for_CEP25000()
+    elif dataset == oscml.data.dataset_hopv15.HOPV15:
+        return oscml.data.dataset_hopv15.create_dataset_info_for_HOPV15()
+    
+    raise RuntimeError('unknown dataset=' + str(dataset))
