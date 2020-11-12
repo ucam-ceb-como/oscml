@@ -138,14 +138,18 @@ def create_study(direction, seed):
     study = optuna.create_study(direction=direction, pruner=pruner, sampler=sampler)
     return study
 
+def get_statistics(study):
+    running_trials = [t for t in study.trials if t.state == optuna.trial.TrialState.RUNNING]
+    completed_trials = [t for t in study.trials if t.state == optuna.trial.TrialState.COMPLETE]
+    pruned_trials = [t for t in study.trials if t.state == optuna.trial.TrialState.PRUNED]
+    failed_trials = [t for t in study.trials if t.state == optuna.trial.TrialState.FAIL]
+    return {'all': len(study.trials), 'running': len(running_trials), 'completed': len(completed_trials), 
+            'pruned': len(pruned_trials), 'failed': len(failed_trials)}
 
 def callback_on_trial_finished(study, trial):
-    pruned_trials = [t for t in study.trials if t.state == optuna.trial.TrialState.PRUNED]
-    complete_trials = [t for t in study.trials if t.state == optuna.trial.TrialState.COMPLETE]
-    failed = len(study.trials) - len(pruned_trials) - len(complete_trials)
-    message = 'current study statistics: number of finished / pruned / completed / failed trials='
-    logging.info(concat(message, len(study.trials), len(pruned_trials), len(complete_trials), failed))
-    if failed >= 50:
+    statistics = get_statistics(study)
+    logging.info(concat('current study statistics: number of trials=', statistics))
+    if statistics['failed'] >= 50:
         logging.error('THE MAXIMUM NUMBER OF FAILED TRIALS HAS BEEN REACHED, AND THE STUDY WILL STOP NOW.')
         study.stop()
 
@@ -260,11 +264,7 @@ def log_and_save(study, path):
     df = study.trials_dataframe()
     df.to_csv(path)
 
-    pruned_trials = [t for t in study.trials if t.state == optuna.trial.TrialState.PRUNED]
-    complete_trials = [t for t in study.trials if t.state == optuna.trial.TrialState.COMPLETE]
-    failed = len(study.trials) - len(pruned_trials) - len(complete_trials)
-    message = 'final study statistics: number of finished / pruned / completed / failed trials='
-    logging.info(concat(message, len(study.trials), len(pruned_trials), len(complete_trials), failed))
+    logging.info(concat('final study statistics: number of trials=', get_statistics(study)))
 
     trial = study.best_trial
     logging.info('best trial number =' + str(trial.number))
