@@ -7,6 +7,8 @@ import sklearn
 from time import sleep
 from tqdm import tqdm
 
+import oscml.data.dataset_cep
+import oscml.data.dataset_hopv15
 import oscml.features.weisfeilerlehman
 import oscml.models.model_gnn
 from oscml.utils.util import concat
