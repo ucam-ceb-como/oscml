@@ -22,7 +22,7 @@ def create_functional_group_ertl_dictionary(df):
     
     for index, row in df.iterrows():
         mol = row['rdkitmol']
-        fgs = fingerprint_ertl_ifg.identify_functional_groups(mol)
+        fgs = oscml.features.fingerprint_ertl_ifg.identify_functional_groups(mol)
         #print(fgs)
         types = []
         for fg in fgs:
@@ -36,7 +36,7 @@ def create_functional_group_ertl_dictionary(df):
 def get_fingerprint_ertl(mol, functional_group_dictionary):
 
     fingerprint = [0]*len(functional_group_dictionary)    
-    fgs = fingerprint_ertl_ifg.identify_functional_groups(mol)
+    fgs = oscml.features.fingerprint_ertl_ifg.identify_functional_groups(mol)
     #print(fgs)
     for fg in fgs:
         identifier = functional_group_dictionary[fg.type][0]
@@ -70,7 +70,7 @@ def create_fingerprint_function(params_fingerprint):
         return lambda mol : rdkit.Chem.rdmolops.RDKFingerprint(mol, **params)
     elif type == 'mhfp':
         return lambda mol : get_fingerprint_MHFP(mol, **params)
-    elif type =='myertl':
+    elif type =='ertl':
         return lambda mol : get_fingerprint_ertl(mol, **params)
     else:
         raise RuntimeError('unknown fingerprint type=' + type)

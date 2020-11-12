@@ -98,8 +98,9 @@ def store(df, filepath):
 
 def split_data_frames_and_transform(df, column_smiles, column_target, train_size, test_size):
     
+    train_plus_val_size = len(df) - test_size
     df_train, df_test = sklearn.model_selection.train_test_split(df, 
-                    train_size=(train_size + test_size), shuffle=True, random_state=0)
+                    train_size=train_plus_val_size, shuffle=True, random_state=0)
     df_train, df_val = sklearn.model_selection.train_test_split(df_train, 
                     train_size=train_size, shuffle=True, random_state=0)
     logging.info(concat('train=', len(df_train), ', val=', len(df_val), ', test=', len(df_test)))

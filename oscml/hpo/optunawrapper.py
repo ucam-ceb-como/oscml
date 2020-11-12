@@ -202,7 +202,7 @@ def start_hpo(init, objective, metric, direction, fixed_trial_params=None, seed=
             logging.info('init finished')
 
         if args.fixedtrial:
-            assert args.trials == 1
+            assert args.trials == None or args.trials == 1
             trial = optuna.trial.FixedTrial(fixed_trial_params)
             for key, value in user_attrs.items():
                 trial.set_user_attr(key, value)

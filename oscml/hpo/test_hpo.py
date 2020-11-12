@@ -10,7 +10,9 @@ import oscml.hpo.optunawrapper
 import oscml.hpo.start_bilstm_with_hpo
 import oscml.hpo.start_gnn_with_hpo
 import oscml.hpo.start_mnist_with_hpo
+import oscml.hpo.start_rf_with_hpo
 import oscml.utils.util
+
 
 class Test_HPO(unittest.TestCase):
 
@@ -164,13 +166,42 @@ class Test_HPO(unittest.TestCase):
                     metric='val_loss', 
                     direction='minimize'
                 )
+    
+    def test_rf_hpo_fixed_trial(self):
+
+        testargs = ['test', 
+            '--fixedtrial', 'True',
+            '--dataset', 'HOPV15',
+        ]
+        with unittest.mock.patch('sys.argv', testargs):
+            best_value = oscml.hpo.optunawrapper.start_hpo(
+                    init=oscml.hpo.start_rf_with_hpo.init, 
+                    objective=oscml.hpo.start_rf_with_hpo.objective, 
+                    metric='mse', 
+                    direction='minimize',
+                    fixed_trial_params=oscml.hpo.start_rf_with_hpo.fixed_trial()
+                )
+
+    def test_rf_hpo_with_some_trials(self):
+
+        testargs = ['test', 
+            '--trials', '10',
+            '--dataset', 'HOPV15',
+        ]
+        with unittest.mock.patch('sys.argv', testargs):
+            best_value = oscml.hpo.optunawrapper.start_hpo(
+                    init=oscml.hpo.start_rf_with_hpo.init, 
+                    objective=oscml.hpo.start_rf_with_hpo.objective, 
+                    metric='mse', 
+                    direction='minimize',
+                    fixed_trial_params=oscml.hpo.start_rf_with_hpo.fixed_trial()
+                )
 
 if __name__ == '__main__':
 
-    unittest.main()
+    #unittest.main()
 
-    
-    #suite = unittest.TestSuite()
+    suite = unittest.TestSuite()
     #suite.addTest(Test_HPO('test_train_mnist_with_fixed_trial'))
     #suite.addTest(Test_HPO('test_train_gnn_hopv15_with_fixed_trial'))
     #suite.addTest(Test_HPO('test_train_bilstm_cepdb_with_fixed_trial'))
@@ -181,6 +212,7 @@ if __name__ == '__main__':
     #suite.addTest(Test_HPO('test_infinite_trials_and_time_out_gnn'))
     #suite.addTest(Test_HPO('test_infinite_trials_and_time_out_bilstm'))
     #suite.addTest(Test_HPO('test_objective_raising_error'))
-    #runner = unittest.TextTestRunner()
-    #runner.run(suite)
-    
+    #suite.addTest(Test_HPO('test_rf_hpo_fixed_trial'))
+    suite.addTest(Test_HPO('test_rf_hpo_with_some_trials'))
+    runner = unittest.TextTestRunner()
+    runner.run(suite)
