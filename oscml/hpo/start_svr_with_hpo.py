@@ -49,7 +49,7 @@ def objective(trial):
         fp_params = {
             'type': 'morgan',
             'nBits': trial.suggest_categorical('nBits', [128, 256, 512, 1024, 2048, 4096]),
-            'radius': trial.suggest_categorical('radius', [2, 3, 4, 5]),
+            'radius': trial.suggest_categorical('radius', [1, 2, 3, 4, 5, 6]),
             'useChirality': trial.suggest_categorical('useChirality', [True, False]),
             'useBondTypes': trial.suggest_categorical('useBondTypes', [True, False]),
         }
@@ -61,9 +61,9 @@ def objective(trial):
 
     model_params =  {
         'kernel': 'rbf_kernel_phys_and_struct',
-        'C': trial.suggest_float('C',0.1,10.0),
-        'epsilon': trial.suggest_float('epsilon',0.01,2.0),
-        'gamma_structural': trial.suggest_float('gamma_structural',0.1,10.0)
+        'C': trial.suggest_loguniform('C',0.1,20.0),
+        'epsilon': trial.suggest_loguniform('epsilon',0.0001,1.0),
+        'gamma_structural': trial.suggest_loguniform('gamma_structural',0.001,20.0)
     }
 
     logging.info(concat('starting cross validation for SVR regressor, params=', model_params))
