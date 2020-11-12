@@ -116,6 +116,7 @@ def create_dataset_info_for_HOPV15():
         'column_target': 'pce',
         'mol2seq': mol2seq,
         'node_types': d['node_types'],
+        'max_sequence_length': 150,               
         'max_molecule_size': d['max_molecule_size'],                # 142
         'max_smiles_length': d['max_smiles_length'],                # 186
     }

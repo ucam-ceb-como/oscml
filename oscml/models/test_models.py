@@ -10,7 +10,7 @@ import oscml.data.dataset_hopv15
 import oscml.models.model_bilstm
 import oscml.models.model_gnn
 import oscml.utils.util
-from oscml.utils.util import log, smiles2mol
+from oscml.utils.util import log, smiles2mol, concat
 
 class TestModels(unittest.TestCase):
 
@@ -92,23 +92,32 @@ class TestModels(unittest.TestCase):
         output = model(batch)
         print(output)
 
-    def test_bilstm_dataloader(self):
-        dataset = oscml.data.dataset_cep.CEP25000
-        df_train, df_val, df_test, transformer = oscml.data.dataset.get_dataframes(dataset=dataset, src='.')
+    def internal_test_bilstm_dataloader(self, dataset):
+        info = oscml.data.dataset.get_dataset_info(dataset)
+        max_sequence_length = info.max_sequence_length
+        logging.info(concat('dataset=', dataset, ', max sequence length=', max_sequence_length))
+        df_train, df_val, df_test, transformer = oscml.data.dataset.get_dataframes(dataset=dataset, src='.', train_size=283, test_size=30)
 
         train_dl, val_dl, test_dl = oscml.models.model_bilstm.get_dataloaders(dataset, df_train, df_val, df_test, 
-            transformer, batch_size=250, max_sequence_length=130) #60)
+            transformer, batch_size=40, max_sequence_length=max_sequence_length)  
 
         for i, batch in enumerate(train_dl):
-            self.assertEquals(250, len(batch[0]))
-            self.assertEquals(250, len(batch[1]))
+            self.assertEquals(40, len(batch[0]))
+            self.assertEquals(max_sequence_length, len(batch[0][0]))
+            self.assertEquals(40, len(batch[1]))
             break
-
+    
+    def test_bilstm_dataloader_for_hopv15(self):
+        self.internal_test_bilstm_dataloader(dataset=oscml.data.dataset_hopv15.HOPV15)
+        
+    def test_bilstm_dataloader_for_cep25000(self):
+        self.internal_test_bilstm_dataloader(dataset=oscml.data.dataset_cep.CEP25000)
 
 if __name__ == '__main__':
     unittest.main()
 
     #suite = unittest.TestSuite()
-    #suite.addTest(TestModels('test_bilstm_dataloader'))
+    # suite.addTest(TestModels('test_bilstm_dataloader_for_hopv15'))
+    # suite.addTest(TestModels('test_bilstm_dataloader_for_cep25000'))
     #runner = unittest.TextTestRunner()
     #runner.run(suite)

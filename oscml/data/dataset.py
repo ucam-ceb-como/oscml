@@ -147,7 +147,7 @@ def get_dataframes(dataset, src, train_size=-1, test_size=-1):
         raise RuntimeError('unknown dataset=' + str(dataset))
 
 class DatasetInfo:
-    def __init__(self, id=None, column_smiles=None, column_target=None, mol2seq=None, node_types=None, max_molecule_size=0, max_smiles_length=0):
+    def __init__(self, id=None, column_smiles=None, column_target=None, mol2seq=None, node_types=None, max_sequence_length=None, max_molecule_size=0, max_smiles_length=0):
         self.id=id
         self.column_smiles = column_smiles
         self.column_target = column_target
@@ -159,6 +159,7 @@ class DatasetInfo:
             self.node_types = node_types
         else:
             self.node_types = collections.defaultdict(lambda:len(self.node_types))
+        self.max_sequence_length = max_sequence_length
         self.max_molecule_size = max_molecule_size
         self.max_smiles_length = max_smiles_length
     
@@ -170,11 +171,15 @@ class DatasetInfo:
         self.max_molecule_size = max(self.max_molecule_size, len(mol.GetAtoms()))
         self.max_smiles_length = max(self.max_smiles_length, len(smiles))
 
+    def number_subgraphs(self):
+        return len(self.mol2seq.fragment_dict)
+
     def as_dict(self):
         d = {}
         d['id'] = self.id
         d['column_smiles'] = self.column_smiles
         d['column_target'] = self.column_target
+        d['max_sequence_length'] = self.max_sequence_length
         d['max_molecule_size'] = self.max_molecule_size
         d['max_smiles_length'] = self.max_smiles_length
         d['node_types'] = dict(self.node_types)

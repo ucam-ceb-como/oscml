@@ -66,7 +66,7 @@ class DatasetForBiLstmWithTransformer(torch.utils.data.Dataset):
         self.max_sequence_length = max_sequence_length
         self.m2seq_fct = m2seq_fct
         # TODO: use torch.nn.utils.rnn.pack_padded_sequence instead
-        self.padding_sequence = [padding_index]*1000
+        self.padding_sequence = [padding_index]*self.max_sequence_length
 
         if isinstance(smiles_fct, str):
             self.smiles_fct = lambda data: data[smiles_fct]
@@ -85,7 +85,12 @@ class DatasetForBiLstmWithTransformer(torch.utils.data.Dataset):
         # increase all indexes by +1
         x = np.array(x) + 1
         # fill up the sequence with padding index 0
-        x = np.append(x, self.padding_sequence[:self.max_sequence_length-len(x)])
+        diff = self.max_sequence_length-len(x)
+        if diff > 0:
+            x = np.append(x, self.padding_sequence[:diff])
+        if diff < 0:
+            raise RuntimeError(concat('A sequence with length greater the maximum sequence length was generated.',
+                    ', length=', len(x), ', maximum sequence length=', self.max_sequence_length, ', row index=', str(index)))
 
         device = cfg[oscml.utils.params.PYTORCH_DEVICE]
         x = torch.as_tensor(x, dtype = torch.long, device = device)
@@ -129,12 +134,6 @@ def get_dataloaders(dataset, df_train, df_val, df_test, transformer, batch_size,
     return get_dataloaders_internal(df_train, df_val, df_test, batch_size, mol2seq, max_sequence_length, 
                 smiles_fct = transformer.transform_x,
                 target_fct = transformer.transform)
-
-
-def DEPRECATED_get_dataloaders_CEP(train, val, test, batch_size, max_sequence_length, smiles_fct, target_fct):
-    dataset_info = oscml.data.dataset_cep.create_dataset_info_for_CEP25000()
-    mol2seq = dataset_info.mol2seq
-    return get_dataloaders_internal(train, val, test, batch_size, mol2seq, max_sequence_length, smiles_fct, target_fct)
 
 
 class Attention(pl.LightningModule):

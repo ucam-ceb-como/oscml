@@ -161,6 +161,7 @@ def create_dataset_info_for_CEP25000():
         'column_target': 'pce',
         'mol2seq': mol2seq,
         'node_types': d['node_types'],
+        'max_sequence_length': 60,  
         'max_molecule_size': d['max_molecule_size'],                # 53
         'max_smiles_length': d['max_smiles_length'],                # 83
     }

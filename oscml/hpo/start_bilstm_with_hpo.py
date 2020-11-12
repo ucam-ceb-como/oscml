@@ -25,8 +25,11 @@ def objective(trial):
     df_test = None
     transformer = init_attrs[3]
 
+    info = oscml.data.dataset.get_dataset_info(dataset)
+    max_sequence_length = info.max_sequence_length
+    number_subgraphs = info.number_subgraphs()
     train_dl, val_dl, _ = oscml.models.model_bilstm.get_dataloaders(dataset, df_train, df_val, df_test, 
-            transformer, batch_size=250, max_sequence_length=60)
+            transformer, batch_size=250, max_sequence_length=max_sequence_length)
 
     # define models and params
     subgraph_embedding_dim = trial.suggest_int('subgraph_embedding_dim', 8, 256)
@@ -53,7 +56,7 @@ def objective(trial):
         'optimizer': trial.suggest_categorical('optimizer', ['Adam', 'RMSprop', 'SGD']), 
         'optimizer_lr': trial.suggest_float('optimizer_lr', 1e-5, 1e-1, log=True),
         # additional non-hyperparameter values
-        'number_of_subgraphs': 60,
+        'number_of_subgraphs': number_subgraphs,
         'padding_index': 0,
         'target_mean': transformer.target_mean, 
         'target_std': transformer.target_std,
@@ -79,9 +82,10 @@ def resume(ckpt, src, log_dir, dataset, epochs, metric):
     transformer = oscml.data.dataset.DataTransformer(info.column_target, model.target_mean, 
             model.target_std, info.column_smiles)
 
+    max_sequence_length = info.max_sequence_length
     df_train, df_val, df_test, _ = oscml.data.dataset.get_dataframes(dataset, src=src, train_size=283, test_size=30)
     train_dl, val_dl, test_dl = oscml.models.model_bilstm.get_dataloaders(dataset, df_train, df_val, df_test, 
-            transformer, batch_size=250, max_sequence_length=60)
+            transformer, batch_size=250, max_sequence_length=max_sequence_length)
 
     if epochs > 0:
         trainer_params = {}
