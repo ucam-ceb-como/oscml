@@ -15,11 +15,11 @@ import oscml.features.fingerprint_ertl_ifg
 
 
 def create_functional_group_ertl_dictionary(df):
-    
+
     # key = fragment type
     # [id, number of molecules containing fragment type, overall number of fragment type]
     d = collections.defaultdict(lambda: [len(d), 0,0])
-    
+
     for index, row in df.iterrows():
         mol = row['rdkitmol']
         fgs = oscml.features.fingerprint_ertl_ifg.identify_functional_groups(mol)
@@ -30,18 +30,18 @@ def create_functional_group_ertl_dictionary(df):
                 types.append(fg.type)
                 d[fg.type][1] += 1
             d[fg.type][2] += 1
-            
+
     return d
 
 def get_fingerprint_ertl(mol, functional_group_dictionary):
 
-    fingerprint = [0]*len(functional_group_dictionary)    
+    fingerprint = [0]*len(functional_group_dictionary)
     fgs = oscml.features.fingerprint_ertl_ifg.identify_functional_groups(mol)
     #print(fgs)
     for fg in fgs:
         identifier = functional_group_dictionary[fg.type][0]
         fingerprint[identifier] = 1
-    
+
     return fingerprint
 
 def get_fingerprint_MHFP(mol, length, radius):
@@ -53,7 +53,7 @@ def get_fingerprint_MHFP(mol, length, radius):
     return fp
 
 def create_fingerprint_function(params_fingerprint):
-    
+
     params = params_fingerprint.copy()
     type = params.pop('type') if 'type' in params else 'morgan'
     if type == 'morgan':
@@ -74,7 +74,7 @@ def create_fingerprint_function(params_fingerprint):
         return lambda mol : get_fingerprint_ertl(mol, **params)
     else:
         raise RuntimeError('unknown fingerprint type=' + type)
-        
+
 def get_fingerprints(df, column, params_fingerprint, as_numpy_array = True):
     logging.info('generating fingerprints, params=' + str(params_fingerprint))
     fp_func = create_fingerprint_function(params_fingerprint)
@@ -85,7 +85,6 @@ def get_fingerprints(df, column, params_fingerprint, as_numpy_array = True):
         if (as_numpy_array):
             fingerprint = np.array(fingerprint, dtype=np.float32)
         x.append(fingerprint)
-    sleep(1)
     return x
 
 def normalize_fingerprints(df, column):
