@@ -225,10 +225,10 @@ class BiLstmForPce(util_lightning.OscmlModule):
         lstm_output_dim = 2 * lstm_hidden_dim
         self.attention = Attention(lstm_output_dim, lstm_output_dim)
 
-        # add input dim for mlp at the beginning
-        mlp_units_with_input_dim = mlp_units.copy()
-        mlp_units_with_input_dim.insert(0, lstm_output_dim)
+        mlp_units_with_input_dim = [lstm_output_dim]
+        mlp_units_with_input_dim.extend(mlp_units)
         self.mlp = oscml.utils.util_pytorch.create_mlp(mlp_units_with_input_dim, mlp_dropouts)
+
     
     def forward(self, index_sequences):
         

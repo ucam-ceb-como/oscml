@@ -61,8 +61,9 @@ class OscmlModule(pl.LightningModule):
 
     def configure_optimizers(self):
         #optimizer = getattr(torch.optim, self.optimizer)(self.parameters(), lr=self.optimizer_lr)
-        name = self.optimizer.pop('name')
-        optimizer_instance = getattr(torch.optim, name)(self.parameters(), **self.optimizer)
+        opt_params = self.optimizer.copy()
+        name = opt_params.pop('name')
+        optimizer_instance = getattr(torch.optim, name)(self.parameters(), **opt_params)
         logging.info('created optimizer=' + str(optimizer_instance))
         return optimizer_instance
 

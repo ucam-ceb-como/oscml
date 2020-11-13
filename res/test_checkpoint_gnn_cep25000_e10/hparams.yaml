@@ -1,19 +1,22 @@
-conv_dim_list:
-- 30
-- 20
-mlp_dim_list:
-- 20
-- 20
-- 10
-- 5
+conv_dims:
+- 25
+- 25
+- 22
+embedding_dim: 107
+mlp_dropouts:
+- 0.2631674954615368
+- 0.2631674954615368
+- 0.2631674954615368
+mlp_units:
+- 16
+- 11
+- 7
 - 1
-mlp_dropout_list:
-- 0.2
-- 0.2
-- 0.2
-node_type_number: 12
-optimizer: Adam
-optimizer_lr: 0.001
+node_type_number: 8
+optimizer:
+  lr: 0.0049143108245664185
+  name: Adam
+  weight_decay: 0.00041173328891034867
 padding_index: 0
 target_mean: 4.126659584567247
 target_std: 2.407382175602577

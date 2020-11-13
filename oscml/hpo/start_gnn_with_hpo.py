@@ -35,17 +35,17 @@ def objective(trial):
 
     # define model and params   
     embedding_dim = trial.suggest_int('embedding_dim', 8, 256)
-    gnn_units = [embedding_dim]
-    gnn_layers =  trial.suggest_int('gnn_layers', 1, 4)
+    conv_dims = []
+    conv_layers =  trial.suggest_int('conv_layers', 1, 4)
     max_units = 256
-    for l in range(gnn_layers):
-        suggested_units = trial.suggest_int('gnn_units_{}'.format(l), 10, max_units)
-        gnn_units.append(suggested_units)
+    for l in range(conv_layers):
+        suggested_units = trial.suggest_int('conv_dims_{}'.format(l), 10, max_units)
+        conv_dims.append(suggested_units)
         max_units = suggested_units
 
     mlp_layers =  trial.suggest_int('mlp_layers', 1, 4)
     # the number of units of the last gnn layer is the input dimension for the mlp
-    mlp_units = [gnn_units[-1]]
+    mlp_units = []
     mlp_dropout_rate = trial.suggest_float('mlp_dropout', 0.1, 0.3)
     mlp_dropouts = []
     for l in range(mlp_layers):
@@ -58,9 +58,10 @@ def objective(trial):
     mlp_units.append(1)
 
     model_params =  {
-        'conv_dim_list': gnn_units,
-        'mlp_dim_list': mlp_units,
-        'mlp_dropout_list': mlp_dropouts,
+        'embedding_dim': embedding_dim,
+        'conv_dims': conv_dims,
+        'mlp_units': mlp_units,
+        'mlp_dropouts': mlp_dropouts,
         # additional non-hyperparameter values
         'node_type_number': node_type_number, #len(oscml.data.dataset_hopv15.ATOM_TYPES_HOPV15),
         'padding_index': 0,
@@ -81,11 +82,11 @@ def objective(trial):
         'weight_decay': trial.suggest_uniform('weight_decay', 0, 0.01)
     }
     if name in ['RMSprop', 'SGD']:
-        optimizer['momentum'] = trial.suggest_loguniform('momentum', 0, 0.01)
+        optimizer['momentum'] = trial.suggest_uniform('momentum', 0, 0.01)
     if name == 'SGD':    
         optimizer['nesterov'] = trial.suggest_categorical('nesterov', [True, False])
             
-            
+
     model = oscml.models.model_gnn.GNNSimple(**model_params, optimizer=optimizer)
     
     # fit on training set and calculate metric on validation set
@@ -124,9 +125,9 @@ def resume(ckpt, src, log_dir, dataset, epochs, metric):
 def fixed_trial():
     return {
         'embedding_dim':30,
-        'gnn_layers': 2,
-        'gnn_units_0': 30,
-        'gnn_units_1': 20, 
+        'conv_layers': 2,
+        'conv_dims_0': 30,
+        'conv_dims_1': 20, 
         'mlp_layers': 3,
         'mlp_units_0': 20,
         'mlp_units_1': 10,

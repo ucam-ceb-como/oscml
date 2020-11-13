@@ -1,56 +1,73 @@
-2020-11-10 23:08:02,672 INFO     initialized logging with config file= C:\my\CARES_CEP_project\repository\ZhouLiML-git/conf/logging.yaml , log file= ./logs/hpo_20201110_230802/oscml.log  - util.py 43   init_file_logging root [[MainThread]]
-2020-11-10 23:08:02,672 INFO     current working directory=C:\my\CARES_CEP_project\repository\HPO_experiments_ideapad\20201110_just_generate_a_checkpoint_for_gnn_cep25000 - optunawrapper.py 161  start_hpo root [[MainThread]]
-2020-11-10 23:08:02,672 INFO     {'src': 'C:\\my\\CARES_CEP_project\\repository\\ZhouLiML-git', 'dst': '.', 'epochs': 10, 'trials': 1, 'timeout': None, 'jobs': 1, 'config': None, 'model': None, 'fixedtrial': True, 'ckpt': None, 'dataset': 'CEP25000', 'metric': 'val_loss', 'log_dir': './logs/hpo_20201110_230802'} - optunawrapper.py 173  start_hpo root [[MainThread]]
-2020-11-10 23:08:02,673 INFO     {'direction': 'minimize', 'seed': 200} - optunawrapper.py 174  start_hpo root [[MainThread]]
-2020-11-10 23:08:02,674 INFO     initialized Mol2Seq with radius= 1 , oov= True , max_index= 55  - dataset_cep.py 52   __init__ root [[MainThread]]
-2020-11-10 23:08:02,675 INFO     number of fragment types=56 - dataset_cep.py 237  create_dataset_info_for_CEP25000 root [[MainThread]]
-2020-11-10 23:08:02,675 INFO     number_node_types=8 - dataset_cep.py 238  create_dataset_info_for_CEP25000 root [[MainThread]]
-2020-11-10 23:08:02,675 INFO     reading C:\my\CARES_CEP_project\repository\ZhouLiML-git/data/processed/CEPDB_25000.csv - dataset.py 148  read_and_split root [[MainThread]]
-2020-11-10 23:08:02,753 INFO     split data into sets of size (train val test)= 15000 5000 5000  - dataset.py 153  read_and_split root [[MainThread]]
-2020-11-10 23:08:02,755 INFO     calculated target mean= 4.126659584567247 , target std= 2.407382175602577  - dataset.py 61   create_transformer root [[MainThread]]
-2020-11-10 23:08:02,755 INFO     init finished - optunawrapper.py 183  start_hpo root [[MainThread]]
-2020-11-10 23:08:02,757 INFO     calling objective function with fixed trial - optunawrapper.py 190  start_hpo root [[MainThread]]
-2020-11-10 23:08:02,757 INFO     initialized Mol2Seq with radius= 1 , oov= True , max_index= 55  - dataset_cep.py 52   __init__ root [[MainThread]]
-2020-11-10 23:08:02,757 INFO     number of fragment types=56 - dataset_cep.py 237  create_dataset_info_for_CEP25000 root [[MainThread]]
-2020-11-10 23:08:02,758 INFO     number_node_types=8 - dataset_cep.py 238  create_dataset_info_for_CEP25000 root [[MainThread]]
-2020-11-10 23:08:02,758 INFO     initialized Mol2seq_simple with fix= True , oov= True , max_index= 7  - model_gnn.py 65   __init__ root [[MainThread]]
-2020-11-10 23:08:02,758 INFO     batch numbers - train val test= [60, 20, 0]  - model_gnn.py 168  get_dataloaders_internal root [[MainThread]]
-2020-11-10 23:08:02,758 INFO     model params={'conv_dim_list': [30, 20], 'mlp_dim_list': [20, 20, 10, 5, 1], 'mlp_dropout_list': [0.2, 0.2, 0.2], 'optimizer': 'Adam', 'optimizer_lr': 0.001, 'node_type_number': 12, 'padding_index': 0, 'target_mean': 4.126659584567247, 'target_std': 2.407382175602577} - start_gnn_with_hpo.py 94   objective root [[MainThread]]
-2020-11-10 23:08:02,758 INFO     initializing OscmlModule with {'optimizer': 'Adam', 'optimizer_lr': 0.001, 'target_mean': 4.126659584567247, 'target_std': 2.407382175602577}  - util_lightning.py 50   __init__ root [[MainThread]]
-2020-11-10 23:08:02,759 INFO     initializing {'self': GNNSimple(), 'node_type_number': 12, 'conv_dim_list': [30, 20], 'mlp_dim_list': [20, 20, 10, 5, 1], 'padding_index': 0, 'target_mean': 4.126659584567247, 'target_std': 2.407382175602577, 'optimizer': 'Adam', 'optimizer_lr': 0.001, 'mlp_dropout_list': [0.2, 0.2, 0.2], '__class__': <class 'oscml.models.model_gnn.GNNSimple'>} - model_gnn.py 248  __init__ root [[MainThread]]
-2020-11-10 23:08:02,759 INFO     padding index for embedding was set to  0 . Thus unknown atom types can be handled  - model_gnn.py 255  __init__ root [[MainThread]]
-2020-11-10 23:08:02,761 INFO     model for trial 0 = GNNSimple(
-  (embedding): Embedding(13, 30, padding_idx=0)
+2020-11-14 00:23:44,448 INFO     initialized logging with config file= ./conf/logging.yaml , log file= ./logs/hpo_20201114_002344/oscml.log  - util.py 43   init_file_logging root [[MainThread]]
+2020-11-14 00:23:44,449 INFO     current working directory=C:\my\CARES_CEP_project\repository\ZhouLiML-git - optunawrapper.py 182  start_hpo root [[MainThread]]
+2020-11-14 00:23:44,449 INFO     {'src': '.', 'dst': '.', 'epochs': 2, 'trials': 1, 'timeout': None, 'jobs': 1, 'config': None, 'model': None, 'fixedtrial': False, 'ckpt': None, 'dataset': 'CEP25000', 'seed': 20, 'cv': None, 'metric': 'val_loss', 'log_dir': './logs/hpo_20201114_002344'} - optunawrapper.py 197  start_hpo root [[MainThread]]
+2020-11-14 00:23:44,451 INFO     {'direction': 'minimize', 'seed': 20} - optunawrapper.py 198  start_hpo root [[MainThread]]
+2020-11-14 00:23:44,452 INFO     initialized Mol2Seq with radius= 1 , oov= True , max_index= 55  - model_bilstm.py 45   __init__ root [[MainThread]]
+2020-11-14 00:23:44,453 INFO     number of fragment types=56 - dataset_cep.py 155  create_dataset_info_for_CEP25000 root [[MainThread]]
+2020-11-14 00:23:44,453 INFO     number_node_types=8 - dataset_cep.py 156  create_dataset_info_for_CEP25000 root [[MainThread]]
+2020-11-14 00:23:44,454 INFO     reading ./data/processed/CEPDB_25000.csv - dataset.py 115  read_and_split root [[MainThread]]
+2020-11-14 00:23:44,533 INFO     split data into sets of size (train val test)= 15000 5000 5000  - dataset.py 120  read_and_split root [[MainThread]]
+2020-11-14 00:23:44,535 INFO     calculated target mean= 4.126659584567247 , target std= 2.407382175602577  - dataset.py 60   create_transformer root [[MainThread]]
+2020-11-14 00:23:44,536 INFO     init finished - optunawrapper.py 207  start_hpo root [[MainThread]]
+2020-11-14 00:23:44,540 INFO     starting HPO - optunawrapper.py 242  start_hpo root [[MainThread]]
+2020-11-14 00:23:44,541 INFO     starting trial  0  /  1  - optunawrapper.py 114  decorator root [[MainThread]]
+2020-11-14 00:23:44,543 INFO     initialized Mol2Seq with radius= 1 , oov= True , max_index= 55  - model_bilstm.py 45   __init__ root [[MainThread]]
+2020-11-14 00:23:44,544 INFO     number of fragment types=56 - dataset_cep.py 155  create_dataset_info_for_CEP25000 root [[MainThread]]
+2020-11-14 00:23:44,544 INFO     number_node_types=8 - dataset_cep.py 156  create_dataset_info_for_CEP25000 root [[MainThread]]
+2020-11-14 00:23:44,545 INFO     initialized Mol2Seq with radius= 1 , oov= True , max_index= 55  - model_bilstm.py 45   __init__ root [[MainThread]]
+2020-11-14 00:23:44,546 INFO     number of fragment types=56 - dataset_cep.py 155  create_dataset_info_for_CEP25000 root [[MainThread]]
+2020-11-14 00:23:44,547 INFO     number_node_types=8 - dataset_cep.py 156  create_dataset_info_for_CEP25000 root [[MainThread]]
+2020-11-14 00:23:44,547 INFO     initialized Mol2seq_simple with fix= True , oov= True , max_index= 7  - model_gnn.py 43   __init__ root [[MainThread]]
+2020-11-14 00:23:44,548 INFO     batch numbers - train val test= [60, 20, 0]  - model_gnn.py 132  get_dataloaders_internal root [[MainThread]]
+2020-11-14 00:23:44,548 INFO     model params={'embedding_dim': 107, 'conv_dims': [25, 25, 22], 'mlp_units': [16, 11, 7, 1], 'mlp_dropouts': [0.2631674954615368, 0.2631674954615368, 0.2631674954615368], 'node_type_number': 8, 'padding_index': 0, 'target_mean': 4.126659584567247, 'target_std': 2.407382175602577} - start_gnn_with_hpo.py 72   objective root [[MainThread]]
+2020-11-14 00:23:44,549 INFO     initializing OscmlModule with {'optimizer': {'name': 'Adam', 'lr': 0.0049143108245664185, 'weight_decay': 0.00041173328891034867}, 'target_mean': 4.126659584567247, 'target_std': 2.407382175602577}  - util_lightning.py 50   __init__ root [[MainThread]]
+2020-11-14 00:23:44,549 INFO     initializing {'self': GNNSimple(), 'node_type_number': 8, 'embedding_dim': 107, 'conv_dims': [25, 25, 22], 'mlp_units': [16, 11, 7, 1], 'padding_index': 0, 'target_mean': 4.126659584567247, 'target_std': 2.407382175602577, 'optimizer': {'name': 'Adam', 'lr': 0.0049143108245664185, 'weight_decay': 0.00041173328891034867}, 'mlp_dropouts': [0.2631674954615368, 0.2631674954615368, 0.2631674954615368], '__class__': <class 'oscml.models.model_gnn.GNNSimple'>} - model_gnn.py 185  __init__ root [[MainThread]]
+2020-11-14 00:23:44,550 INFO     padding index for embedding was set to  0 . Thus unknown atom types can be handled  - model_gnn.py 192  __init__ root [[MainThread]]
+2020-11-14 00:23:44,554 INFO     model for trial 0 = GNNSimple(
+  (embedding): Embedding(9, 107, padding_idx=0)
   (conv_modules): ModuleList(
     (0): GNNSimpleLayer(
-      (linear): Linear(in_features=30, out_features=20, bias=True)
+      (linear): Linear(in_features=107, out_features=25, bias=True)
+    )
+    (1): GNNSimpleLayer(
+      (linear): Linear(in_features=25, out_features=25, bias=True)
+    )
+    (2): GNNSimpleLayer(
+      (linear): Linear(in_features=25, out_features=22, bias=True)
     )
   )
   (mlp): Sequential(
-    (0): Linear(in_features=20, out_features=20, bias=True)
+    (0): Linear(in_features=22, out_features=16, bias=True)
     (1): ReLU()
-    (2): Dropout(p=0.2, inplace=False)
-    (3): Linear(in_features=20, out_features=10, bias=True)
+    (2): Dropout(p=0.2631674954615368, inplace=False)
+    (3): Linear(in_features=16, out_features=11, bias=True)
     (4): ReLU()
-    (5): Dropout(p=0.2, inplace=False)
-    (6): Linear(in_features=10, out_features=5, bias=True)
+    (5): Dropout(p=0.2631674954615368, inplace=False)
+    (6): Linear(in_features=11, out_features=7, bias=True)
     (7): ReLU()
-    (8): Dropout(p=0.2, inplace=False)
-    (9): Linear(in_features=5, out_features=1, bias=True)
+    (8): Dropout(p=0.2631674954615368, inplace=False)
+    (9): Linear(in_features=7, out_features=1, bias=True)
   )
-)  - optunawrapper.py 69   fit_or_test root [[MainThread]]
-2020-11-10 23:08:02,763 INFO     params for Lightning trainer= {'log_every_n_steps': 1, 'flush_logs_every_n_steps': 10, 'progress_bar_refresh_rate': 1, 'checkpoint_callback': <pytorch_lightning.callbacks.model_checkpoint.ModelCheckpoint object at 0x000001D3F944A448>, 'gpus': 0, 'max_epochs': 10, 'logger': <pytorch_lightning.loggers.csv_logs.CSVLogger object at 0x000001D3F944AB08>, 'callbacks': [<oscml.hpo.optunawrapper.MetricsCallback object at 0x000001D3F8092D08>, <optuna.integration.pytorch_lightning.PyTorchLightningPruningCallback object at 0x000001D3F90CF848>]}  - optunawrapper.py 88   fit_or_test root [[MainThread]]
-2020-11-10 23:08:02,768 INFO     fitting trial  0  /  1  - optunawrapper.py 93   fit_or_test root [[MainThread]]
-2020-11-10 23:08:04,567 INFO     result= {'phase': 'val', 'val_loss': 0.9896538334492342, 'epoch': 0, 'time': '2020-11-10 23:08:04.567625', 'mse': 5.735527845598751, 'rmse': 2.3948962076880806, 'R2': -0.053208065325295095, 'r': -0.12281647674910184, 'mae': 2.0385220205502756, 'count': 500}  - util_lightning.py 134  shared_epoch_end root [[MainThread]]
-2020-11-10 23:08:56,903 INFO     result= {'phase': 'val', 'val_loss': 0.9918271162857872, 'epoch': 0, 'time': '2020-11-10 23:08:56.903883', 'mse': 5.748123082240203, 'rmse': 2.3975243653068894, 'R2': 0.007820488432577322, 'r': 0.27778531234409115, 'mae': 2.001779861816221, 'count': 5000}  - util_lightning.py 134  shared_epoch_end root [[MainThread]]
-2020-11-10 23:09:51,882 INFO     result= {'phase': 'val', 'val_loss': 0.952829513719022, 'epoch': 1, 'time': '2020-11-10 23:09:51.882303', 'mse': 5.522112907901047, 'rmse': 2.349917638535667, 'R2': 0.04683194681243119, 'r': 0.48403116478778074, 'mae': 1.9423872056759275, 'count': 5000}  - util_lightning.py 134  shared_epoch_end root [[MainThread]]
-2020-11-10 23:10:48,189 INFO     result= {'phase': 'val', 'val_loss': 0.8610474930517262, 'epoch': 2, 'time': '2020-11-10 23:10:48.189284', 'mse': 4.990191222287125, 'rmse': 2.233873591384957, 'R2': 0.13864657754905385, 'r': 0.5098574756151213, 'mae': 1.7970711520611218, 'count': 5000}  - util_lightning.py 134  shared_epoch_end root [[MainThread]]
-2020-11-10 23:11:46,240 INFO     result= {'phase': 'val', 'val_loss': 0.779029553485819, 'epoch': 3, 'time': '2020-11-10 23:11:46.240306', 'mse': 4.514857160699795, 'rmse': 2.1248193242484867, 'R2': 0.22069365801506124, 'r': 0.5275597749604523, 'mae': 1.7303691904637752, 'count': 5000}  - util_lightning.py 134  shared_epoch_end root [[MainThread]]
-2020-11-10 23:12:44,704 INFO     result= {'phase': 'val', 'val_loss': 0.694623272002254, 'epoch': 4, 'time': '2020-11-10 23:12:44.704305', 'mse': 4.025681489945151, 'rmse': 2.0064101001403354, 'R2': 0.30512992897446023, 'r': 0.5962386618872363, 'mae': 1.6022893295032263, 'count': 5000}  - util_lightning.py 134  shared_epoch_end root [[MainThread]]
-2020-11-10 23:13:42,176 INFO     result= {'phase': 'val', 'val_loss': 0.6408750959187233, 'epoch': 5, 'time': '2020-11-10 23:13:42.176771', 'mse': 3.714184529939641, 'rmse': 1.9272219721504944, 'R2': 0.3588972017365727, 'r': 0.6288874942803035, 'mae': 1.5384133777977145, 'count': 5000}  - util_lightning.py 134  shared_epoch_end root [[MainThread]]
-2020-11-10 23:14:38,562 INFO     result= {'phase': 'val', 'val_loss': 0.5849632568179087, 'epoch': 6, 'time': '2020-11-10 23:14:38.562739', 'mse': 3.3901480848488545, 'rmse': 1.8412354778378714, 'R2': 0.41482890626349145, 'r': 0.6662242518028009, 'mae': 1.445506204880936, 'count': 5000}  - util_lightning.py 134  shared_epoch_end root [[MainThread]]
-2020-11-10 23:15:35,240 INFO     result= {'phase': 'val', 'val_loss': 0.5471330050675725, 'epoch': 7, 'time': '2020-11-10 23:15:35.240194', 'mse': 3.1709032792547225, 'rmse': 1.7807030294955761, 'R2': 0.4526725990682222, 'r': 0.6992147067975012, 'mae': 1.4046955650663324, 'count': 5000}  - util_lightning.py 134  shared_epoch_end root [[MainThread]]
-2020-11-10 23:16:32,218 INFO     result= {'phase': 'val', 'val_loss': 0.5371917227288853, 'epoch': 8, 'time': '2020-11-10 23:16:32.218534', 'mse': 3.113288687417319, 'rmse': 1.7644513842600817, 'R2': 0.46261741353557584, 'r': 0.7200814550486142, 'mae': 1.354851403555118, 'count': 5000}  - util_lightning.py 134  shared_epoch_end root [[MainThread]]
-2020-11-10 23:17:29,631 INFO     result= {'phase': 'val', 'val_loss': 0.4706774457450043, 'epoch': 9, 'time': '2020-11-10 23:17:29.631674', 'mse': 2.727805930844451, 'rmse': 1.6516070751981087, 'R2': 0.529155322982197, 'r': 0.7538284479752441, 'mae': 1.3079633674493714, 'count': 5000}  - util_lightning.py 134  shared_epoch_end root [[MainThread]]
-2020-11-10 23:17:29,677 INFO     finished fitting for trial  0  with  val_loss = 0.4706774457450043  - optunawrapper.py 98   fit_or_test root [[MainThread]]
-2020-11-10 23:17:29,678 INFO     finished objective function call with  val_loss = 0.4706774457450043  - optunawrapper.py 192  start_hpo root [[MainThread]]
+)  - optunawrapper.py 73   fit_or_test root [[MainThread]]
+2020-11-14 00:23:44,557 INFO     params for Lightning trainer= {'log_every_n_steps': 1, 'flush_logs_every_n_steps': 10, 'progress_bar_refresh_rate': 1, 'checkpoint_callback': <pytorch_lightning.callbacks.model_checkpoint.ModelCheckpoint object at 0x000002AC580120C8>, 'gpus': 0, 'max_epochs': 2, 'logger': <pytorch_lightning.loggers.csv_logs.CSVLogger object at 0x000002AC58012188>, 'callbacks': [<oscml.hpo.optunawrapper.MetricsCallback object at 0x000002AC57D427C8>, <optuna.integration.pytorch_lightning.PyTorchLightningPruningCallback object at 0x000002AC58012048>]}  - optunawrapper.py 92   fit_or_test root [[MainThread]]
+2020-11-14 00:23:44,560 INFO     fitting trial  0  /  1  - optunawrapper.py 97   fit_or_test root [[MainThread]]
+2020-11-14 00:23:44,561 INFO     created optimizer=Adam (
+Parameter Group 0
+    amsgrad: False
+    betas: (0.9, 0.999)
+    eps: 1e-08
+    lr: 0.0049143108245664185
+    weight_decay: 0.00041173328891034867
+) - util_lightning.py 67   configure_optimizers root [[MainThread]]
+2020-11-14 00:23:46,321 INFO     result= {'phase': 'val', 'val_loss': 0.9850255609311673, 'epoch': 0, 'time': '2020-11-14 00:23:46.321419', 'mse': 5.708704743411723, 'rmse': 2.3892895896922424, 'R2': -0.04828257140025016, 'r': -0.3201189441857159, 'mae': 1.895558400366909, 'count': 500}  - util_lightning.py 136  shared_epoch_end root [[MainThread]]
+2020-11-14 00:24:39,302 INFO     result= {'phase': 'val', 'val_loss': 0.7204320925614638, 'epoch': 0, 'time': '2020-11-14 00:24:39.302964', 'mse': 4.175256224035242, 'rmse': 2.0433443723550964, 'R2': 0.2793119385645374, 'r': 0.6457177992223168, 'mae': 1.6173676182959023, 'count': 5000}  - util_lightning.py 136  shared_epoch_end root [[MainThread]]
+2020-11-14 00:25:35,637 INFO     result= {'phase': 'val', 'val_loss': 0.4800795344863227, 'epoch': 1, 'time': '2020-11-14 00:25:35.637853', 'mse': 2.7822956321521035, 'rmse': 1.6680214723294493, 'R2': 0.519749893687212, 'r': 0.7469633057877542, 'mae': 1.2997388833018668, 'count': 5000}  - util_lightning.py 136  shared_epoch_end root [[MainThread]]
+2020-11-14 00:25:35,671 INFO     finished fitting for trial  0  with  val_loss = 0.4800795344863227  - optunawrapper.py 102  fit_or_test root [[MainThread]]
+2020-11-14 00:25:35,673 INFO     finished trial  0  /  1  - optunawrapper.py 116  decorator root [[MainThread]]
+2020-11-14 00:25:35,731 INFO     current study statistics: number of trials= {'all': 1, 'running': 0, 'completed': 1, 'pruned': 0, 'failed': 0}  - optunawrapper.py 151  callback_on_trial_finished root [[MainThread]]
+2020-11-14 00:25:35,732 INFO     finished HPO - optunawrapper.py 246  start_hpo root [[MainThread]]
+2020-11-14 00:25:35,733 INFO     Saving HPO results to ./logs/hpo_20201114_002344/hpo_result.csv - optunawrapper.py 263  log_and_save root [[MainThread]]
+2020-11-14 00:25:35,757 INFO     final study statistics: number of trials= {'all': 1, 'running': 0, 'completed': 1, 'pruned': 0, 'failed': 0}  - optunawrapper.py 268  log_and_save root [[MainThread]]
+2020-11-14 00:25:35,758 INFO     best trial number =0 - optunawrapper.py 271  log_and_save root [[MainThread]]
+2020-11-14 00:25:35,758 INFO     best trial value =0.4800795344863227 - optunawrapper.py 272  log_and_save root [[MainThread]]
+2020-11-14 00:25:35,761 INFO     best trial params={'embedding_dim': 107, 'conv_layers': 3, 'conv_dims_0': 25, 'conv_dims_1': 25, 'conv_dims_2': 22, 'mlp_layers': 3, 'mlp_dropout': 0.2631674954615368, 'mlp_units_0': 16, 'mlp_units_1': 11, 'mlp_units_2': 7, 'name': 'Adam', 'lr': 0.0049143108245664185, 'weight_decay': 0.00041173328891034867} - optunawrapper.py 273  log_and_save root [[MainThread]]

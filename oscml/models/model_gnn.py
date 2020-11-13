@@ -178,8 +178,8 @@ class GNNSimpleLayer(pl.LightningModule):
             return self.activation_fct(h)
 
 class GNNSimple(oscml.utils.util_lightning.OscmlModule):
-    
-    def __init__(self, node_type_number, conv_dim_list, mlp_dim_list, padding_index, target_mean, target_std, optimizer, mlp_dropout_list=None):
+
+    def __init__(self, node_type_number, embedding_dim, conv_dims, mlp_units, padding_index, target_mean, target_std, optimizer, mlp_dropouts=None):
 
         super().__init__(optimizer, target_mean, target_std)
         logging.info('initializing ' + str(locals()))
@@ -193,18 +193,22 @@ class GNNSimple(oscml.utils.util_lightning.OscmlModule):
             # consider the padding index for subsequential transfer learning with unknown atom types:
             # we add +1 to node_type_number because
             # padding_idx = 0 in a sequences is mapped to zero vector
-            self.embedding = nn.Embedding(node_type_number+1, conv_dim_list[0], padding_idx=self.padding_index)
+            self.embedding = nn.Embedding(node_type_number+1, embedding_dim, padding_idx=self.padding_index)
         else:
             self.padding_index = None
             logging.info('No padding index for embedding was set. No transfer learning for unknown atom types will be possible')
-            self.embedding = nn.Embedding(node_type_number, conv_dim_list[0])
+            self.embedding = nn.Embedding(node_type_number, embedding_dim)
         
         self.conv_modules = nn.ModuleList()
-        for i in range(len(conv_dim_list)-1):
-            layer = GNNSimpleLayer(conv_dim_list[i], conv_dim_list[i+1], F.relu)
+        input_dim = embedding_dim
+        for i in range(len(conv_dims)):
+            layer = GNNSimpleLayer(input_dim, conv_dims[i], F.relu)
+            input_dim = conv_dims[i]
             self.conv_modules.append(layer)
-            
-        self.mlp = oscml.utils.util_pytorch.create_mlp(mlp_dim_list, mlp_dropout_list)
+        
+        mlp_units_with_input_dim = [input_dim]
+        mlp_units_with_input_dim.extend(mlp_units)
+        self.mlp = oscml.utils.util_pytorch.create_mlp(mlp_units_with_input_dim, mlp_dropouts)
         
         self.one = torch.Tensor([1]).long().to(cfg['PYTORCH_DEVICE'])
     

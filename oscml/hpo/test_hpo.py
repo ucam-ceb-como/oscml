@@ -70,12 +70,16 @@ class Test_HPO(unittest.TestCase):
         model = model_class.load_from_checkpoint(path)
 
         logging.info(model)
-        self.assertEqual('Adam', model.optimizer)
-        self.assertEqual(1, len(model.conv_modules))
-        # 4 hidden layer with 4 ReLUs and 1 output layer
+
+        print(model.optimizer)
+
+        self.assertEqual('Adam', model.optimizer['name'])
+        self.assertEqual(3, len(model.conv_modules))
+        # 4 hidden layer with 4 ReLUs and Dropout and 1 output layer
         self.assertEqual(10, len(model.mlp))
-        self.assertEqual(20, model.mlp[3].in_features)
-        self.assertEqual(10, model.mlp[3].out_features)
+        # check second layer
+        self.assertEqual(16, model.mlp[3].in_features)
+        self.assertEqual(11, model.mlp[3].out_features)
 
         self.assertAlmostEqual(4.126659584567247, model.target_mean, 4)
         self.assertAlmostEqual(2.407382175602577, model.target_std, 4)
@@ -102,7 +106,7 @@ class Test_HPO(unittest.TestCase):
         result = trainer.test(model, test_dataloaders=val_dl) 
         print(result)
         # the value is the validation result copied from the corresponding log file / metric.csv file
-        self.assertAlmostEqual(2.727805930844451, result[0]['mse'], 4)
+        self.assertAlmostEqual(2.7822956321521035, result[0]['mse'], 4)
 
     def test_gnn_cep25000_ckpt_test_only(self):
         testargs = ['test', 
@@ -120,7 +124,7 @@ class Test_HPO(unittest.TestCase):
                 direction='minimize',
                 resume=oscml.hpo.start_gnn_with_hpo.resume
             )
-            self.assertAlmostEqual(2.830736983235294, result['mse'], 4)
+            self.assertAlmostEqual(2.8787141593397987, result['mse'], 4)
     
     def test_gnn_cep25000_ckpt_resume_training(self):
         testargs = ['test', 
@@ -233,14 +237,14 @@ class Test_HPO(unittest.TestCase):
 
 if __name__ == '__main__':
 
-    #unittest.main()
+    unittest.main()
 
-    suite = unittest.TestSuite()
+    #suite = unittest.TestSuite()
     #suite.addTest(Test_HPO('test_train_mnist_with_fixed_trial'))
     #suite.addTest(Test_HPO('test_train_gnn_cep25000_with_fixed_trial'))
     #suite.addTest(Test_HPO('test_train_gnn_hopv15_with_fixed_trial'))
     #suite.addTest(Test_HPO('test_train_bilstm_cep25000_with_fixed_trial'))
-    suite.addTest(Test_HPO('test_train_bilstm_hopv15_with_fixed_trial'))
+    #suite.addTest(Test_HPO('test_train_bilstm_hopv15_with_fixed_trial'))
     #suite.addTest(Test_HPO('test_load_model_from_checkpoint'))
     #suite.addTest(Test_HPO('test_gnn_cep25000_ckpt_test_only'))
     #suite.addTest(Test_HPO('test_gnn_cep25000_ckpt_resume_training'))
@@ -250,5 +254,5 @@ if __name__ == '__main__':
     #suite.addTest(Test_HPO('test_rf_hpo_fixed_trial'))
     #suite.addTest(Test_HPO('test_rf_hpo_with_some_trials'))
     #suite.addTest(Test_HPO('test_rf_hpo_with_fixed_trial_and_negative_mean_score'))
-    runner = unittest.TextTestRunner()
-    runner.run(suite)
+    #runner = unittest.TextTestRunner()
+    #runner.run(suite)

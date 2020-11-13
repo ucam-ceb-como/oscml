@@ -70,7 +70,7 @@ def objective(trial):
         'weight_decay': trial.suggest_uniform('weight_decay', 0, 0.01)
     }
     if name in ['RMSprop', 'SGD']:
-        optimizer['momentum'] = trial.suggest_loguniform('momentum', 0, 0.01)
+        optimizer['momentum'] = trial.suggest_uniform('momentum', 0, 0.01)
     if name == 'SGD':    
         optimizer['nesterov'] = trial.suggest_categorical('nesterov', [True, False])
             
