@@ -8,10 +8,14 @@ from oscml.utils.util import concat
 def train_and_test(x_train, y_train, x_test, y_test, model, cross_validation, metric):
        
     logging.info(concat('fitting for', model))
-    logging.info(concat('sample size =', len(x_train), len(y_train), len(x_test), len(y_test)))
+    len_x_test = (len(x_test)) if x_test else None
+    len_y_test = (len(y_test)) if y_test else None
+    logging.info(concat('sample size =', len(x_train), len(y_train), len_x_test, len_y_test))
     logging.info(concat('cross_validation=', cross_validation))
     
     if cross_validation:
+        # use cross_validate instead of cross_val_score to get more information about scores
+        # only use 1 CPU (n_jobs=1)
         all_scores = sklearn.model_selection.cross_validate(model, x_train, y_train, cv=cross_validation,
                     scoring='neg_mean_squared_error',  n_jobs=1, verbose=0, fit_params=None, pre_dispatch='2*n_jobs', return_train_score=True, return_estimator=True , error_score='raise')
         for phase in ['train', 'test']:

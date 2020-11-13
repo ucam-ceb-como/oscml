@@ -11,6 +11,7 @@ import sklearn.datasets
 import oscml.data.dataset
 import oscml.hpo.optunawrapper
 from oscml.utils.util import smiles2mol, concat
+import oscml.utils.util_sklearn
 
 
 def init(user_attrs):
@@ -28,21 +29,14 @@ def objective(trial):
     user_attrs, init_attrs = oscml.hpo.optunawrapper.get_attrs(trial)
 
     metric = 'mse' # user_attrs['metric']
+    cv = user_attrs['cv']
     dataset = user_attrs['dataset']
     info = oscml.data.dataset.get_dataset_info(dataset)
     
     df_train = init_attrs[0]
     df_val = init_attrs[1]
-    df_test = init_attrs[2]
+    #df_test = init_attrs[2]
     #transformer = init_attrs[3]
-
-
-    df_train = pd.concat([df_train, df_val])
-
-    #print(len(df_train), len(df_test))
-
-    cross_validation = 10
-    logging.info('cross_validation=' + str(cross_validation))
 
     fp_type = trial.suggest_categorical('type', ['morgan'])
     if fp_type == 'morgan':
@@ -55,10 +49,14 @@ def objective(trial):
 
     logging.info(concat('generating fingerprints, fp_type=', fp_type, ', fp_params=', fp_params))
 
-    x_train, y_train = get_Morgan_fingerprints(df_train, fp_params, info.column_smiles, info.column_target)
-    #logging.info(concat('x_train=', len(x_train), 'y_train=', len(y_train)))
-    x_test, y_test = get_Morgan_fingerprints(df_test, fp_params, info.column_smiles, info.column_target)
-    #logging.info(concat('x_test=', len(x_test), 'y_test=', len(y_test)))
+    if cv:
+        df_train = pd.concat([df_train, df_val])
+        x_train, y_train = get_Morgan_fingerprints(df_train, fp_params, info.column_smiles, info.column_target)
+        x_val = None
+        y_val = None
+    else:
+        x_train, y_train = get_Morgan_fingerprints(df_train, fp_params, info.column_smiles, info.column_target)
+        x_val, y_val = get_Morgan_fingerprints(df_val, fp_params, info.column_smiles, info.column_target)
 
     # see https://scikit-learn.org/stable/modules/generated/sklearn.ensemble.RandomForestRegressor.html#sklearn.ensemble.RandomForestRegressor
     # n_estimators=100, *, criterion='mse', max_depth=None, min_samples_split=2, min_samples_leaf=1, min_weight_fraction_leaf=0.0, max_features='auto', max_leaf_nodes=None, min_impurity_decrease=0.0, min_impurity_split=None, bootstrap=True, oob_score=False, n_jobs=None, random_state=None, verbose=0, warm_start=False, ccp_alpha=0.0, max_samples=None)
@@ -80,38 +78,15 @@ def objective(trial):
         'max_samples': max_samples,
     }
 
-    logging.info(concat('starting cross validation for RF regressor, params=', model_params))
-    regressor = sklearn.ensemble.RandomForestRegressor(**model_params, criterion=metric, random_state=0, verbose=0, n_jobs=1)
-
     # The default scoring value is None. In this case, the estimator’s default scorer (if available) is used.
     # The score function of RandomForestRegressor returns the coefficient of determination R^2 of the prediction,
     # see https://scikit-learn.org/stable/modules/generated/sklearn.ensemble.RandomForestRegressor.html#sklearn.ensemble.RandomForestRegressor
     # Therefore, we use here ‘neg_mean_squared_error’ and multiply with -1 to obtain MSE as objective value. 
-     
-    # use cross_validate instead of cross_val_score to get more information about scores
-    # only use 1 CPU (n_jobs=1)
-    all_scores = sklearn.model_selection.cross_validate(regressor, x_train, y_train, cv=cross_validation, 
-                scoring='neg_mean_squared_error',  n_jobs=1, verbose=0, fit_params=None, pre_dispatch='2*n_jobs', return_train_score=True, return_estimator=True , error_score='raise')    
+    logging.info(concat('starting RF regressor, params=', model_params))
+    model = sklearn.ensemble.RandomForestRegressor(**model_params, criterion=metric, random_state=0, verbose=0, n_jobs=1)
 
-    #print(all_scores)
-    for phase in ['train', 'test']:
-        scores = all_scores[phase + '_score']
-        mean = scores.mean()
-        std = scores.std()
-        logging.info(concat(phase, ': mean', mean, ', std=', std, ', scores=', scores))
-    
-    objective_value = - mean # from test scores
-
-    # check the objective value
-    """
-    score_sum = 0.
-    for reg in all_scores['estimator']:
-        y_pred = reg.predict(x_train)
-        metrics = oscml.utils.util.calculate_metrics(y_train, y_pred)
-        score_sum += metrics['mse']
-    mean_score = score_sum / len(all_scores['estimator'])
-    logging.info('mean score sum on entire train set=' + str(mean_score))
-    """
+    objective_value = oscml.utils.util_sklearn.train_and_test(x_train, y_train, x_val, y_val, model, cross_validation=cv, metric=metric)
+    logging.info(concat('objective value', objective_value))
 
     return objective_value
 

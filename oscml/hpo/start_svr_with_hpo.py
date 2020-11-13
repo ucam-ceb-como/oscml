@@ -48,6 +48,8 @@ def objective(trial):
             'useBondTypes': trial.suggest_categorical('useBondTypes', [True, False]),
         }
 
+    logging.info(concat('generating fingerprints, fp_type=', fp_type, ', fp_params=', fp_params))
+
     if cv:
         df_train = pd.concat([df_train, df_val])
         x_train,  y_train, scaler_svr_physical_data = oscml.models.model_kernel.preprocess_data_phys_and_struct(df_train, fp_params, train_size=1, column_smiles=info.column_smiles,
@@ -60,8 +62,6 @@ def objective(trial):
 
         x_val,  y_val, scaler_svr_physical_data = oscml.models.model_kernel.preprocess_data_phys_and_struct(df_val, fp_params, train_size=1, column_smiles=info.column_smiles,
                                 columns_phys=None, column_y=info.column_target, scaler_svr_physical_data=scaler_svr_physical_data)
-
-    logging.info(concat('generating fingerprints, fp_type=', fp_type, ', fp_params=', fp_params))
 
     model_params =  {
         'kernel': 'rbf_kernel_phys_and_struct',
