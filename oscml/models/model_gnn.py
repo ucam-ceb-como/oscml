@@ -179,9 +179,9 @@ class GNNSimpleLayer(pl.LightningModule):
 
 class GNNSimple(oscml.utils.util_lightning.OscmlModule):
     
-    def __init__(self, node_type_number, conv_dim_list, mlp_dim_list, padding_index, target_mean, target_std, optimizer, optimizer_lr, mlp_dropout_list=None):
+    def __init__(self, node_type_number, conv_dim_list, mlp_dim_list, padding_index, target_mean, target_std, optimizer, mlp_dropout_list=None):
 
-        super().__init__(optimizer, optimizer_lr, target_mean, target_std)
+        super().__init__(optimizer, target_mean, target_std)
         logging.info('initializing ' + str(locals()))
 
         self.save_hyperparameters()

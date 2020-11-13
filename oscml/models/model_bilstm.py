@@ -208,9 +208,9 @@ class Attention(pl.LightningModule):
     
 class BiLstmForPce(util_lightning.OscmlModule):
     
-    def __init__(self, number_of_subgraphs, subgraph_embedding_dim, lstm_hidden_dim, mlp_units, padding_index, target_mean, target_std, optimizer, optimizer_lr, mlp_dropouts=None):
+    def __init__(self, number_of_subgraphs, subgraph_embedding_dim, lstm_hidden_dim, mlp_units, padding_index, target_mean, target_std, optimizer, mlp_dropouts=None):
 
-        super().__init__(optimizer, optimizer_lr, target_mean, target_std)
+        super().__init__(optimizer, target_mean, target_std)
         logging.info('initializing ' + str(locals()))
 
         self.save_hyperparameters()

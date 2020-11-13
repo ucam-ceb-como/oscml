@@ -61,8 +61,6 @@ def objective(trial):
         'conv_dim_list': gnn_units,
         'mlp_dim_list': mlp_units,
         'mlp_dropout_list': mlp_dropouts,
-        'optimizer': trial.suggest_categorical('optimizer', ['Adam', 'RMSprop', 'SGD']), 
-        'optimizer_lr': trial.suggest_float('optimizer_lr', 1e-5, 1e-1, log=True),
         # additional non-hyperparameter values
         'node_type_number': node_type_number, #len(oscml.data.dataset_hopv15.ATOM_TYPES_HOPV15),
         'padding_index': 0,
@@ -72,7 +70,23 @@ def objective(trial):
 
     logging.info('model params=' + str(model_params))
 
-    model = oscml.models.model_gnn.GNNSimple(**model_params)
+
+    #torch.optim.Adam(params, lr=0.001, betas=(0.9, 0.999), eps=1e-08, weight_decay=0, amsgrad=False)
+    #torch.optim.SGD(params, lr=<required parameter>, momentum=0, dampening=0, weight_decay=0, nesterov=False)
+    #torch.optim.RMSprop(params, lr=0.01, alpha=0.99, eps=1e-08, weight_decay=0, momentum=0, centered=False)
+    name =  trial.suggest_categorical('name', ['Adam', 'RMSprop', 'SGD'])
+    optimizer = {
+        'name': name,
+        'lr': trial.suggest_loguniform('lr', 1e-5, 1e-1),
+        'weight_decay': trial.suggest_uniform('weight_decay', 0, 0.01)
+    }
+    if name in ['RMSprop', 'SGD']:
+        optimizer['momentum'] = trial.suggest_loguniform('momentum', 0, 0.01)
+    if name == 'SGD':    
+        optimizer['nesterov'] = trial.suggest_categorical('nesterov', [True, False])
+            
+            
+    model = oscml.models.model_gnn.GNNSimple(**model_params, optimizer=optimizer)
     
     # fit on training set and calculate metric on validation set
     trainer_params = {}
@@ -118,11 +132,13 @@ def fixed_trial():
         'mlp_units_1': 10,
         'mlp_units_2': 5,
         'mlp_dropout': 0.2,
-        'optimizer': 'Adam',
-        'optimizer_lr': 0.001,
+        'name': 'Adam',             # Adam, SGD, RMSProp
+        'lr': 0.001,
+        'momentum': 0,              # SGD and RMSProp only
+        'weight_decay': 0, 
+        'nesterov': False,          # SGD only
         #'batch_size': 20
     }
-
 
 def start():
     return oscml.hpo.optunawrapper.start_hpo(

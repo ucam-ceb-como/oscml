@@ -43,14 +43,13 @@ def get_standard_params_for_trainer(metric):
 
 class OscmlModule(pl.LightningModule):
 
-    def __init__(self, optimizer, optimizer_lr, target_mean, target_std):
+    def __init__(self, optimizer, target_mean, target_std):
         super().__init__()
 
-        logging.info(concat('initializing OscmlModule with', {
-                'optimizer': optimizer, 'optimizer_lr': optimizer_lr, 'target_mean': target_mean, 'target_std': target_std}))
+        params = {'optimizer': optimizer, 'target_mean': target_mean, 'target_std': target_std}
+        logging.info(concat('initializing OscmlModule with', params))
 
         self.optimizer = optimizer
-        self.optimizer_lr = optimizer_lr
         self.target_mean = target_mean
         self.target_std = target_std
         if self.target_mean:
@@ -61,9 +60,11 @@ class OscmlModule(pl.LightningModule):
         self.test_predictions = None
 
     def configure_optimizers(self):
-        #optimizer = torch.optim.Adam(self.parameters(), lr=self.learning_rate)
-        optimizer = getattr(torch.optim, self.optimizer)(self.parameters(), lr=self.optimizer_lr)
-        return optimizer
+        #optimizer = getattr(torch.optim, self.optimizer)(self.parameters(), lr=self.optimizer_lr)
+        name = self.optimizer.pop('name')
+        optimizer_instance = getattr(torch.optim, name)(self.parameters(), **self.optimizer)
+        logging.info('created optimizer=' + str(optimizer_instance))
+        return optimizer_instance
 
     def training_step(self, batch, batch_idx):
         x, y = batch
@@ -134,19 +135,3 @@ def shared_epoch_end(tensor_step_outputs, is_validation, epoch, inverse_transfor
     logging.info(concat('result=', result))
 
     return (result, y_complete, y_hat_complete)
-
-#deprecated
-"""
-def fit_model(data_loader_fct, data_loader_params, model, model_params, trainer_params):
-    
-    if 'logger' in trainer_params:
-        logging.info(concat('log dir=', trainer_params['logger'].log_dir))
-    else:
-        logging.warning('NO LOG DIR')
-    
-    model_instance = model(**model_params)
-    train_dl, val_dl = data_loader_fct(**data_loader_params)
-    trainer = pl.Trainer(**trainer_params)
-    trainer.fit(model_instance, train_dataloader=train_dl, val_dataloaders=val_dl)
-    return model_instance, trainer
-"""
