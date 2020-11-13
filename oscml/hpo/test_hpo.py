@@ -1,5 +1,6 @@
 import logging
 import os
+import time
 import unittest
 from unittest.mock import patch
 
@@ -9,7 +10,9 @@ import oscml.hpo.optunawrapper
 import oscml.hpo.start_bilstm_with_hpo
 import oscml.hpo.start_gnn_with_hpo
 import oscml.hpo.start_mnist_with_hpo
+import oscml.hpo.start_rf_with_hpo
 import oscml.utils.util
+
 
 class Test_HPO(unittest.TestCase):
 
@@ -23,16 +26,39 @@ class Test_HPO(unittest.TestCase):
             best_value = oscml.hpo.start_mnist_with_hpo.start()
             self.assertAlmostEqual(0.8828125, best_value, 4)
 
-    def test_train_gnn_hopv15_with_fixed_trial(self):
+    def test_train_gnn_cep25000_with_fixed_trial(self):
         testargs = ['test', 
             '--fixedtrial', 'True',
-            '--dataset', 'HOPV15'
+            '--dataset', 'CEP25000',
+            '--epochs', '1'
         ]
         with unittest.mock.patch('sys.argv', testargs):
             best_value = oscml.hpo.start_gnn_with_hpo.start()
 
-    def test_train_bilstm_cepdb_with_fixed_trial(self):
-        testargs = ['test', '--fixedtrial', 'True']
+    def test_train_gnn_hopv15_with_fixed_trial(self):
+        testargs = ['test', 
+            '--fixedtrial', 'True',
+            '--dataset', 'HOPV15',
+            '--epochs', '1'
+        ]
+        with unittest.mock.patch('sys.argv', testargs):
+            best_value = oscml.hpo.start_gnn_with_hpo.start()
+
+    def test_train_bilstm_cep25000_with_fixed_trial(self):
+        testargs = ['test', 
+            '--fixedtrial', 'True',
+            '--dataset', 'CEP25000',
+            '--epochs', '1'
+            ]
+        with unittest.mock.patch('sys.argv', testargs):
+            best_value = oscml.hpo.start_bilstm_with_hpo.start()
+
+    def test_train_bilstm_hopv15_with_fixed_trial(self):
+        testargs = ['test', 
+            '--fixedtrial', 'True',
+            '--dataset', 'HOPV15',
+            '--epochs', '2'
+            ]
         with unittest.mock.patch('sys.argv', testargs):
             best_value = oscml.hpo.start_bilstm_with_hpo.start()
 
@@ -112,19 +138,118 @@ class Test_HPO(unittest.TestCase):
                 direction='minimize',
                 resume=oscml.hpo.start_gnn_with_hpo.resume
             )
+    
+    def test_infinite_trials_and_time_out_gnn(self):
+        testargs = ['test', 
+            '--dataset', 'HOPV15',
+            '--epochs', '1',
+            '--timeout', '60'
+        ]
+        with unittest.mock.patch('sys.argv', testargs):
+            best_value = oscml.hpo.start_gnn_with_hpo.start()
+
+    def test_infinite_trials_and_time_out_bilstm(self):
+        testargs = ['test', 
+            '--dataset', 'CEP25000',
+            '--epochs', '1',
+            '--timeout', '60'
+        ]
+        with unittest.mock.patch('sys.argv', testargs):
+            best_value = oscml.hpo.start_gnn_with_hpo.start()
+
+    def objective_raising_error(self, trial):
+        #time.sleep(1)
+        raise RuntimeError('some fancy error')
+
+    def test_objective_raising_error(self):
+
+        testargs = ['test', 
+            '--dataset', 'CEP25000',
+            '--epochs', '1',
+            '--timeout', '20'
+        ]
+
+        caught_error = False
+        with unittest.mock.patch('sys.argv', testargs):
+            try:
+                best_value = oscml.hpo.optunawrapper.start_hpo(
+                        init=None, 
+                        objective=self.objective_raising_error, 
+                        metric='val_loss', 
+                        direction='minimize'
+                    )
+            except (RuntimeError, ValueError):
+                caught_error = True
+        
+        self.assertEqual(True, caught_error)
+    
+    def test_rf_hpo_fixed_trial(self):
+
+        testargs = ['test', 
+            '--fixedtrial', 'True',
+            '--dataset', 'HOPV15',
+        ]
+        with unittest.mock.patch('sys.argv', testargs):
+            best_value = oscml.hpo.optunawrapper.start_hpo(
+                    init=oscml.hpo.start_rf_with_hpo.init, 
+                    objective=oscml.hpo.start_rf_with_hpo.objective, 
+                    metric='mse', 
+                    direction='minimize',
+                    fixed_trial_params=oscml.hpo.start_rf_with_hpo.fixed_trial()
+                )
+
+    def test_rf_hpo_with_some_trials(self):
+
+        testargs = ['test', 
+            '--trials', '10',
+            '--dataset', 'HOPV15',
+        ]
+        with unittest.mock.patch('sys.argv', testargs):
+            best_value = oscml.hpo.optunawrapper.start_hpo(
+                    init=oscml.hpo.start_rf_with_hpo.init, 
+                    objective=oscml.hpo.start_rf_with_hpo.objective, 
+                    metric='mse', 
+                    direction='minimize',
+                    fixed_trial_params=oscml.hpo.start_rf_with_hpo.fixed_trial()
+                )
+
+    def test_rf_hpo_with_fixed_trial_and_negative_mean_score(self):
+
+        testargs = ['test', 
+                '--fixedtrial', 'True',
+                '--dataset', 'HOPV15',
+            ]
+        with unittest.mock.patch('sys.argv', testargs):
+            best_value = oscml.hpo.optunawrapper.start_hpo(
+                    init=oscml.hpo.start_rf_with_hpo.init, 
+                    objective=oscml.hpo.start_rf_with_hpo.objective, 
+                    metric='mse', 
+                    direction='minimize',
+                    fixed_trial_params={
+                        'type': 'morgan', 'nBits': 256, 'radius': 5, 'useChirality': True, 'useBondTypes': True,
+                        'n_estimators': 98, 'max_depth': 48, 'min_samples_split': 3, 'min_samples_leaf': 4, 'max_features': 1.0, 'bootstrap': False, 'max_samples': 10}
+
+                )
+
 
 if __name__ == '__main__':
 
     unittest.main()
 
-    
     #suite = unittest.TestSuite()
     #suite.addTest(Test_HPO('test_train_mnist_with_fixed_trial'))
+    #suite.addTest(Test_HPO('test_train_gnn_cep25000_with_fixed_trial'))
     #suite.addTest(Test_HPO('test_train_gnn_hopv15_with_fixed_trial'))
-    #suite.addTest(Test_HPO('test_train_bilstm_cepdb_with_fixed_trial'))
+    #suite.addTest(Test_HPO('test_train_bilstm_cep25000_with_fixed_trial'))
+    #suite.addTest(Test_HPO('test_train_bilstm_hopv15_with_fixed_trial'))
     #suite.addTest(Test_HPO('test_load_model_from_checkpoint'))
     #suite.addTest(Test_HPO('test_gnn_cep25000_ckpt_test_only'))
     #suite.addTest(Test_HPO('test_gnn_cep25000_ckpt_resume_training'))
+    #suite.addTest(Test_HPO('test_infinite_trials_and_time_out_gnn'))
+    #suite.addTest(Test_HPO('test_infinite_trials_and_time_out_bilstm'))
+    #suite.addTest(Test_HPO('test_objective_raising_error'))
+    #suite.addTest(Test_HPO('test_rf_hpo_fixed_trial'))
+    #suite.addTest(Test_HPO('test_rf_hpo_with_some_trials'))
+    #suite.addTest(Test_HPO('test_rf_hpo_with_fixed_trial_and_negative_mean_score'))
     #runner = unittest.TextTestRunner()
     #runner.run(suite)
-    

@@ -131,8 +131,6 @@ def get_dataloaders_internal(train, val, test, batch_size, mol2seq, transformer)
     batch_numbers = list(map(batch_func, [train_dl, val_dl, test_dl]))
     logging.info(concat('batch numbers - train val test=', batch_numbers))
  
-    if test is None:
-        return train_dl, val_dl 
     return train_dl, val_dl, test_dl
 
 def get_dataloaders(dataset, df_train, df_val, df_test, transformer, batch_size):

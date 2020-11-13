@@ -15,6 +15,10 @@ import oscml.utils.util
 from oscml.utils.util import concat
 import oscml.utils.util_lightning
 
+os.environ["SLURM_JOB_NAME"]="bash"
+
+
+
 
 class MetricsCallback(pl.Callback):
 
@@ -134,15 +138,30 @@ def create_study(direction, seed):
     study = optuna.create_study(direction=direction, pruner=pruner, sampler=sampler)
     return study
 
+def get_statistics(study):
+    running_trials = [t for t in study.trials if t.state == optuna.trial.TrialState.RUNNING]
+    completed_trials = [t for t in study.trials if t.state == optuna.trial.TrialState.COMPLETE]
+    pruned_trials = [t for t in study.trials if t.state == optuna.trial.TrialState.PRUNED]
+    failed_trials = [t for t in study.trials if t.state == optuna.trial.TrialState.FAIL]
+    return {'all': len(study.trials), 'running': len(running_trials), 'completed': len(completed_trials), 
+            'pruned': len(pruned_trials), 'failed': len(failed_trials)}
 
-def start_hpo(init, objective, metric, direction, fixed_trial_params=None, seed=200, resume=None, post_hpo=None, model_class=None):
+def callback_on_trial_finished(study, trial):
+    statistics = get_statistics(study)
+    logging.info(concat('current study statistics: number of trials=', statistics))
+    if statistics['failed'] >= 50:
+        logging.error('THE MAXIMUM NUMBER OF FAILED TRIALS HAS BEEN REACHED, AND THE STUDY WILL STOP NOW.')
+        study.stop()
+
+
+def start_hpo(init, objective, metric, direction, fixed_trial_params=None, seed=200, resume=None, post_hpo=None):
 
     print('current working directory=', os.getcwd())
     parser = argparse.ArgumentParser()
     parser.add_argument('--src', type=str, default='.')
     parser.add_argument('--dst', type=str, default='.')
     parser.add_argument('--epochs', type=int, default=1)
-    parser.add_argument('--trials', type=int, default=1)
+    parser.add_argument('--trials', type=int, default=None)
     parser.add_argument('--timeout', type=int, default=None, help='Stop study after the given number of second(s). If this argument is not set, the study is executed without time limitation.') 
     parser.add_argument('--jobs', type=int, default=1)
     parser.add_argument('--config', type=str, default=None)
@@ -187,7 +206,7 @@ def start_hpo(init, objective, metric, direction, fixed_trial_params=None, seed=
             logging.info('init finished')
 
         if args.fixedtrial:
-            assert args.trials == 1
+            assert args.trials == None or args.trials == 1
             trial = optuna.trial.FixedTrial(fixed_trial_params)
             for key, value in user_attrs.items():
                 trial.set_user_attr(key, value)
@@ -221,7 +240,7 @@ def start_hpo(init, objective, metric, direction, fixed_trial_params=None, seed=
 
             logging.info('starting HPO')
             study.optimize(decorator, n_trials=args.trials, n_jobs=args.jobs, timeout=args.timeout, 
-                    catch = (RuntimeError, ValueError, TypeError),
+                    catch = (RuntimeError, ValueError, TypeError), callbacks=[callback_on_trial_finished],
                     gc_after_trial=True)
             logging.info('finished HPO')
             path = log_dir + '/hpo_result.csv'
@@ -245,13 +264,9 @@ def log_and_save(study, path):
     df = study.trials_dataframe()
     df.to_csv(path)
 
-    pruned_trials = [t for t in study.trials if t.state == optuna.trial.TrialState.PRUNED]
-    complete_trials = [t for t in study.trials if t.state == optuna.trial.TrialState.COMPLETE]
-
-    message = 'Study statistics: number of finished / pruned / complete trials='
-    logging.info(concat(message, len(study.trials), len(pruned_trials), len(complete_trials)))
+    logging.info(concat('final study statistics: number of trials=', get_statistics(study)))
 
     trial = study.best_trial
-    logging.info('Best trial number =' + str(trial.number))
-    logging.info('Best trial value =' + str(trial.value))
-    logging.info('Best trial params=' + str(trial.params))
+    logging.info('best trial number =' + str(trial.number))
+    logging.info('best trial value =' + str(trial.value))
+    logging.info('best trial params=' + str(trial.params))

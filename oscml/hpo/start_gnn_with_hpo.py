@@ -30,12 +30,13 @@ def objective(trial):
     info = oscml.data.dataset.get_dataset_info(dataset)
     node_type_number = len(info.node_types)
 
-    train_dl, val_dl = oscml.models.model_gnn.get_dataloaders(dataset, df_train, df_val, df_test, 
+    train_dl, val_dl, test_dl = oscml.models.model_gnn.get_dataloaders(dataset, df_train, df_val, df_test, 
             transformer, batch_size=250)
 
     # define model and params   
+    embedding_dim = trial.suggest_int('embedding_dim', 8, 256)
+    gnn_units = [embedding_dim]
     gnn_layers =  trial.suggest_int('gnn_layers', 1, 4)
-    gnn_units = []
     max_units = 256
     for l in range(gnn_layers):
         suggested_units = trial.suggest_int('gnn_units_{}'.format(l), 10, max_units)
@@ -108,6 +109,7 @@ def resume(ckpt, src, log_dir, dataset, epochs, metric):
 
 def fixed_trial():
     return {
+        'embedding_dim':30,
         'gnn_layers': 2,
         'gnn_units_0': 30,
         'gnn_units_1': 20, 
@@ -129,8 +131,7 @@ def start():
             metric='val_loss', 
             direction='minimize',
             fixed_trial_params=fixed_trial(),
-            resume=resume,
-            model_class=oscml.models.model_gnn.GNNSimple)
+            resume=resume)
 
 
 if __name__ == '__main__':

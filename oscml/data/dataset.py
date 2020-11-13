@@ -7,6 +7,8 @@ import sklearn
 from time import sleep
 from tqdm import tqdm
 
+import oscml.data.dataset_cep
+import oscml.data.dataset_hopv15
 import oscml.features.weisfeilerlehman
 import oscml.models.model_gnn
 from oscml.utils.util import concat
@@ -91,26 +93,6 @@ def clean_data(df, mol2seq, column_smiles, column_target):
     
     return df_cleaned
 
-"""
-def get_dataloaders_with_calculated_normalized_data(df, column_smiles, column_target, args, train_size, test_size):
-    
-    mean = df[column_target].mean()
-    std = df[column_target].std(ddof=0)
-    logging.info(concat('target mean=', mean, 'target std=', std))
-    transformer = DataTransformer(column_target, mean, std)
-    
-    x_train, x_test = sklearn.model_selection.train_test_split(df, 
-                    train_size=(train_size + test_size), shuffle=True, random_state=0)
-    x_train, x_val = sklearn.model_selection.train_test_split(x_train, 
-                    train_size=train_size, shuffle=True, random_state=0)
-    logging.info(concat('train=', len(x_train), ', val=', len(x_val), ', test=', len(x_test)))
-    
-    train_dl, val_dl, test_dl = oscml.models.model_gnn.get_dataloaders(x_train, x_val, x_test, args, 
-                                                        column_smiles, transformer.transform)
-    
-    return train_dl, val_dl, test_dl, transformer.inverse_transform
-"""
-
 def store(df, filepath):
     logging.info('storing ' + filepath)
     # store without the internal index of Pandas Dataframe
@@ -118,8 +100,9 @@ def store(df, filepath):
 
 def split_data_frames_and_transform(df, column_smiles, column_target, train_size, test_size):
     
+    train_plus_val_size = len(df) - test_size
     df_train, df_test = sklearn.model_selection.train_test_split(df, 
-                    train_size=(train_size + test_size), shuffle=True, random_state=0)
+                    train_size=train_plus_val_size, shuffle=True, random_state=0)
     df_train, df_val = sklearn.model_selection.train_test_split(df_train, 
                     train_size=train_size, shuffle=True, random_state=0)
     logging.info(concat('train=', len(df_train), ', val=', len(df_val), ', test=', len(df_test)))
@@ -153,7 +136,7 @@ def get_dataframes(dataset, src, train_size=-1, test_size=-1):
         info = oscml.data.dataset.get_dataset_info(dataset)
         path = oscml.data.dataset.path_cepdb_25000(src)
         df_train, df_val, df_test = oscml.data.dataset.read_and_split(path)
-        # only for testing
+        # for testing only
         #df_train, df_val, df_test = df_train[:1500], df_val[:500], df_test[:500]
         transformer = oscml.data.dataset.create_transformer(df_train, 
                 column_target=info.column_target, column_x=info.column_smiles)
@@ -164,7 +147,7 @@ def get_dataframes(dataset, src, train_size=-1, test_size=-1):
         raise RuntimeError('unknown dataset=' + str(dataset))
 
 class DatasetInfo:
-    def __init__(self, id=None, column_smiles=None, column_target=None, mol2seq=None, node_types=None, max_molecule_size=0, max_smiles_length=0):
+    def __init__(self, id=None, column_smiles=None, column_target=None, mol2seq=None, node_types=None, max_sequence_length=None, max_molecule_size=0, max_smiles_length=0):
         self.id=id
         self.column_smiles = column_smiles
         self.column_target = column_target
@@ -176,6 +159,7 @@ class DatasetInfo:
             self.node_types = node_types
         else:
             self.node_types = collections.defaultdict(lambda:len(self.node_types))
+        self.max_sequence_length = max_sequence_length
         self.max_molecule_size = max_molecule_size
         self.max_smiles_length = max_smiles_length
     
@@ -187,11 +171,15 @@ class DatasetInfo:
         self.max_molecule_size = max(self.max_molecule_size, len(mol.GetAtoms()))
         self.max_smiles_length = max(self.max_smiles_length, len(smiles))
 
+    def number_subgraphs(self):
+        return len(self.mol2seq.fragment_dict)
+
     def as_dict(self):
         d = {}
         d['id'] = self.id
         d['column_smiles'] = self.column_smiles
         d['column_target'] = self.column_target
+        d['max_sequence_length'] = self.max_sequence_length
         d['max_molecule_size'] = self.max_molecule_size
         d['max_smiles_length'] = self.max_smiles_length
         d['node_types'] = dict(self.node_types)
