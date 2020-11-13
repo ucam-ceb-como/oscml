@@ -1,5 +1,5 @@
 #!/bin/bash
-# Slurm job submission script for Kinetics and SRM Engine Suite.
+# Slurm job submission script for OSCML.
 # It is being used by a wrapper script.
 # DO NOT EXECUTE THIS DIRECTLY ON THE COMMAND LINE!
 # DO NOT SUBMIT THIS DIRECTLY TO SLURM!
@@ -7,7 +7,7 @@
 #SBATCH -p como
 #SBATCH -A COMO-SL2-CPU
 #SBATCH --nodes=1                            # -N number of nodes
-#SBATCH --ntasks=1                           # total, <=number of nodes*16
+#SBATCH --ntasks=1                           # total, <=number of nodes*cpus-per-task
 #SBATCH --cpus-per-task=20
 #SBATCH --cores-per-socket=10
 #! How much real memory is required per node (in MB)? Not setting this
@@ -20,7 +20,7 @@
 
 
 CMD="python $@"
-echo "$CMD"
+echo -e "\nExecuting command:\n$CMD\n==================\n"
 eval $CMD
 
 
