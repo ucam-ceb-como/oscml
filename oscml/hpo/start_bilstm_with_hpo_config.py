@@ -3,16 +3,15 @@ import types
 
 import oscml.data.dataset
 import oscml.data.dataset_cep
+import oscml.data.dataset_hopv15
 import oscml.hpo.optunawrapper
 import oscml.models.model_bilstm
 
 
 def init(user_attrs):
-
     # read data and preprocess, e.g. standarization, splitting into train, validation and test set
     src = user_attrs['src']
     dataset = user_attrs['dataset']
-
     return oscml.data.dataset.get_dataframes(dataset=dataset, src=src, train_size=283, test_size=30)
 
 
@@ -33,21 +32,23 @@ class Objective(object):
 
     def __call__(self, trial):
 
-        _, init_attrs = oscml.hpo.optunawrapper.get_attrs(trial)
+        user_attrs, init_attrs = oscml.hpo.optunawrapper.get_attrs(trial)
+
+        dataset = user_attrs['dataset']
         df_train = init_attrs[0]
         df_val = init_attrs[1]
-        df_train = init_attrs[2]
+        df_test = None
         transformer = init_attrs[3]
 
-        # define data loader and params
-        dataset = oscml.data.dataset_hopv15.HOPV15
-        train_dl, val_dl, test_dl = oscml.data.model_gnn.get_dataloaders(dataset, df_train, df_val, df_test,
-                                                                         transformer, batch_size=20)
+        info = oscml.data.dataset.get_dataset_info(dataset)
+        max_sequence_length = info.max_sequence_length
+        number_subgraphs = info.number_subgraphs()
+        train_dl, val_dl, _ = oscml.models.model_bilstm.get_dataloaders(dataset, df_train, df_val, df_test,
+            transformer, batch_size=20, max_sequence_length=max_sequence_length)
 
         # define models and params
         subgraph_embedding_dim = trial.suggest_int('subgraph_embedding_dim', self.embedding_dimension['lower'],
                                                    self.embedding_dimension['upper'])
-
         lstm_hidden_dim = subgraph_embedding_dim
         mlp_layers = 1 + trial.suggest_int('mlp_hidden_layers', self.mlp_hidden_layers['lower'], self.mlp_hidden_layers['upper'])
         mlp_units = []
@@ -72,7 +73,7 @@ class Objective(object):
             'optimizer_lr': trial.suggest_float('optimizer_lr', self.learning_rate['lower'], self.learning_rate['upper'],
                                                 log=True),
             # additional non-hyperparameter values
-            'number_of_subgraphs': 60,
+            'number_of_subgraphs': number_subgraphs,
             'padding_index': 0,
             'target_mean': transformer.target_mean,
             'target_std': transformer.target_std,
@@ -89,6 +90,33 @@ class Objective(object):
         return metric_value
 
 
+def resume(ckpt, src, log_dir, dataset, epochs, metric):
+    model_class = oscml.models.model_bilstm.BiLstmForPce
+    model = model_class.load_from_checkpoint(ckpt)
+
+    info = oscml.data.dataset.get_dataset_info(dataset)
+
+    transformer = oscml.data.dataset.DataTransformer(info.column_target, model.target_mean,
+                                                     model.target_std, info.column_smiles)
+
+    max_sequence_length = info.max_sequence_length
+    df_train, df_val, df_test, _ = oscml.data.dataset.get_dataframes(dataset, src=src, train_size=283, test_size=30)
+    train_dl, val_dl, test_dl = oscml.models.model_bilstm.get_dataloaders(dataset, df_train, df_val, df_test,
+                                                                          transformer, batch_size=20,
+                                                                          max_sequence_length=max_sequence_length)
+
+    if epochs > 0:
+        trainer_params = {}
+        result = oscml.hpo.optunawrapper.fit_or_test(model, train_dl, val_dl, None, trainer_params,
+                                                     epochs, metric, log_dir)
+
+    else:
+        trainer_params = {}
+        result = oscml.hpo.optunawrapper.fit_or_test(model, None, None, test_dl, trainer_params,
+                                                     epochs, metric, log_dir)
+
+    return result
+
 def fixed_trial():
     return {
         'subgraph_embedding_dim': 128,
@@ -103,7 +131,15 @@ def fixed_trial():
         #'batch_size': 250
     }
 
+def start():
+    return oscml.hpo.optunawrapper.start_hpo(
+        init=init,
+        objective=Objective,
+        metric='val_loss',
+        direction='minimize',
+        fixed_trial_params=fixed_trial(),
+        resume=resume
+    )
 
 if __name__ == '__main__':
-    oscml.hpo.optunawrapper.start_hpo(init=init, objective=Objective, metric='val_loss', direction='minimize',
-                                      fixed_trial_params=fixed_trial())
+    start()
