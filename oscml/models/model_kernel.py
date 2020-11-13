@@ -88,7 +88,7 @@ def rbf_kernel_phys_and_struct(X, Y=None, gamma_structural=0., gamma_physical=0.
     return K
 
 def preprocess_data_phys_and_struct(df, params_fingerprint, train_size, column_smiles,
-                                    columns_phys, column_y):
+                                    columns_phys, column_y, scaler_svr_physical_data = None):
     df_copy = df.copy()
 
     if column_smiles:
@@ -101,9 +101,13 @@ def preprocess_data_phys_and_struct(df, params_fingerprint, train_size, column_s
 
     scaler_svr_physical_data = None
     if columns_phys:
-        scaler_svr_physical_data = sklearn.preprocessing.StandardScaler()
         x_phys = df_copy[columns_phys]
-        x_phys = scaler_svr_physical_data.fit_transform(x_phys)
+        if scaler_svr_physical_data:
+            x_phys = scaler_svr_physical_data.transform(x_phys)
+        else:
+            scaler_svr_physical_data = sklearn.preprocessing.StandardScaler()
+            x_phys = scaler_svr_physical_data.fit_transform(x_phys)
+
         log('mean of physical data=', scaler_svr_physical_data.mean_)
         log('variance of physical data=', scaler_svr_physical_data.var_)
         log('physical data:', type(x_phys), x_phys.shape)

@@ -170,6 +170,7 @@ def start_hpo(init, objective, metric, direction, fixed_trial_params=None, seed=
     parser.add_argument('--ckpt', type=str)
     parser.add_argument('--dataset', type=str)
     parser.add_argument('--seed', type=int)
+    parser.add_argument('--cv', type=int, default=None)
     args = parser.parse_args()
 
     # init file logging

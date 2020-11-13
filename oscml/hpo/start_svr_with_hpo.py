@@ -10,6 +10,7 @@ import sklearn.datasets
 
 import oscml.data.dataset
 import oscml.hpo.optunawrapper
+import oscml.utils.util_sklearn
 from oscml.utils.util import smiles2mol, concat
 import oscml.models.model_kernel
 
@@ -28,21 +29,14 @@ def objective(trial):
     user_attrs, init_attrs = oscml.hpo.optunawrapper.get_attrs(trial)
 
     metric = 'mse' # user_attrs['metric']
+    cv = user_attrs['cv']
     dataset = user_attrs['dataset']
     info = oscml.data.dataset.get_dataset_info(dataset)
 
     df_train = init_attrs[0]
     df_val = init_attrs[1]
-    df_test = init_attrs[2]
-    #transformer = init_attrs[3]
-
-
-    df_train = pd.concat([df_train, df_val])
-
-    #print(len(df_train), len(df_test))
-
-    cross_validation = 10
-    logging.info('cross_validation=' + str(cross_validation))
+    #df_test = init_attrs[2]
+    #transformer = init_attrs[3] 
 
     fp_type = trial.suggest_categorical('type', ['morgan'])
     if fp_type == 'morgan':
@@ -54,8 +48,18 @@ def objective(trial):
             'useBondTypes': trial.suggest_categorical('useBondTypes', [True, False]),
         }
 
-    x_train,  y_train, scaler_svr_physical_data = oscml.models.model_kernel.preprocess_data_phys_and_struct(df_train, fp_params, train_size=1, column_smiles=info.column_smiles,
+    if cv:
+        df_train = pd.concat([df_train, df_val])
+        x_train,  y_train, scaler_svr_physical_data = oscml.models.model_kernel.preprocess_data_phys_and_struct(df_train, fp_params, train_size=1, column_smiles=info.column_smiles,
                                 columns_phys=None, column_y=info.column_target)
+        x_val = None
+        y_val = None
+    else:
+        x_train,  y_train, scaler_svr_physical_data = oscml.models.model_kernel.preprocess_data_phys_and_struct(df_train, fp_params, train_size=1, column_smiles=info.column_smiles,
+                                columns_phys=None, column_y=info.column_target)
+
+        x_val,  y_val, scaler_svr_physical_data = oscml.models.model_kernel.preprocess_data_phys_and_struct(df_val, fp_params, train_size=1, column_smiles=info.column_smiles,
+                                columns_phys=None, column_y=info.column_target, scaler_svr_physical_data=scaler_svr_physical_data)
 
     logging.info(concat('generating fingerprints, fp_type=', fp_type, ', fp_params=', fp_params))
 
@@ -66,31 +70,11 @@ def objective(trial):
         'gamma_structural': trial.suggest_loguniform('gamma_structural',0.001,20.0)
     }
 
-    logging.info(concat('starting cross validation for SVR regressor, params=', model_params))
+    logging.info(concat('starting SVR regressor, params=', model_params))
     model = oscml.models.model_kernel.SVRWrapper(**model_params)
 
-    all_scores = sklearn.model_selection.cross_validate(model, x_train, y_train, cv=cross_validation,
-                scoring='neg_mean_squared_error',  n_jobs=1, verbose=0, fit_params=None, pre_dispatch='2*n_jobs', return_train_score=True, return_estimator=True , error_score='raise')
-
-    #print(all_scores)
-    for phase in ['train', 'test']:
-        scores = all_scores[phase + '_score']
-        mean = scores.mean()
-        std = scores.std()
-        logging.info(concat(phase, ': mean', mean, ', std=', std, ', scores=', scores))
-
-    objective_value = - mean # from test scores
-
-    # check the objective value
-    """
-    score_sum = 0.
-    for reg in all_scores['estimator']:
-        y_pred = reg.predict(x_train)
-        metrics = oscml.utils.util.calculate_metrics(y_train, y_pred)
-        score_sum += metrics['mse']
-    mean_score = score_sum / len(all_scores['estimator'])
-    logging.info('mean score sum on entire train set=' + str(mean_score))
-    """
+    objective_value = oscml.utils.util_sklearn.train_and_test(x_train, y_train, x_val, y_val, model, cross_validation=cv, metric=metric)
+    logging.info(concat('objective value', objective_value))
 
     return objective_value
 
