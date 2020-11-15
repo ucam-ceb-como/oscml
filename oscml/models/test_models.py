@@ -123,7 +123,7 @@ if __name__ == '__main__':
     unittest.main()
 
     #suite = unittest.TestSuite()
-    # suite.addTest(TestModels('test_bilstm_dataloader_for_hopv15'))
+    #suite.addTest(TestModels('test_bilstm_dataloader_for_hopv15'))
     # suite.addTest(TestModels('test_bilstm_dataloader_for_cep25000'))
     #runner = unittest.TextTestRunner()
     #runner.run(suite)

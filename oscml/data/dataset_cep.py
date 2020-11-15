@@ -146,6 +146,29 @@ def store_CEP_cleaned_and_stratified(src, dst, number_samples, threshold_skip, t
         oscml.data.dataset.store(df, dst)
     return df
 
+def store_CEP_cleaned_and_random(src, dst, number_samples, threshold_skip, threshold_downsampling = None, threshold_percentage = None, random_state=0):
+    logging.info('reading data from ' + src)
+    df = pd.read_csv(src)
+    df = skip_all_small_pce_values(df, threshold_skip)
+    if threshold_downsampling:
+        df = sample_down_small_pce_values(df, threshold_downsampling, threshold_percentage)
+    size_train_val = number_samples[0] + number_samples[1]
+    size_all = size_train_val + number_samples[2]
+    df_train_plus_val_plus_test, _ = train_test_split(df, train_size = size_all, shuffle=True, random_state=random_state)
+    df_train_plus_val, df_test = train_test_split(df_train_plus_val_plus_test, train_size=size_train_val, shuffle=True, random_state=random_state)
+    df_train, df_val = train_test_split(df_train_plus_val, train_size=number_samples[0], shuffle=True, random_state=random_state)
+    df_train = df_train.copy()
+    df_val = df_val.copy()
+    df_test = df_test.copy()
+    df_train['ml_phase'] = 'train'
+    df_val['ml_phase'] = 'val'
+    df_test['ml_phase'] = 'test'
+    df = pd.concat([df_train, df_val, df_test])
+    logging.info('reading finished, number of molecules=' + str(len(df)))
+    if dst:
+        oscml.data.dataset.store(df, dst)
+    return df
+
 def create_dataset_info_for_CEP25000():
 
     # the dictionary was created and logged during preprossing the entire CEPDB

@@ -120,21 +120,24 @@ def read_and_split(filepath, split_column='ml_phase'):
     logging.info(concat('split data into sets of size (train val test)=', len(df_train), len(df_val), len(df_test)))
     return df_train, df_val, df_test
 
-def get_dataframes(dataset, src, train_size=-1, test_size=-1):
+def get_dataframes(dataset, src, train_size=-1, test_size=-1, path=None):
 
     if dataset == oscml.data.dataset_hopv15.HOPV15:
-        path = oscml.data.dataset.path_hopv_15(src)
+        if not path:
+            path = oscml.data.dataset.path_hopv_15(src)
         df = oscml.data.dataset_hopv15.read(path)
-        df = oscml.data.dataset.clean_data(df, None, 'smiles', 'pce')
+        info = oscml.data.dataset.get_dataset_info(dataset)
+        df = oscml.data.dataset.clean_data(df, None, info.column_smiles, info.column_target)
 
         df_train, df_val, df_test, transformer = oscml.data.dataset.split_data_frames_and_transform(
-                df, column_smiles='smiles', column_target='pce', train_size=train_size, test_size=test_size)
+                df, column_smiles=info.column_smiles, column_target=info.column_target, train_size=train_size, test_size=test_size)
     
         return (df_train, df_val, df_test, transformer)
 
     elif dataset == oscml.data.dataset_cep.CEP25000:
+        if not path:
+            path = oscml.data.dataset.path_cepdb_25000(src)
         info = oscml.data.dataset.get_dataset_info(dataset)
-        path = oscml.data.dataset.path_cepdb_25000(src)
         df_train, df_val, df_test = oscml.data.dataset.read_and_split(path)
         # for testing only
         #df_train, df_val, df_test = df_train[:1500], df_val[:500], df_test[:500]
