@@ -153,8 +153,22 @@ def callback_on_trial_finished(study, trial):
         logging.error('THE MAXIMUM NUMBER OF FAILED TRIALS HAS BEEN REACHED, AND THE STUDY WILL STOP NOW.')
         study.stop()
 
-
 def start_hpo(init, objective, metric, direction, fixed_trial_params=None, seed=200, resume=None, post_hpo=None):
+
+    def none_or_str(value):
+        if value == 'None':
+            return None
+        return value
+
+
+    def bool_or_str(value):
+        if value == 'False':
+            return False
+        elif value == 'True':
+            return True        
+        return value
+
+
 
     print('current working directory=', os.getcwd())
     parser = argparse.ArgumentParser()
@@ -171,9 +185,9 @@ def start_hpo(init, objective, metric, direction, fixed_trial_params=None, seed=
     parser.add_argument('--dataset', type=str)
     parser.add_argument('--seed', type=int)
     parser.add_argument('--cv', type=int, default=None)
-    parser.add_argument('--storage', type=str, default=None)
-    parser.add_argument('--study_name', type=str, default=None)
-    parser.add_argument('--load_if_exists', type=bool, default=False)
+    parser.add_argument('--storage', type=none_or_str, default=None)
+    parser.add_argument('--study_name', type=none_or_str, default=None)
+    parser.add_argument('--load_if_exists', type=bool_or_str, default=False)
     args = parser.parse_args()
 
     # init file logging
