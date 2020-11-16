@@ -70,7 +70,12 @@ then
 elif [ "$MODEL" = "BILSTM" ]
 then
      ml_exec=oscml/hpo/start_bilstm_with_hpo.py
-
+elif [ "$MODEL" = "RF" ]
+then
+     ml_exec=oscml/hpo/start_rf_with_hpo.py
+elif [ "$MODEL" = "BILSTM_DISTR" ]
+then
+     ml_exec=oscml/hpo/start_bilstm_with_hpo_and_storage.py
 else
     echo "Unknown model choice: "$MODEL
     exit -1
