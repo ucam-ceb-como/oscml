@@ -12,6 +12,7 @@ function usage {
     echo "  -m  (BILSTM | SVR | RF | GNN |    : ML model to train."
     echo "       DISTR_BILSTM)"
     echo "  -d  (HOPV15 | CEP25000)           : Dataset."
+    echo "  -e  ( nr of epochs)               : Number of epochs."
     echo "  -s  (None | sqlite:///filename.db): Storage for distributed hpo."
     echo "  -n  (None | <your name>)          : Study name for distributed hpo."
     echo "  -l  (False | True)                : Load study from the storage"
@@ -34,6 +35,7 @@ fi
 STORAGE=None
 STUDY_NAME=None
 LOAD_IF_EXISTS=False
+EPOCHS=1
 
 while [[ $# > 0 ]]
 do
@@ -47,6 +49,7 @@ case $key in
     -s) STORAGE=$2; shift;;
     -n) STUDY_NAME=$2; shift;;
     -l) LOAD_IF_EXISTS=$2; shift;;
+    -e) EPOCHS=$2; shift;;
     *)
     usage
     # otherwise do nothing
@@ -108,7 +111,7 @@ echo
 
 echo "Submitting job to Slurm..."
 
-sbatch --mail-user=$usremailadr --job-name=$MODEL --time=$WALLT ./SLURM_runhpo_csd3.sh $ml_exec --dataset $DATASET --timeout $WALLTS --jobs -1 --storage $STORAGE --study_name $STUDY_NAME --load_if_exists $LOAD_IF_EXISTS
+sbatch --mail-user=$usremailadr --job-name=$MODEL --time=$WALLT ./SLURM_runhpo_csd3.sh $ml_exec --dataset $DATASET --timeout $WALLTS --jobs -1 --storage $STORAGE --study_name $STUDY_NAME --load_if_exists $LOAD_IF_EXISTS --epochs $EPOCHS
 
 
 echo "The tests will be run on a single node of the skylake partition using 20 cores."
