@@ -35,11 +35,11 @@ def get_attrs(trial):
         user_attrs = trial.user_attrs
     else:
         user_attrs = trial.study.user_attrs
-    
+
     init_attrs = None
     if 'init_attrs' in user_attrs:
         init_attrs = user_attrs['init_attrs']
-    
+
     return user_attrs, init_attrs
 
 
@@ -55,32 +55,32 @@ def fit(model_instance, train_dl, val_dl, trainer_params, trial):
 
     trial_number = trial.number
 
-    return fit_or_test(model_instance, train_dl, val_dl, None, trainer_params, 
+    return fit_or_test(model_instance, train_dl, val_dl, None, trainer_params,
                 epochs, metric, log_dir, trial, trial_number, n_trials)
 
 
-def fit_or_test(model, train_dl, val_dl, test_dl, trainer_params, 
+def fit_or_test(model, train_dl, val_dl, test_dl, trainer_params,
                 epochs, metric, log_dir, trial=None, trial_number=-1, n_trials=0):
 
     # create callbacks for Optuna for receiving the metric values from Lightning and for
     # pruning trials
     metrics_callback = MetricsCallback()
-    callbacks = [metrics_callback] 
+    callbacks = [metrics_callback]
     if trial:
         pruning_callback = optuna.integration.PyTorchLightningPruningCallback(trial, monitor=metric)
         callbacks.append(pruning_callback)
-        
+
     logging.info(concat('model for trial', trial_number, '=', model))
- 
+
 
     # create standard params for Ligthning trainer
     trainer_params = oscml.utils.util_lightning.get_standard_params_for_trainer(metric)
 
     # create Lightning metric logger that logs metric values for each trial in its own csv file
     # version='' means that no version-subdirectory is created
-    csv_logger = pl.loggers.CSVLogger(save_dir=log_dir, 
-                                      name='trial_' + str(trial_number), 
-                                      version='')     
+    csv_logger = pl.loggers.CSVLogger(save_dir=log_dir,
+                                      name='trial_' + str(trial_number),
+                                      version='')
 
     # put all trainer params together
     trainer_params.update({
@@ -90,7 +90,7 @@ def fit_or_test(model, train_dl, val_dl, test_dl, trainer_params,
     })
 
     logging.info(concat('params for Lightning trainer=', trainer_params))
-    
+
     trainer = pl.Trainer(**trainer_params)
 
     if epochs > 0:
@@ -127,7 +127,7 @@ def create_objective_decorator(objective, n_trials):
         return decorator
 
 
-def create_study(direction, seed):
+def create_study(direction, seed, **kwargs):
     # pruner = optuna.pruners.MedianPruner()
     # pruner = optuna.pruners.MedianPruner(n_startup_trials=5, n_warmup_steps=30, interval_steps=10)
     # pruner = optuna.pruners.PercentilePruner(25.0, n_startup_trials=5, n_warmup_steps=30, interval_steps=10) #keep top 25%
@@ -135,7 +135,7 @@ def create_study(direction, seed):
     #pruner = optuna.pruners.HyperbandPruner(min_resource=1, max_resource=epochs, reduction_factor=3)
     pruner = None
     sampler = optuna.samplers.TPESampler(consider_prior=True, n_startup_trials=10, seed=seed)
-    study = optuna.create_study(direction=direction, pruner=pruner, sampler=sampler)
+    study = optuna.create_study(direction=direction, pruner=pruner, sampler=sampler, **kwargs)
     return study
 
 def get_statistics(study):
@@ -143,7 +143,7 @@ def get_statistics(study):
     completed_trials = [t for t in study.trials if t.state == optuna.trial.TrialState.COMPLETE]
     pruned_trials = [t for t in study.trials if t.state == optuna.trial.TrialState.PRUNED]
     failed_trials = [t for t in study.trials if t.state == optuna.trial.TrialState.FAIL]
-    return {'all': len(study.trials), 'running': len(running_trials), 'completed': len(completed_trials), 
+    return {'all': len(study.trials), 'running': len(running_trials), 'completed': len(completed_trials),
             'pruned': len(pruned_trials), 'failed': len(failed_trials)}
 
 def callback_on_trial_finished(study, trial):
@@ -153,8 +153,22 @@ def callback_on_trial_finished(study, trial):
         logging.error('THE MAXIMUM NUMBER OF FAILED TRIALS HAS BEEN REACHED, AND THE STUDY WILL STOP NOW.')
         study.stop()
 
-
 def start_hpo(init, objective, metric, direction, fixed_trial_params=None, seed=200, resume=None, post_hpo=None):
+
+    def none_or_str(value):
+        if value == 'None':
+            return None
+        return value
+
+
+    def bool_or_str(value):
+        if value == 'False':
+            return False
+        elif value == 'True':
+            return True        
+        return value
+
+
 
     print('current working directory=', os.getcwd())
     parser = argparse.ArgumentParser()
@@ -162,7 +176,7 @@ def start_hpo(init, objective, metric, direction, fixed_trial_params=None, seed=
     parser.add_argument('--dst', type=str, default='.')
     parser.add_argument('--epochs', type=int, default=1)
     parser.add_argument('--trials', type=int, default=None)
-    parser.add_argument('--timeout', type=int, default=None, help='Stop study after the given number of second(s). If this argument is not set, the study is executed without time limitation.') 
+    parser.add_argument('--timeout', type=int, default=None, help='Stop study after the given number of second(s). If this argument is not set, the study is executed without time limitation.')
     parser.add_argument('--jobs', type=int, default=1)
     parser.add_argument('--config', type=str, default=None)
     parser.add_argument('--model', type=str, default=None)
@@ -171,6 +185,9 @@ def start_hpo(init, objective, metric, direction, fixed_trial_params=None, seed=
     parser.add_argument('--dataset', type=str)
     parser.add_argument('--seed', type=int)
     parser.add_argument('--cv', type=int, default=None)
+    parser.add_argument('--storage', type=none_or_str, default=None)
+    parser.add_argument('--study_name', type=none_or_str, default=None)
+    parser.add_argument('--load_if_exists', type=bool_or_str, default=False)
     args = parser.parse_args()
 
     # init file logging
@@ -183,7 +200,7 @@ def start_hpo(init, objective, metric, direction, fixed_trial_params=None, seed=
 
     #optuna.logging.enable_default_handler()
     #optuna.logging.enable_propagation()  # Propagate logs to the root logger.
-    #optuna.logging.disable_default_handler() 
+    #optuna.logging.disable_default_handler()
     #optuna.logging.set_verbosity(optuna.logging.DEBUG)
 
     if args.seed:
@@ -216,16 +233,16 @@ def start_hpo(init, objective, metric, direction, fixed_trial_params=None, seed=
             logging.info(concat('finished objective function call with ', metric, '=', best_value))
         elif args.ckpt:
             resume_attrs = {
-                'ckpt': args.ckpt, 
-                'src': args.src, 
-                'log_dir': log_dir, 
+                'ckpt': args.ckpt,
+                'src': args.src,
+                'log_dir': log_dir,
                 'dataset': args.dataset,
-                'epochs': args.epochs, 
+                'epochs': args.epochs,
                 'metric': metric
             }
             best_value = resume(**resume_attrs)
         else:
-            study = create_study(direction, seed)
+            study = create_study(direction=direction, seed=seed, storage=args.storage, study_name=args.study_name, load_if_exists=args.load_if_exists)
             for key, value in user_attrs.items():
                 study.set_user_attr(key, value)
 
@@ -240,7 +257,7 @@ def start_hpo(init, objective, metric, direction, fixed_trial_params=None, seed=
             decorator = create_objective_decorator(objective_fct, args.trials)
 
             logging.info('starting HPO')
-            study.optimize(decorator, n_trials=args.trials, n_jobs=args.jobs, timeout=args.timeout, 
+            study.optimize(decorator, n_trials=args.trials, n_jobs=args.jobs, timeout=args.timeout,
                     catch = (RuntimeError, ValueError, TypeError), callbacks=[callback_on_trial_finished],
                     gc_after_trial=True)
             logging.info('finished HPO')
@@ -261,7 +278,7 @@ def start_hpo(init, objective, metric, direction, fixed_trial_params=None, seed=
 def log_and_save(study, path):
 
     logging.info('Saving HPO results to ' + path)
-      
+
     df = study.trials_dataframe()
     df.to_csv(path)
 
