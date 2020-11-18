@@ -14,9 +14,6 @@
 		"radius":[2, 3, 4, 5],
 		"use_bond_type":["True", "False"],
 		"use_chirality":["True", "False"]
-	},
-	"training_specific":{
-		"number_of_cross_validations":{"type":"int","value":10}
 	}
 }
 }

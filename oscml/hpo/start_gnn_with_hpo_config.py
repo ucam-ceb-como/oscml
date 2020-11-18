@@ -15,6 +15,15 @@ def init(user_attrs):
     dataset = user_attrs['dataset']
     return oscml.data.dataset.get_dataframes(dataset=dataset, src=src, train_size=283, test_size=30)
 
+def parseCategoricalBoolean(config_list):
+    boolean_list = []
+    for s in config_list:
+        if s == "True":
+            boolean_list.append(True)
+        else:
+            boolean_list.append(False)
+
+    return boolean_list
 
 class Objective(object):
     # initialize the training data for objective function
@@ -32,6 +41,9 @@ class Objective(object):
         # training
         self.learning_rate = config['training_specific']['learning_rate']
         self.optimiser = config['training_specific']['optimiser']
+        self.weight_decay = config['training_specific']['weight_decay']
+        self.momentum = config['training_specific']['momentum']
+        self.nesterov = parseCategoricalBoolean(config['training_specific']['nesterov'])
 
     def __call__(self, trial):
 
@@ -53,18 +65,17 @@ class Objective(object):
 
         # define model and params
         embedding_dim = trial.suggest_int('embedding_dim', self.embedding_dimension['lower'], self.embedding_dimension['upper'])
-        gnn_units = [embedding_dim]
-        gnn_layers = trial.suggest_int('gnn_layers', self.graph_conv_number_layers['lower'], self.graph_conv_number_layers['upper'])
+        conv_dims = []
+        conv_layers = trial.suggest_int('conv_layers', self.graph_conv_number_layers['lower'], self.graph_conv_number_layers['upper'])
         max_units = 256
-        for l in range(gnn_layers):
-            suggested_units = trial.suggest_int('gnn_units_{}'.format(l), self.graph_conv_number_neurons['lower'], max_units)
-            #suggested_units = trial.suggest_int('gnn_units_{}'.format(l), 10, max_units)
-            gnn_units.append(suggested_units)
+        for l in range(conv_layers):
+            suggested_units = trial.suggest_int('conv_dims_{}'.format(l), self.graph_conv_number_neurons['lower'], max_units)
+            conv_dims.append(suggested_units)
             max_units = suggested_units
 
         mlp_layers =  trial.suggest_int('mlp_hidden_layers', self.mlp_hidden_layers['lower'], self.mlp_hidden_layers['upper'])
         # the number of units of the last gnn layer is the input dimension for the mlp
-        mlp_units = [gnn_units[-1]]
+        mlp_units = []
         mlp_dropout_rate = trial.suggest_float('mlp_dropout', self.mlp_dropout['lower'], self.mlp_dropout['upper'])
         mlp_dropouts = []
         for l in range(mlp_layers):
@@ -78,11 +89,10 @@ class Objective(object):
         mlp_units.append(1)
 
         model_params =  {
-            'conv_dim_list': gnn_units,
-            'mlp_dim_list': mlp_units,
-            'mlp_dropout_list': mlp_dropouts,
-            'optimizer': trial.suggest_categorical('optimiser', self.optimiser), 
-            'optimizer_lr': trial.suggest_float('learning_rate', self.learning_rate['lower'], self.learning_rate['upper'], log=True),
+            'embedding_dim': embedding_dim,
+            'conv_dims': conv_dims,
+            'mlp_units': mlp_units,
+            'mlp_dropouts': mlp_dropouts,
             # additional non-hyperparameter values
             'node_type_number': node_type_number,
             'padding_index': 0,
@@ -92,11 +102,25 @@ class Objective(object):
 
         logging.info('model params=' + str(model_params))
 
-        model_instance = oscml.models.model_gnn.GNNSimple(**model_params)
+        # torch.optim.Adam(params, lr=0.001, betas=(0.9, 0.999), eps=1e-08, weight_decay=0, amsgrad=False)
+        # torch.optim.SGD(params, lr=<required parameter>, momentum=0, dampening=0, weight_decay=0, nesterov=False)
+        # torch.optim.RMSprop(params, lr=0.01, alpha=0.99, eps=1e-08, weight_decay=0, momentum=0, centered=False)
+        name = trial.suggest_categorical('name', self.optimiser)
+        optimiser = {
+            'name': name,
+            'lr': trial.suggest_loguniform('lr', self.learning_rate['lower'], self.learning_rate['upper']),
+            'weight_decay': trial.suggest_uniform('weight_decay', self.weight_decay['lower'], self.weight_decay['upper'])
+        }
+        if name in ['RMSprop', 'SGD']:
+            optimiser['momentum'] = trial.suggest_uniform('momentum', self.momentum['lower'], self.momentum['upper'])
+        if name == 'SGD':
+            optimiser['nesterov'] = trial.suggest_categorical('nesterov', self.nesterov)
+
+        model = oscml.models.model_gnn.GNNSimple(**model_params, optimizer=optimiser)
         
         # fit on training set and calculate metric on validation set
         trainer_params = {}
-        metric_value = oscml.hpo.optunawrapper.fit(model_instance, train_dl, val_dl, trainer_params, trial)
+        metric_value = oscml.hpo.optunawrapper.fit(model, train_dl, val_dl, trainer_params, trial)
         return metric_value
 
 def resume(ckpt, src, log_dir, dataset, epochs, metric):
@@ -127,18 +151,21 @@ def resume(ckpt, src, log_dir, dataset, epochs, metric):
 
 def fixed_trial():
     return {
-        'embedding_dim': 30,
-        'gnn_layers': 2,
-        'gnn_units_0': 30,
-        'gnn_units_1': 20,
+        'embedding_dim':30,
+        'conv_layers': 2,
+        'conv_dims_0': 30,
+        'conv_dims_1': 20,
         'mlp_layers': 3,
         'mlp_units_0': 20,
         'mlp_units_1': 10,
         'mlp_units_2': 5,
         'mlp_dropout': 0.2,
-        'optimizer': 'Adam',
-        'optimizer_lr': 0.001,
-        # 'batch_size': 20
+        'name': 'Adam',             # Adam, SGD, RMSProp
+        'lr': 0.001,
+        'momentum': 0,              # SGD and RMSProp only
+        'weight_decay': 0,
+        'nesterov': False,          # SGD only
+        #'batch_size': 20
     }
 
 def start():

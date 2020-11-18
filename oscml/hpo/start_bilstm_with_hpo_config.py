@@ -28,6 +28,7 @@ class Objective(object):
         # training
         self.learning_rate = config['training_specific']['learning_rate']
         self.optimiser = config['training_specific']['optimiser']
+        self.weight_decay = config['training_specific']['weight_decay']
         self.batch_size = config['training_specific']['batch_size']
 
     def __call__(self, trial):
@@ -69,9 +70,6 @@ class Objective(object):
             'lstm_hidden_dim': lstm_hidden_dim,
             'mlp_units': mlp_units,
             'mlp_dropouts': mlp_dropouts,
-            'optimizer': trial.suggest_categorical('optimizer', self.optimiser),
-            'optimizer_lr': trial.suggest_float('optimizer_lr', self.learning_rate['lower'], self.learning_rate['upper'],
-                                                log=True),
             # additional non-hyperparameter values
             'number_of_subgraphs': number_subgraphs,
             'padding_index': 0,
@@ -81,12 +79,21 @@ class Objective(object):
 
         logging.info('model params=' + str(model_params))
 
-        model_instance = oscml.models.model_bilstm.BiLstmForPce(**model_params)
+        name = trial.suggest_categorical('name', self.optimiser)
+        optimizer = {'name': name,
+                     'lr': trial.suggest_loguniform('lr', self.learning_rate['lower'], self.learning_rate['upper']),
+                     'weight_decay': trial.suggest_uniform('weight_decay', self.weight_decay['lower'], self.weight_decay['upper'])
+                     }
+        if name in ['RMSprop', 'SGD']:
+            optimizer['momentum'] = trial.suggest_uniform('momentum', 0, 0.01)
+        if name == 'SGD':
+            optimizer['nesterov'] = trial.suggest_categorical('nesterov', [True, False])
+
+        model = oscml.models.model_bilstm.BiLstmForPce(**model_params, optimizer=optimizer)
 
         # fit on training set and calculate metric on validation set
-        trainer_params = {
-        }
-        metric_value =  oscml.hpo.optunawrapper.fit(model_instance, train_dl, val_dl, trainer_params, trial)
+        trainer_params = {}
+        metric_value =  oscml.hpo.optunawrapper.fit(model, train_dl, val_dl, trainer_params, trial)
         return metric_value
 
 
@@ -126,8 +133,11 @@ def fixed_trial():
         'mlp_units_1': 32,
         'mlp_units_2': 32,       
         'mlp_dropout': 0.1,
-        'optimizer': 'Adam', 
-        'optimizer_lr': 0.001,
+        'name': 'Adam',             # Adam, SGD, RMSProp
+        'lr': 0.001,
+        'momentum': 0,              # SGD and RMSProp only
+        'weight_decay': 0,
+        'nesterov': False,          # SGD only
         #'batch_size': 250
     }
 

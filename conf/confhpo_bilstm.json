@@ -11,6 +11,7 @@
 		"training_specific":{
 			"learning_rate":{"type":"loguniform","lower":1e-5,"upper":1e-2},
 			"optimiser":["SGD", "Adam"],
+			"weight_decay":{"type":"loguniform","lower":0,"upper":0.01},
 			"batch_size":{"type":"int","lower":16,"upper":64}
 		}
 	}
