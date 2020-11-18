@@ -208,9 +208,9 @@ class Attention(pl.LightningModule):
     
 class BiLstmForPce(util_lightning.OscmlModule):
     
-    def __init__(self, number_of_subgraphs, subgraph_embedding_dim, lstm_hidden_dim, mlp_units, padding_index, target_mean, target_std, optimizer, optimizer_lr, mlp_dropouts=None):
+    def __init__(self, number_of_subgraphs, subgraph_embedding_dim, lstm_hidden_dim, mlp_units, padding_index, target_mean, target_std, optimizer, mlp_dropouts=None):
 
-        super().__init__(optimizer, optimizer_lr, target_mean, target_std)
+        super().__init__(optimizer, target_mean, target_std)
         logging.info('initializing ' + str(locals()))
 
         self.save_hyperparameters()
@@ -225,10 +225,10 @@ class BiLstmForPce(util_lightning.OscmlModule):
         lstm_output_dim = 2 * lstm_hidden_dim
         self.attention = Attention(lstm_output_dim, lstm_output_dim)
 
-        # add input dim for mlp at the beginning
-        mlp_units_with_input_dim = mlp_units.copy()
-        mlp_units_with_input_dim.insert(0, lstm_output_dim)
+        mlp_units_with_input_dim = [lstm_output_dim]
+        mlp_units_with_input_dim.extend(mlp_units)
         self.mlp = oscml.utils.util_pytorch.create_mlp(mlp_units_with_input_dim, mlp_dropouts)
+
     
     def forward(self, index_sequences):
         

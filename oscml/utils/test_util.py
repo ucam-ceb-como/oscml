@@ -18,7 +18,7 @@ class TestModels(unittest.TestCase):
         logger.foo
         
     def test_log(self):
-        oscml.utils.util.init_standard_logging()
+        oscml.utils.util.init_logging('.', './tmp')
 
         logger = logging.getLogger()
         self.log_fct(logger)

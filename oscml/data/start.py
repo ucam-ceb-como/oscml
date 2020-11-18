@@ -11,7 +11,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--src', type=str, default='.')
     parser.add_argument('--dst', type=str, default='.')
-    parser.add_argument('--task', type=int, choices=range(1,5), required=True)
+    parser.add_argument('--task', type=int, choices=range(1,6), required=True)
     args = parser.parse_args()
 
     oscml.utils.util.init_logging('.', '.')
@@ -44,6 +44,11 @@ if __name__ == '__main__':
         elif args.task==4:
             info_cep = oscml.data.dataset_cep.create_dataset_info_for_CEP25000()
             oscml.data.dataset_hopv15.generate_dictionaries(args.src, 'smiles', info_cep)
+        elif args.task==5:
+            # python ./oscml/data/start.py --task 5 --src ./data/processed/CEPDB_valid_SMILES.csv --dst ./data/processed/CEPDB_25000_random_seed_100.csv
+            # skip all samples with PCE values <= 0.0001
+            oscml.data.dataset_cep.store_CEP_cleaned_and_random(
+                    args.src, args.dst, number_samples=[15000, 5000, 5000], threshold_skip=0.0001, random_state=100)
 
     except Exception as exc:
         logging.exception('task failed', exc_info=True)

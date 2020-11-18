@@ -82,11 +82,17 @@ class TestModels(unittest.TestCase):
             'padding_index': 0,
             'target_mean': transformer.target_mean, 
             'target_std': transformer.target_std,
-            'optimizer': 'Adam',
-            'optimizer_lr': 0.001,
         }
 
-        model = oscml.models.model_bilstm.BiLstmForPce(**model_params)
+        optimizer = {
+            'name': 'Adam',             # Adam, SGD, RMSProp
+            'lr': 0.001,
+            'momentum': 0,              # SGD and RMSProp only
+            'weight_decay': 0, 
+            'nesterov': False,          # SGD only
+        }
+
+        model = oscml.models.model_bilstm.BiLstmForPce(**model_params, optimizer=optimizer)
 
         batch = torch.LongTensor([[1,2,3], [4,5,6]]) #.to(device)
         output = model(batch)
@@ -117,7 +123,7 @@ if __name__ == '__main__':
     unittest.main()
 
     #suite = unittest.TestSuite()
-    # suite.addTest(TestModels('test_bilstm_dataloader_for_hopv15'))
+    #suite.addTest(TestModels('test_bilstm_dataloader_for_hopv15'))
     # suite.addTest(TestModels('test_bilstm_dataloader_for_cep25000'))
     #runner = unittest.TextTestRunner()
     #runner.run(suite)
