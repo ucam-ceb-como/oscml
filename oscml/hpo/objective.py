@@ -109,7 +109,7 @@ def get_optimizer_params(trial):
         optimizer['nesterov'] = trial.suggest_categorical('nesterov', [True, False])
     return optimizer
 
-def objective(trial, config, df_train, df_val, df_test, transformer):
+def objective(trial, config, df_train, df_val, df_test, transformer, log_dir):
 
     user_attrs = get_attrs(trial)
     #model_id = user_attrs['model']
@@ -127,7 +127,7 @@ def objective(trial, config, df_train, df_val, df_test, transformer):
 
     elif model_name == 'AttentiveFP':
         optimizer = get_optimizer_params(trial)
-        model, train_dl, val_dl, test_dl = oscml.hpo.hpo_attentivefp.create(trial, config, df_train, df_val, df_test, optimizer)
+        model, train_dl, val_dl, test_dl = oscml.hpo.hpo_attentivefp.create(trial, config, df_train, df_val, df_test, optimizer,  dataset, log_dir)
 
     elif model_name == 'SimpleGNN':
         optimizer = get_optimizer_params(trial)

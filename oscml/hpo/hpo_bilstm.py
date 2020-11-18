@@ -18,7 +18,7 @@ def create(trial, config, df_train, df_val, df_test, optimizer, transformer, dat
     lstm_hidden_dim = embedding_dim
     mlp_layers =  trial.suggest_int('mlp_layers', 1, 4)
     mlp_units = []
-    mlp_dropout_rate = trial.suggest_float('mlp_dropout', 0.01, 0.2)
+    mlp_dropout_rate = trial.suggest_uniform('mlp_dropout', 0., 0.2)
     mlp_dropouts = []
     #max_units = 2 * lstm_hidden_dim
     for l in range(mlp_layers):

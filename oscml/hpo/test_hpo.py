@@ -42,7 +42,6 @@ def create_config_template_bilstm():
     return d
 
 def create_config_template_simplegnn():
-
     d = {
         "model_name": "SimpleGNN",
         "model": {
@@ -60,20 +59,25 @@ def create_config_template_simplegnn():
     d.update(create_config_template_optimizer())
     return d
 
+def create_config_template_attentivefp():
+    d = {
+        "model_name": "AttentiveFP",
+        "model": {
+            'graph_feat_size': 200,
+            'num_layers': 4,
+            'num_timesteps': 2,
+            'dropout': 0.,
+        }
+    }
+    d.update(create_config_template_optimizer())
+    return d
+
 
 class Test_HPO(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
         oscml.utils.util.init_logging('.', './tmp')
-
-    """
-    def test_train_mnist_with_fixed_trial(self):
-        testargs = ['test', '--fixedtrial', 'True']
-        with unittest.mock.patch('sys.argv', testargs):
-            best_value = oscml.hpo.start_mnist_with_hpo.start()
-            self.assertAlmostEqual(0.8828125, best_value, 4)
-    """
 
     def test_train_gnn_cep25000_with_fixed_trial(self):
 
@@ -99,7 +103,6 @@ class Test_HPO(unittest.TestCase):
         with unittest.mock.patch('sys.argv', testargs):
             oscml.hpo.train.start(config_dev=config)
 
-
     def test_train_bilstm_cep25000_with_fixed_trial(self):
 
         config = create_config_template_bilstm()
@@ -124,18 +127,26 @@ class Test_HPO(unittest.TestCase):
         with unittest.mock.patch('sys.argv', testargs):
             oscml.hpo.train.start(config_dev=config)
 
-    def test_train_attentiveFP_cep25000_with_fixed_trial(self):
+    def test_train_attentiveFP_cep25000_full_featurizer_with_fixed_trial(self):
 
-        config = {
-            'model_name': 'AttentiveFP',
-            'model': {}
-        }
-        config.update(create_config_template_optimizer())
+        config = create_config_template_attentivefp()
 
         testargs = ['test', 
             '--fixedtrial', 'True',
             '--dataset', 'CEP25000',
             '--epochs', '1',
+            ]
+        with unittest.mock.patch('sys.argv', testargs):
+            oscml.hpo.train.start(config_dev=config)
+
+    def test_hpo_attentiveFP_hopv15_full_featurizer(self):
+
+        config = create_config_template_attentivefp()
+
+        testargs = ['test', 
+            '--dataset', 'HOPV15',
+            '--epochs', '1',
+            '--trials', '3'
             ]
         with unittest.mock.patch('sys.argv', testargs):
             oscml.hpo.train.start(config_dev=config)
@@ -221,7 +232,7 @@ class Test_HPO(unittest.TestCase):
                 direction='minimize',
                 resume=oscml.hpo.start_gnn_with_hpo.resume
             )
-    
+
     def test_infinite_trials_and_time_out_gnn(self):
         testargs = ['test', 
             '--dataset', 'HOPV15',
@@ -320,12 +331,12 @@ if __name__ == '__main__':
     #unittest.main()
 
     suite = unittest.TestSuite()
-    #suite.addTest(Test_HPO('test_train_mnist_with_fixed_trial'))
-    suite.addTest(Test_HPO('test_train_gnn_cep25000_with_fixed_trial'))
+    #suite.addTest(Test_HPO('test_train_gnn_cep25000_with_fixed_trial'))
     #suite.addTest(Test_HPO('test_train_gnn_hopv15_with_fixed_trial'))
     #suite.addTest(Test_HPO('test_train_bilstm_cep25000_with_fixed_trial'))
     #suite.addTest(Test_HPO('test_train_bilstm_hopv15_with_fixed_trial'))
-    #suite.addTest(Test_HPO('test_train_attentiveFP_cep25000_with_fixed_trial'))
+    suite.addTest(Test_HPO('test_train_attentiveFP_cep25000_full_featurizer_with_fixed_trial'))
+    #suite.addTest(Test_HPO('test_hpo_attentiveFP_hopv15_full_featurizer'))
     #suite.addTest(Test_HPO('test_load_model_from_checkpoint'))
     #suite.addTest(Test_HPO('test_gnn_cep25000_ckpt_test_only'))
     #suite.addTest(Test_HPO('test_gnn_cep25000_ckpt_resume_training'))

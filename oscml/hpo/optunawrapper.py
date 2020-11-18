@@ -55,27 +55,23 @@ def callback_on_trial_finished(study, trial):
         logging.error('THE MAXIMUM NUMBER OF FAILED TRIALS HAS BEEN REACHED, AND THE STUDY WILL STOP NOW.')
         study.stop()
 
-def start_hpo(args, objective, metric, direction, log_dir, fixed_trial_params=None, seed=200):
+def start_hpo(args, objective, log_dir, fixed_trial_params=None):
 
     #optuna.logging.enable_default_handler()
     #optuna.logging.enable_propagation()  # Propagate logs to the root logger.
     #optuna.logging.disable_default_handler()
     #optuna.logging.set_verbosity(optuna.logging.DEBUG)
 
-    if args.seed:
-        seed = args.seed
-
     user_attrs = vars(args).copy()
+
     user_attrs.update({
-        'metric': metric,
         'log_dir': log_dir
     })
-    logging.info(user_attrs)
-    logging.info({'direction': direction, 'seed': seed})
+    logging.info('user_attrs=%s', user_attrs)
 
     try:
-        np.random.seed(seed)
-        torch.manual_seed(seed)
+        np.random.seed(args.seed)
+        torch.manual_seed(args.seed)
 
         #if init:
         #    init_attrs = init(user_attrs)
@@ -89,7 +85,7 @@ def start_hpo(args, objective, metric, direction, log_dir, fixed_trial_params=No
                 trial.set_user_attr(key, value)
             logging.info('calling objective function with fixed trial')
             best_value = objective(trial)
-            logging.info('finished objective function call with %s=%s', metric, best_value)
+            logging.info('finished objective function call with %s=%s', args.metric, best_value)
         
         #elif args.ckpt:
         #    resume_attrs = {
@@ -98,11 +94,11 @@ def start_hpo(args, objective, metric, direction, log_dir, fixed_trial_params=No
         #        'log_dir': log_dir,
         #        'dataset': args.dataset,
         #        'epochs': args.epochs,
-        #        'metric': metric
+        #        'metric': args.metric
         #    }
         #    best_value = resume(**resume_attrs)
         else:
-            study = create_study(direction=direction, seed=seed, storage=args.storage, study_name=args.study_name, load_if_exists=args.load_if_exists)
+            study = create_study(direction=args.direction, seed=args.seed, storage=args.storage, study_name=args.study_name, load_if_exists=args.load_if_exists)
             for key, value in user_attrs.items():
                 study.set_user_attr(key, value)
 

@@ -39,11 +39,13 @@ def start(config_dev=None):
     parser.add_argument('--fixedtrial', type=bool, default=False)
     parser.add_argument('--ckpt', type=str)
     parser.add_argument('--dataset', type=str)
-    parser.add_argument('--seed', type=int)
+    parser.add_argument('--seed', type=int, default=200)
     parser.add_argument('--cv', type=int, default=None)
     parser.add_argument('--storage', type=none_or_str, default=None)
     parser.add_argument('--study_name', type=none_or_str, default=None)
     parser.add_argument('--load_if_exists', type=bool_or_str, default=False)
+    parser.add_argument('--metric', type=str, default='val_loss')
+    parser.add_argument('--direction', type=str, default='minimize')
     args = parser.parse_args()
 
     # init file logging
@@ -54,6 +56,7 @@ def start(config_dev=None):
 
     logging.info('current working directory=%s', os.getcwd())
 
+
     if args.config:
         config = None # TODO: read the config file given by args.config
     else:
@@ -61,20 +64,16 @@ def start(config_dev=None):
         config.update(config_dev["model"])
         config.update(config_dev["optimizer"])
 
-    logging.info('config file=%s',config)
+    logging.info('config file=%s', config)
 
-
-    #TODO AE URGENT transformer
     df_train, df_val, df_test, transformer  = get_dataframes(args.src, args.dataset)
 
     obj = functools.partial(oscml.hpo.objective.objective, config=config, 
-        df_train=df_train, df_val=df_val, df_test=df_test, transformer=transformer)
+        df_train=df_train, df_val=df_val, df_test=df_test, transformer=transformer, log_dir=log_dir)
 
     return oscml.hpo.optunawrapper.start_hpo(
             args=args,
             objective=obj,
-            metric='val_loss',
-            direction='minimize',
             log_dir=log_dir,
             fixed_trial_params=config)
 
