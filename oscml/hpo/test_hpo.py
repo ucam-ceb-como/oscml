@@ -15,17 +15,8 @@ import oscml.hpo.start_rf_with_hpo
 import oscml.utils.util
 
 
-def create_config_template():
+def create_config_template_optimizer():
     return {
-        "model_name": "",
-        "model": {
-            'subgraph_embedding_dim': 128,
-            'mlp_layers': 3,
-            'mlp_units_0': 60,
-            'mlp_units_1': 20,
-            'mlp_units_2': 20,
-            'mlp_dropout': 0.1
-        },
         "optimizer": {
             'opt_name': 'Adam',             # Adam, SGD, RMSProp
             'lr': 0.001,
@@ -34,6 +25,40 @@ def create_config_template():
             'nesterov': False,          # SGD only
         }
     }
+
+def create_config_template_bilstm():
+    d = {
+        "model_name": "BILSTM",
+        "model": {
+            'subgraph_embedding_dim': 128,
+            'mlp_layers': 3,
+            'mlp_units_0': 60,
+            'mlp_units_1': 20,
+            'mlp_units_2': 20,
+            'mlp_dropout': 0.1
+        }
+    }
+    d.update(create_config_template_optimizer())
+    return d
+
+def create_config_template_simplegnn():
+
+    d = {
+        "model_name": "SimpleGNN",
+        "model": {
+            'embedding_dim':30,
+            'conv_layers': 2,
+            'conv_dims_0': 30,
+            'conv_dims_1': 20, 
+            'mlp_layers': 3,
+            'mlp_units_0': 20,
+            'mlp_units_1': 10,
+            'mlp_units_2': 5,
+            'mlp_dropout': 0.2,
+        }
+    }
+    d.update(create_config_template_optimizer())
+    return d
 
 
 class Test_HPO(unittest.TestCase):
@@ -48,84 +73,69 @@ class Test_HPO(unittest.TestCase):
         with unittest.mock.patch('sys.argv', testargs):
             best_value = oscml.hpo.start_mnist_with_hpo.start()
             self.assertAlmostEqual(0.8828125, best_value, 4)
+    """
 
     def test_train_gnn_cep25000_with_fixed_trial(self):
+
+        config = create_config_template_simplegnn()
+
         testargs = ['test', 
             '--fixedtrial', 'True',
             '--dataset', 'CEP25000',
             '--epochs', '1'
         ]
         with unittest.mock.patch('sys.argv', testargs):
-            best_value = oscml.hpo.start_gnn_with_hpo.start()
+            oscml.hpo.train.start(config_dev=config)
 
     def test_train_gnn_hopv15_with_fixed_trial(self):
+
+        config = create_config_template_simplegnn()
+
         testargs = ['test', 
             '--fixedtrial', 'True',
             '--dataset', 'HOPV15',
             '--epochs', '1'
         ]
         with unittest.mock.patch('sys.argv', testargs):
-            best_value = oscml.hpo.start_gnn_with_hpo.start()
-    """
+            oscml.hpo.train.start(config_dev=config)
+
 
     def test_train_bilstm_cep25000_with_fixed_trial(self):
 
-        fixed_trial_params = {
-            'subgraph_embedding_dim': 128,
-            #'lstm_hidden_dim': 128,  # currently set to subgraph_embedding_dim
-            'mlp_layers': 3,
-            'mlp_units_0': 60,
-            'mlp_units_1': 20,
-            'mlp_units_2': 20,
-            'mlp_dropout': 0.1,
-            'name': 'Adam',             # Adam, SGD, RMSProp
-            'lr': 0.001,
-            'momentum': 0,              # SGD and RMSProp only
-            'weight_decay': 0,
-            'nesterov': False,          # SGD only
-            #'batch_size': 250
-        }
-
-        config = create_config_template()
-        config['model_name'] = 'BILSTM'
+        config = create_config_template_bilstm()
 
         testargs = ['test', 
             '--fixedtrial', 'True',
             '--dataset', 'CEP25000',
             '--epochs', '1',
-            '--model', 'BILSTM'
             ]
         with unittest.mock.patch('sys.argv', testargs):
             oscml.hpo.train.start(config_dev=config)
 
     def test_train_bilstm_hopv15_with_fixed_trial(self):
+
+        config = create_config_template_bilstm()
+
         testargs = ['test', 
             '--fixedtrial', 'True',
             '--dataset', 'HOPV15',
             '--epochs', '2'
             ]
         with unittest.mock.patch('sys.argv', testargs):
-            oscml.hpo.train.start()
+            oscml.hpo.train.start(config_dev=config)
 
     def test_train_attentiveFP_cep25000_with_fixed_trial(self):
 
-        """
-        fixed_trial_params = {
-            'name': 'Adam',             # Adam, SGD, RMSProp
-            'lr': 0.001,
-            'momentum': 0,              # SGD and RMSProp only
-            'weight_decay': 0,
-            'nesterov': False,          # SGD only
+        config = {
+            'model_name': 'AttentiveFP',
+            'model': {}
         }
-        """
-        config = create_config_template()
-        config['model_name'] = 'AttentiveFP'
+        config.update(create_config_template_optimizer())
 
         testargs = ['test', 
             '--fixedtrial', 'True',
             '--dataset', 'CEP25000',
             '--epochs', '1',
-            '--model', 'AttentiveFP'
             ]
         with unittest.mock.patch('sys.argv', testargs):
             oscml.hpo.train.start(config_dev=config)
@@ -311,11 +321,11 @@ if __name__ == '__main__':
 
     suite = unittest.TestSuite()
     #suite.addTest(Test_HPO('test_train_mnist_with_fixed_trial'))
-    #suite.addTest(Test_HPO('test_train_gnn_cep25000_with_fixed_trial'))
+    suite.addTest(Test_HPO('test_train_gnn_cep25000_with_fixed_trial'))
     #suite.addTest(Test_HPO('test_train_gnn_hopv15_with_fixed_trial'))
     #suite.addTest(Test_HPO('test_train_bilstm_cep25000_with_fixed_trial'))
     #suite.addTest(Test_HPO('test_train_bilstm_hopv15_with_fixed_trial'))
-    suite.addTest(Test_HPO('test_train_attentiveFP_cep25000_with_fixed_trial'))
+    #suite.addTest(Test_HPO('test_train_attentiveFP_cep25000_with_fixed_trial'))
     #suite.addTest(Test_HPO('test_load_model_from_checkpoint'))
     #suite.addTest(Test_HPO('test_gnn_cep25000_ckpt_test_only'))
     #suite.addTest(Test_HPO('test_gnn_cep25000_ckpt_resume_training'))
