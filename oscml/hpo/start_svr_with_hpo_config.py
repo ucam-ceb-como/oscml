@@ -1,109 +1,164 @@
 import logging
-import types
+
+import numpy as np
+import pandas as pd
+import rdkit
+import rdkit.Chem
+import rdkit.Chem.AllChem
+import sklearn
+import sklearn.datasets
 
 import oscml.data.dataset
-import oscml.data.dataset_cep
 import oscml.hpo.optunawrapper
-import oscml.models.model_bilstm
-
+from oscml.utils.util import smiles2mol, concat
+import oscml.models.model_kernel
 
 def init(user_attrs):
-
     # read data and preprocess, e.g. standarization, splitting into train, validation and test set
-    src = user_attrs['src']
+    src= user_attrs['src']
+    metric = user_attrs['metric']
+    if not metric == 'mse':
+        message = 'only metric mse is supported, but metric was set to ' + str(metric)
+        raise RuntimeError(message)
     dataset = user_attrs['dataset']
-
     return oscml.data.dataset.get_dataframes(dataset=dataset, src=src, train_size=283, test_size=30)
 
+def parseCategoricalBoolean(config_list):
+    boolean_list = []
+    for s in config_list:
+        if s == "True":
+            boolean_list.append(True)
+        else:
+            boolean_list.append(False)
+
+    return boolean_list
 
 class Objective(object):
     # initialize the training data for objective function
     def __init__(self, config):
         # read hyperparameters from config file
-        self.embedding_dimension = config['model_specific']['embedding_dimension']
-        self.dropout = config['model_specific']['dropout']
-        # mlp
-        self.mlp_hidden_layers = config['model_specific']['mlp']['number_of_hidden_layers']
-        self.mlp_number_neurons = config['model_specific']['mlp']['number_of_neurons']
-        self.mlp_dropout = config['model_specific']['mlp']['dropout']
+
+        # fingerprint
+        self.type = config['fingerprints']['type']
+        self.nr_of_bits = config['fingerprints']['nr_of_bits']
+        self.radius = config['fingerprints']['radius']
+        self.use_bond_type = parseCategoricalBoolean(config['fingerprints']['use_bond_type'])
+        self.use_chirality = parseCategoricalBoolean(config['fingerprints']['use_chirality'])
+
         # training
-        self.learning_rate = config['training_specific']['learning_rate']
-        self.optimiser = config['training_specific']['optimiser']
-        self.batch_size = config['training_specific']['batch_size']
+        self.number_of_cross_validation = config['training_specific']['number_of_cross_validations']
+
 
     def __call__(self, trial):
+        user_attrs, init_attrs = oscml.hpo.optunawrapper.get_attrs(trial)
 
-        _, init_attrs = oscml.hpo.optunawrapper.get_attrs(trial)
+        metric = 'mse' # user_attrs['metric']
+        dataset = user_attrs['dataset']
+        info = oscml.data.dataset.get_dataset_info(dataset)
+
         df_train = init_attrs[0]
         df_val = init_attrs[1]
-        df_train = init_attrs[2]
-        transformer = init_attrs[3]
+        df_test = init_attrs[2]
+        #transformer = init_attrs[3]
 
-        # define data loader and params
-        dataset = oscml.data.dataset_hopv15.HOPV15
-        train_dl, val_dl, test_dl = oscml.data.model_gnn.get_dataloaders(dataset, df_train, df_val, df_test,
-                                                                         transformer, batch_size=20)
 
-        # define models and params
-        subgraph_embedding_dim = trial.suggest_int('subgraph_embedding_dim', self.embedding_dimension['lower'],
-                                                   self.embedding_dimension['upper'])
+        df_train = pd.concat([df_train, df_val])
 
-        lstm_hidden_dim = subgraph_embedding_dim
-        mlp_layers = 1 + trial.suggest_int('mlp_hidden_layers', self.mlp_hidden_layers['lower'], self.mlp_hidden_layers['upper'])
-        mlp_units = []
-        mlp_dropout_rate = trial.suggest_float('mlp_dropout', self.mlp_dropout['lower'], self.mlp_dropout['upper'])
-        mlp_dropouts = []
-        max_units = 2 * lstm_hidden_dim
-        for l in range(mlp_layers):
-            suggested_units = trial.suggest_int('mlp_units_{}'.format(l), self.mlp_number_neurons['lower'], max_units)
-            mlp_units.append(suggested_units)
-            max_units = suggested_units
-            mlp_dropouts.append(mlp_dropout_rate)
+        #print(len(df_train), len(df_test))
 
-        # add output dimension
-        mlp_units.append(1)
+        cross_validation = self.number_of_cross_validation['value']
+        logging.info('cross_validation=' + str(cross_validation))
+
+        fp_type = trial.suggest_categorical('type', self.type)
+        if fp_type == 'morgan':
+            fp_params = {
+                'type': 'morgan',
+                'nBits': trial.suggest_categorical('nBits', self.nr_of_bits),
+                'radius': trial.suggest_categorical('radius', self.radius),
+                'useChirality': trial.suggest_categorical('useChirality', self.use_bond_type),
+                'useBondTypes': trial.suggest_categorical('useBondTypes', self.use_chirality),
+            }
+
+        x_train,  y_train, scaler_svr_physical_data = oscml.models.model_kernel.preprocess_data_phys_and_struct(df_train, fp_params, train_size=1, column_smiles=info.column_smiles,
+                                    columns_phys=None, column_y=info.column_target)
+
+        logging.info(concat('generating fingerprints, fp_type=', fp_type, ', fp_params=', fp_params))
 
         model_params =  {
-            'subgraph_embedding_dim': subgraph_embedding_dim,
-            'lstm_hidden_dim': lstm_hidden_dim,
-            'mlp_units': mlp_units,
-            'mlp_dropouts': mlp_dropouts,
-            'optimizer': trial.suggest_categorical('optimizer', self.optimiser),
-            'optimizer_lr': trial.suggest_float('optimizer_lr', self.learning_rate['lower'], self.learning_rate['upper'],
-                                                log=True),
-            # additional non-hyperparameter values
-            'number_of_subgraphs': 60,
-            'padding_index': 0,
-            'target_mean': transformer.target_mean,
-            'target_std': transformer.target_std,
+            'kernel': 'rbf_kernel_phys_and_struct',
+            'C': trial.suggest_loguniform('C',0.1,20.0),
+            'epsilon': trial.suggest_loguniform('epsilon',0.0001,1.0),
+            'gamma_structural': trial.suggest_loguniform('gamma_structural',0.001,20.0)
         }
 
-        logging.info('model params=' + str(model_params))
+        logging.info(concat('starting cross validation for SVR regressor, params=', model_params))
+        model = oscml.models.model_kernel.SVRWrapper(**model_params)
 
-        model_instance = oscml.models.model_bilstm.BiLstmForPce(**model_params)
+        all_scores = sklearn.model_selection.cross_validate(model, x_train, y_train, cv=cross_validation,
+                    scoring='neg_mean_squared_error',  n_jobs=1, verbose=0, fit_params=None, pre_dispatch='2*n_jobs', return_train_score=True, return_estimator=True , error_score='raise')
 
-        # fit on training set and calculate metric on validation set
-        trainer_params = {
-        }
-        metric_value =  oscml.hpo.optunawrapper.fit(model_instance, train_dl, val_dl, trainer_params, trial)
-        return metric_value
+        #print(all_scores)
+        for phase in ['train', 'test']:
+            scores = all_scores[phase + '_score']
+            mean = scores.mean()
+            std = scores.std()
+            logging.info(concat(phase, ': mean', mean, ', std=', std, ', scores=', scores))
+
+        objective_value = - mean # from test scores
+
+        # check the objective value
+        """
+        score_sum = 0.
+        for reg in all_scores['estimator']:
+            y_pred = reg.predict(x_train)
+            metrics = oscml.utils.util.calculate_metrics(y_train, y_pred)
+            score_sum += metrics['mse']
+        mean_score = score_sum / len(all_scores['estimator'])
+        logging.info('mean score sum on entire train set=' + str(mean_score))
+        """
+
+        return objective_value
+
+
+def get_Morgan_fingerprints(df, params_morgan, columns_smiles, column_y):
+    logging.info('generating Morgan fingerprint samples according to params=' + str(params_morgan))
+    x = []
+    y = []
+    for i in range(len(df)):
+        smiles = df.iloc[i][columns_smiles]
+        m = smiles2mol(smiles)
+        fingerprint = rdkit.Chem.AllChem.GetMorganFingerprintAsBitVect(m, **params_morgan)
+        x.append(fingerprint)
+        pce = df.iloc[i][column_y]
+        y.append(pce)
+
+    return x, y
 
 
 def fixed_trial():
     return {
-        'subgraph_embedding_dim': 128,
-        #'lstm_hidden_dim': 128,  # currently set to subgraph_embedding_dim
-        'mlp_layers': 3,
-        'mlp_units_0': 64,
-        'mlp_units_1': 32,
-        'mlp_units_2': 32,       
-        'mlp_dropout': 0.1,
-        'optimizer': 'Adam', 
-        'optimizer_lr': 0.001,
-        #'batch_size': 250
+        'n_estimators': 50,
+        'max_depth': 20,
+        'min_samples_split': 2,
+        'min_samples_leaf': 1,
+        'max_features': 0.1,
+        'bootstrap': True,
+        'max_samples': 50,
+        # fingerprint params
+        'type': 'morgan',
+        'nBits': 128,
+        'radius': 2,
+        'useChirality': False,
+        'useBondTypes': True,
     }
 
+def start():
+    return oscml.hpo.optunawrapper.start_hpo(
+            init=init,
+            objective=Objective,
+            metric='mse',
+            direction='minimize',
+            fixed_trial_params=fixed_trial())
 
 if __name__ == '__main__':
-    oscml.hpo.optunawrapper.start_hpo(init=init, objective=Objective, metric='val_loss', direction='minimize',
-                                      fixed_trial_params=fixed_trial())
+    start()

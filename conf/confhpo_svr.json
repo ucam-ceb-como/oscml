@@ -1,0 +1,25 @@
+{"SVR":{
+	"model_specific_to_de_deleted":{
+		"number_of_estimators":{"type":"int","lower":16,"upper":256},
+		"max_depth_of_each_tree":{"type":"int","lower":10,"upper":100},
+		"min_samples_split":{"type":"int","lower":2,"upper":5},
+		"min_samples_leaf":{"type":"int","lower":1,"upper":5},
+		"max_features":[0.05, 0.1, 0.5, 1.0],
+		"bootstraping":["True", "False"],
+		"max_nr_of_samples":{"type":"int","lower":5,"upper":50}
+	},
+	"fingerprints":{
+		"type":["morgan"],
+		"nr_of_bits":[128, 256, 512, 1024, 2048, 4096],
+		"radius":[1, 2, 3, 4, 5, 6],
+		"use_bond_type":["True", "False"],
+		"use_chirality":["True", "False"]
+	},
+	"training_specific":{
+		"number_of_cross_validations":{"type":"int","value":10},
+		"C":{"type":"loguniform","lower":0.1,"upper":20.0},
+		"epsilon":{"type":"loguniform","lower":0.0001,"upper":1.0},
+		"gamma_structural":{"type":"loguniform","lower":0.001,"upper":20.0}
+	}
+}
+}
