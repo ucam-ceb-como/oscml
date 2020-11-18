@@ -87,7 +87,7 @@ def objective(trial):
         optimizer['nesterov'] = trial.suggest_categorical('nesterov', [True, False])
             
 
-    model = oscml.models.model_gnn.GNNSimple(**model_params, optimizer=optimizer)
+    model = oscml.models.model_gnn.SimpleGNN(**model_params, optimizer=optimizer)
     
     # fit on training set and calculate metric on validation set
     trainer_params = {}
@@ -97,7 +97,7 @@ def objective(trial):
 
 def resume(ckpt, src, log_dir, dataset, epochs, metric):
 
-    model_class = oscml.models.model_gnn.GNNSimple
+    model_class = oscml.models.model_gnn.SimpleGNN
     model = model_class.load_from_checkpoint(ckpt)
 
     info = oscml.data.dataset.get_dataset_info(dataset)

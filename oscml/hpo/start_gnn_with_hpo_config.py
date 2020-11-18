@@ -116,7 +116,7 @@ class Objective(object):
         if name == 'SGD':
             optimiser['nesterov'] = trial.suggest_categorical('nesterov', self.nesterov)
 
-        model = oscml.models.model_gnn.GNNSimple(**model_params, optimizer=optimiser)
+        model = oscml.models.model_gnn.SimpleGNN(**model_params, optimizer=optimiser)
         
         # fit on training set and calculate metric on validation set
         trainer_params = {}

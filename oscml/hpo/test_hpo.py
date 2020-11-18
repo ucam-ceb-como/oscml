@@ -321,10 +321,10 @@ if __name__ == '__main__':
 
     suite = unittest.TestSuite()
     #suite.addTest(Test_HPO('test_train_mnist_with_fixed_trial'))
-    #suite.addTest(Test_HPO('test_train_gnn_cep25000_with_fixed_trial'))
+    suite.addTest(Test_HPO('test_train_gnn_cep25000_with_fixed_trial'))
     #suite.addTest(Test_HPO('test_train_gnn_hopv15_with_fixed_trial'))
     #suite.addTest(Test_HPO('test_train_bilstm_cep25000_with_fixed_trial'))
-    suite.addTest(Test_HPO('test_train_bilstm_hopv15_with_fixed_trial'))
+    #suite.addTest(Test_HPO('test_train_bilstm_hopv15_with_fixed_trial'))
     #suite.addTest(Test_HPO('test_train_attentiveFP_cep25000_with_fixed_trial'))
     #suite.addTest(Test_HPO('test_load_model_from_checkpoint'))
     #suite.addTest(Test_HPO('test_gnn_cep25000_ckpt_test_only'))
