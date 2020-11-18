@@ -42,7 +42,7 @@ class Mol2seq():
     
         # fragment index starts with 0, thus -1
         self.max_index = len(self.fragment_dict) - 1
-        logging.info(concat('initialized Mol2Seq with radius=', radius, ', oov=', oov, ', max_index=', self.max_index))
+        logging.info('initialized Mol2Seq with radius=%s, oov=%s, max_index=%s', radius, oov, self.max_index)
         
     def apply_OOV(self, index):
         return (index if index <= self.max_index else -1)
@@ -122,7 +122,7 @@ def get_dataloaders_internal(train, val, test, batch_size, mol2seq, max_sequence
    
     batch_func = (lambda dl : len(dl) if dl else 0)
     batch_numbers = list(map(batch_func, [train_dl, val_dl, test_dl]))
-    logging.info('batch numbers - train val test=' + str(batch_numbers))
+    logging.info('batch numbers - train val test=%s', batch_numbers)
     
     return train_dl, val_dl, test_dl
 
@@ -208,10 +208,10 @@ class Attention(pl.LightningModule):
     
 class BiLstmForPce(util_lightning.OscmlModule):
     
-    def __init__(self, number_of_subgraphs, subgraph_embedding_dim, lstm_hidden_dim, mlp_units, padding_index, target_mean, target_std, optimizer, mlp_dropouts=None):
+    def __init__(self, number_of_subgraphs, embedding_dim, lstm_hidden_dim, mlp_units, padding_index, target_mean, target_std, optimizer, mlp_dropouts=None):
 
         super().__init__(optimizer, target_mean, target_std)
-        logging.info('initializing ' + str(locals()))
+        logging.info('initializing %s', locals())
 
         self.save_hyperparameters()
         
@@ -219,8 +219,8 @@ class BiLstmForPce(util_lightning.OscmlModule):
         
         # we add +1 to number_of_subgraphs because
         # padding_idx = 0 in a sequences is mapped to zero vector
-        self.embedding = nn.Embedding(number_of_subgraphs+1, subgraph_embedding_dim, padding_idx=padding_index)
-        self.bilstm = nn.LSTM(input_size=subgraph_embedding_dim, hidden_size=lstm_hidden_dim, bidirectional=True)
+        self.embedding = nn.Embedding(number_of_subgraphs+1, embedding_dim, padding_idx=padding_index)
+        self.bilstm = nn.LSTM(input_size=embedding_dim, hidden_size=lstm_hidden_dim, bidirectional=True)
         # factor 2 because the LSTM is birectional
         lstm_output_dim = 2 * lstm_hidden_dim
         self.attention = Attention(lstm_output_dim, lstm_output_dim)

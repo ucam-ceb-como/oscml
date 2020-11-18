@@ -30,7 +30,7 @@ def create_config_template_bilstm():
     d = {
         "model_name": "BILSTM",
         "model": {
-            'subgraph_embedding_dim': 128,
+            'embedding_dim': 128,
             'mlp_layers': 3,
             'mlp_units_0': 60,
             'mlp_units_1': 20,
@@ -108,7 +108,7 @@ class Test_HPO(unittest.TestCase):
             '--fixedtrial', 'True',
             '--dataset', 'CEP25000',
             '--epochs', '1',
-            ]
+        ]
         with unittest.mock.patch('sys.argv', testargs):
             oscml.hpo.train.start(config_dev=config)
 
@@ -120,7 +120,7 @@ class Test_HPO(unittest.TestCase):
             '--fixedtrial', 'True',
             '--dataset', 'HOPV15',
             '--epochs', '2'
-            ]
+        ]
         with unittest.mock.patch('sys.argv', testargs):
             oscml.hpo.train.start(config_dev=config)
 
@@ -321,10 +321,10 @@ if __name__ == '__main__':
 
     suite = unittest.TestSuite()
     #suite.addTest(Test_HPO('test_train_mnist_with_fixed_trial'))
-    suite.addTest(Test_HPO('test_train_gnn_cep25000_with_fixed_trial'))
+    #suite.addTest(Test_HPO('test_train_gnn_cep25000_with_fixed_trial'))
     #suite.addTest(Test_HPO('test_train_gnn_hopv15_with_fixed_trial'))
     #suite.addTest(Test_HPO('test_train_bilstm_cep25000_with_fixed_trial'))
-    #suite.addTest(Test_HPO('test_train_bilstm_hopv15_with_fixed_trial'))
+    suite.addTest(Test_HPO('test_train_bilstm_hopv15_with_fixed_trial'))
     #suite.addTest(Test_HPO('test_train_attentiveFP_cep25000_with_fixed_trial'))
     #suite.addTest(Test_HPO('test_load_model_from_checkpoint'))
     #suite.addTest(Test_HPO('test_gnn_cep25000_ckpt_test_only'))

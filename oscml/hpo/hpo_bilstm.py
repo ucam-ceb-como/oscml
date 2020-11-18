@@ -14,8 +14,8 @@ def create(trial, config, df_train, df_val, df_test, optimizer, transformer, dat
             transformer, batch_size=250, max_sequence_length=max_sequence_length)
 
     # define models and params
-    subgraph_embedding_dim = trial.suggest_int('subgraph_embedding_dim', 8, 256)
-    lstm_hidden_dim = subgraph_embedding_dim
+    embedding_dim = trial.suggest_int('embedding_dim', 8, 256)
+    lstm_hidden_dim = embedding_dim
     mlp_layers =  trial.suggest_int('mlp_layers', 1, 4)
     mlp_units = []
     mlp_dropout_rate = trial.suggest_float('mlp_dropout', 0.01, 0.2)
@@ -31,7 +31,7 @@ def create(trial, config, df_train, df_val, df_test, optimizer, transformer, dat
     mlp_units.append(1)
 
     model_params =  {
-        'subgraph_embedding_dim': subgraph_embedding_dim,
+        'embedding_dim': embedding_dim,
         'lstm_hidden_dim': lstm_hidden_dim,
         'mlp_units': mlp_units,
         'mlp_dropouts': mlp_dropouts,
