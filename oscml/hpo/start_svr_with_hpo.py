@@ -79,21 +79,6 @@ def objective(trial):
     return objective_value
 
 
-def get_Morgan_fingerprints(df, params_morgan, columns_smiles, column_y):
-    logging.info('generating Morgan fingerprint samples according to params=' + str(params_morgan))
-    x = []
-    y = []
-    for i in range(len(df)):
-        smiles = df.iloc[i][columns_smiles]
-        m = smiles2mol(smiles)
-        fingerprint = rdkit.Chem.AllChem.GetMorganFingerprintAsBitVect(m, **params_morgan)
-        x.append(fingerprint)
-        pce = df.iloc[i][column_y]
-        y.append(pce)
-
-    return x, y
-
-
 def fixed_trial():
     return {
         'n_estimators': 50,

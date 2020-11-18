@@ -7,11 +7,33 @@ from unittest.mock import patch
 import pytorch_lightning as pl
 
 import oscml.hpo.optunawrapper
+import oscml.hpo.train
 import oscml.hpo.start_bilstm_with_hpo
 import oscml.hpo.start_gnn_with_hpo
 import oscml.hpo.start_mnist_with_hpo
 import oscml.hpo.start_rf_with_hpo
 import oscml.utils.util
+
+
+def create_config_template():
+    return {
+        "model_name": "",
+        "model": {
+            'subgraph_embedding_dim': 128,
+            'mlp_layers': 3,
+            'mlp_units_0': 60,
+            'mlp_units_1': 20,
+            'mlp_units_2': 20,
+            'mlp_dropout': 0.1
+        },
+        "optimizer": {
+            'opt_name': 'Adam',             # Adam, SGD, RMSProp
+            'lr': 0.001,
+            'weight_decay': 0,
+            'momentum': 0,              # SGD and RMSProp only
+            'nesterov': False,          # SGD only
+        }
+    }
 
 
 class Test_HPO(unittest.TestCase):
@@ -20,6 +42,7 @@ class Test_HPO(unittest.TestCase):
     def setUpClass(cls):
         oscml.utils.util.init_logging('.', './tmp')
 
+    """
     def test_train_mnist_with_fixed_trial(self):
         testargs = ['test', '--fixedtrial', 'True']
         with unittest.mock.patch('sys.argv', testargs):
@@ -43,15 +66,37 @@ class Test_HPO(unittest.TestCase):
         ]
         with unittest.mock.patch('sys.argv', testargs):
             best_value = oscml.hpo.start_gnn_with_hpo.start()
+    """
 
     def test_train_bilstm_cep25000_with_fixed_trial(self):
+
+        fixed_trial_params = {
+            'subgraph_embedding_dim': 128,
+            #'lstm_hidden_dim': 128,  # currently set to subgraph_embedding_dim
+            'mlp_layers': 3,
+            'mlp_units_0': 60,
+            'mlp_units_1': 20,
+            'mlp_units_2': 20,
+            'mlp_dropout': 0.1,
+            'name': 'Adam',             # Adam, SGD, RMSProp
+            'lr': 0.001,
+            'momentum': 0,              # SGD and RMSProp only
+            'weight_decay': 0,
+            'nesterov': False,          # SGD only
+            #'batch_size': 250
+        }
+
+        config = create_config_template()
+        config['model_name'] = 'BILSTM'
+
         testargs = ['test', 
             '--fixedtrial', 'True',
             '--dataset', 'CEP25000',
-            '--epochs', '1'
+            '--epochs', '1',
+            '--model', 'BILSTM'
             ]
         with unittest.mock.patch('sys.argv', testargs):
-            best_value = oscml.hpo.start_bilstm_with_hpo.start()
+            oscml.hpo.train.start(config_dev=config)
 
     def test_train_bilstm_hopv15_with_fixed_trial(self):
         testargs = ['test', 
@@ -60,8 +105,32 @@ class Test_HPO(unittest.TestCase):
             '--epochs', '2'
             ]
         with unittest.mock.patch('sys.argv', testargs):
-            best_value = oscml.hpo.start_bilstm_with_hpo.start()
+            oscml.hpo.train.start()
 
+    def test_train_attentiveFP_cep25000_with_fixed_trial(self):
+
+        """
+        fixed_trial_params = {
+            'name': 'Adam',             # Adam, SGD, RMSProp
+            'lr': 0.001,
+            'momentum': 0,              # SGD and RMSProp only
+            'weight_decay': 0,
+            'nesterov': False,          # SGD only
+        }
+        """
+        config = create_config_template()
+        config['model_name'] = 'AttentiveFP'
+
+        testargs = ['test', 
+            '--fixedtrial', 'True',
+            '--dataset', 'CEP25000',
+            '--epochs', '1',
+            '--model', 'AttentiveFP'
+            ]
+        with unittest.mock.patch('sys.argv', testargs):
+            oscml.hpo.train.start(config_dev=config)
+
+    """
     def test_load_model_from_checkpoint(self):
 
         #load model
@@ -234,17 +303,19 @@ class Test_HPO(unittest.TestCase):
                         'n_estimators': 98, 'max_depth': 48, 'min_samples_split': 3, 'min_samples_leaf': 4, 'max_features': 1.0, 'bootstrap': False, 'max_samples': 10}
 
                 )
+    """
 
 if __name__ == '__main__':
 
-    unittest.main()
+    #unittest.main()
 
-    #suite = unittest.TestSuite()
+    suite = unittest.TestSuite()
     #suite.addTest(Test_HPO('test_train_mnist_with_fixed_trial'))
     #suite.addTest(Test_HPO('test_train_gnn_cep25000_with_fixed_trial'))
     #suite.addTest(Test_HPO('test_train_gnn_hopv15_with_fixed_trial'))
     #suite.addTest(Test_HPO('test_train_bilstm_cep25000_with_fixed_trial'))
     #suite.addTest(Test_HPO('test_train_bilstm_hopv15_with_fixed_trial'))
+    suite.addTest(Test_HPO('test_train_attentiveFP_cep25000_with_fixed_trial'))
     #suite.addTest(Test_HPO('test_load_model_from_checkpoint'))
     #suite.addTest(Test_HPO('test_gnn_cep25000_ckpt_test_only'))
     #suite.addTest(Test_HPO('test_gnn_cep25000_ckpt_resume_training'))
@@ -254,5 +325,5 @@ if __name__ == '__main__':
     #suite.addTest(Test_HPO('test_rf_hpo_fixed_trial'))
     #suite.addTest(Test_HPO('test_rf_hpo_with_some_trials'))
     #suite.addTest(Test_HPO('test_rf_hpo_with_fixed_trial_and_negative_mean_score'))
-    #runner = unittest.TextTestRunner()
-    #runner.run(suite)
+    runner = unittest.TextTestRunner()
+    runner.run(suite)
