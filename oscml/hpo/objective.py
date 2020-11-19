@@ -6,7 +6,7 @@ import pytorch_lightning as pl
 import oscml.data.dataset
 import oscml.data.dataset_cep
 import oscml.data.dataset_hopv15
-import oscml.hpo.hpo_attentivefp
+#import oscml.hpo.hpo_attentivefp
 import oscml.hpo.hpo_bilstm
 import oscml.hpo.hpo_simplegnn
 import oscml.hpo.optunawrapper
@@ -129,9 +129,9 @@ def objective(trial, config, df_train, df_val, df_test, transformer, log_dir, fe
         optimizer = get_optimizer_params(trial)
         model, train_dl, val_dl, test_dl = oscml.hpo.hpo_simplegnn.create(trial, config, df_train, df_val, df_test, optimizer, transformer, dataset)
 
-    elif model_name == 'AttentiveFP':
-        optimizer = get_optimizer_params(trial)
-        model, train_dl, val_dl, test_dl = oscml.hpo.hpo_attentivefp.create(trial, config, df_train, df_val, df_test, optimizer,  dataset, log_dir, featurizer)
+    #elif model_name == 'AttentiveFP':
+    #    optimizer = get_optimizer_params(trial)
+    #    model, train_dl, val_dl, test_dl = oscml.hpo.hpo_attentivefp.create(trial, config, df_train, df_val, df_test, optimizer,  dataset, log_dir, featurizer)
 
 
     # fit on training set and calculate metric on validation set

@@ -102,15 +102,15 @@ def start_hpo(args, objective, log_dir, fixed_trial_params=None):
             for key, value in user_attrs.items():
                 study.set_user_attr(key, value)
 
-            if args.config:
-                pass
+            #if args.config:
+            #    pass
                 #with open(args.config) as config_json:
                 #    #optuna_config = json.load(config_json)['HPO']['optuna']
                 #    config_model = json.load(config_json)[args.model]
                 #objective_fct = objective(config_model)
-            else:
-                objective_fct = objective
-
+            #else:
+            #    objective_fct = objective
+            objective_fct = objective
             decorator = create_objective_decorator(objective_fct, args.trials)
 
             logging.info('starting HPO')

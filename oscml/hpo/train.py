@@ -35,7 +35,7 @@ def start(config_dev=None):
     parser.add_argument('--timeout', type=int, default=None, help='Stop study after the given number of second(s). If this argument is not set, the study is executed without time limitation.')
     parser.add_argument('--jobs', type=int, default=1)
     parser.add_argument('--config', type=str, default=None)
-    #parser.add_argument('--model', type=str, default=None, choices=['BILSTM', 'AttentiveFP', 'SimpleGNN'])
+    parser.add_argument('--model', type=str, default=None, choices=['BILSTM', 'AttentiveFP', 'SimpleGNN'])
     parser.add_argument('--fixedtrial', type=bool, default=False)
     parser.add_argument('--ckpt', type=str)
     parser.add_argument('--dataset', type=str)
@@ -59,7 +59,8 @@ def start(config_dev=None):
 
 
     if args.config:
-        config = None # TODO: read the config file given by args.config
+        # TODO: read the config file given by args.config which contains model etc.
+        config = {'model': args.model}
     else:
         config = {'model': config_dev['model_name']}
         config.update(config_dev["model"])
