@@ -46,6 +46,7 @@ def start(config_dev=None):
     parser.add_argument('--load_if_exists', type=bool_or_str, default=False)
     parser.add_argument('--metric', type=str, default='val_loss')
     parser.add_argument('--direction', type=str, default='minimize')
+    parser.add_argument('--featurizer', type=str, choices=['simple', 'full'], default='full')
     args = parser.parse_args()
 
     # init file logging
@@ -69,7 +70,8 @@ def start(config_dev=None):
     df_train, df_val, df_test, transformer  = get_dataframes(args.src, args.dataset)
 
     obj = functools.partial(oscml.hpo.objective.objective, config=config, 
-        df_train=df_train, df_val=df_val, df_test=df_test, transformer=transformer, log_dir=log_dir)
+        df_train=df_train, df_val=df_val, df_test=df_test, transformer=transformer, log_dir=log_dir, 
+        featurizer=args.featurizer)
 
     return oscml.hpo.optunawrapper.start_hpo(
             args=args,

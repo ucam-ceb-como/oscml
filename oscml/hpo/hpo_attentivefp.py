@@ -11,28 +11,44 @@ import torch.utils.data
 import oscml.utils.util_lightning
 
 
-def create(trial, config, df_train, df_val, df_test, optimizer, dataset, log_dir):
+def create(trial, config, df_train, df_val, df_test, optimizer, dataset, log_dir, featurizer):
 
     # dataloaders
     info = oscml.data.dataset.get_dataset_info(dataset)
     column_smiles = info.column_smiles
     column_target = info.column_target
     dgl_log_dir = log_dir + '/dgl_' + str(trial.number)
-    train_dl, val_dl, test_dl = oscml.hpo.hpo_attentivefp.get_dataloaders(df_train, df_val, df_test, 
-            column_smiles=column_smiles, column_target=column_target, batch_size=250, log_dir=dgl_log_dir)
+
+    if featurizer == 'full':
+        node_featurizer = dgllife.utils.AttentiveFPAtomFeaturizer()
+        edge_featurizer = dgllife.utils.AttentiveFPBondFeaturizer(self_loop=True)
+        node_feat_size = node_featurizer.feat_size('h')     # = 39
+        edge_feat_size = edge_featurizer.feat_size('e')     # = 11
+    else:
+        node_featurizer = SimpleAtomFeaturizer2()
+        #edge_featurizer = dgllife.utils.AttentiveFPBondFeaturizer(self_loop=True)
+        #edge_featurizer = dgllife.utils.CanonicalBondFeaturizer(self_loop=True)
+        edge_featurizer = EmptyBondFeaturizes(self_loop=True)
+        node_feat_size = node_featurizer.feat_size('h')
+        edge_feat_size = edge_featurizer.feat_size('e')
+
 
     # define models and params
     model_params =  {
-        'node_feat_size': 39,
-        'edge_feat_size': 11,
+        'node_feat_size': node_feat_size,
+        'edge_feat_size': edge_feat_size,
         'graph_feat_size': trial.suggest_int('graph_feat_size', 16, 256),
         'num_layers': trial.suggest_int('num_layers', 1, 6),
         'num_timesteps': trial.suggest_int('num_timesteps', 1, 4),
         'dropout': trial.suggest_uniform('dropout', 0., 0.2),
         'n_tasks': 1
     }
-
+    
     logging.info('model params=%s', model_params)
+
+    train_dl, val_dl, test_dl = oscml.hpo.hpo_attentivefp.get_dataloaders(df_train, df_val, df_test, 
+            column_smiles=column_smiles, column_target=column_target, batch_size=250, log_dir=dgl_log_dir, 
+            node_featurizer=node_featurizer, edge_featurizer=edge_featurizer)
 
     model_predictor = dgllife.model.AttentiveFPPredictor(**model_params)
 
@@ -44,16 +60,44 @@ def create(trial, config, df_train, df_val, df_test, optimizer, dataset, log_dir
     return model, train_dl, val_dl, test_dl
 
 
-def get_dataloaders(df_train, df_val, df_test, column_smiles, column_target, batch_size, log_dir):
+class SimpleAtomFeaturizer(dgllife.utils.BaseAtomFeaturizer):
+    
+    def __init__(self, atom_data_field='h'):
+        super().__init__(
+            featurizer_funcs={atom_data_field: dgllife.utils.ConcatFeaturizer(
+                [dgllife.utils.atom_type_one_hot,
+                 dgllife.utils.atom_is_aromatic]
+            )})
+
+# TODO AE URGENT check atomtypes for Osaka, may remove unused types
+class SimpleAtomFeaturizer2(dgllife.utils.BaseAtomFeaturizer):
+
+    def __init__(self, atom_data_field='h'):
+        super().__init__(
+            featurizer_funcs={atom_data_field: dgllife.utils.ConcatFeaturizer(
+                [functools.partial(dgllife.utils.atom_type_one_hot, allowable_set=[
+                    'B', 'C', 'N', 'O', 'F', 'Si', 'P', 'S', 'H',
+                    'Cl', 'As', 'Se', 'Br', 'Te', 'I', 'At'], encode_unknown=True),
+                 dgllife.utils.atom_is_aromatic]
+            )})
+
+# TODO AE URGENT: still edge feature size = 1 not = 0!!!
+class EmptyBondFeaturizes(dgllife.utils.BaseBondFeaturizer):
+      def __init__(self, bond_data_field='e', self_loop=False):
+        super().__init__(
+            featurizer_funcs={bond_data_field: dgllife.utils.ConcatFeaturizer(
+                #[dgllife.utils.bond_type_one_hot]
+                []
+            )}, self_loop=self_loop)
+            #featurizer_funcs={}, self_loop=self_loop)
+
+
+def get_dataloaders(df_train, df_val, df_test, column_smiles, column_target, batch_size, log_dir, node_featurizer, edge_featurizer):
 
     #TODO AE URGENT for development only
-    df_train = df_train[:150]
-    df_val = df_val[:50]
-    df_test = df_test[:50]
-
-
-    node_featurizer = dgllife.utils.AttentiveFPAtomFeaturizer()
-    edge_featurizer = dgllife.utils.AttentiveFPBondFeaturizer(self_loop=True)
+    #df_train = df_train[:150]
+    #df_val = df_val[:50]
+    #df_test = df_test[:50]
 
     smiles_to_graph=functools.partial(dgllife.utils.smiles_to_bigraph, add_self_loop=True)
     dgl_ds_train = dgllife.data.MoleculeCSVDataset(df=df_train,
