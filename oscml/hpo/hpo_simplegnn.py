@@ -2,7 +2,7 @@ import logging
 
 import oscml.data.dataset
 import oscml.models.model_gnn
-from oscml.hpo.optunawrapper import set_config_param
+from oscml.utils.util_config import set_config_param, set_config_param_list
 def create(trial, config, df_train, df_val, df_test, optimizer, transformer, dataset):
 
     info = oscml.data.dataset.get_dataset_info(dataset)
@@ -13,40 +13,18 @@ def create(trial, config, df_train, df_val, df_test, optimizer, transformer, dat
             transformer, batch_size=250)
 
     # define model and params
+    # copy model params to another dictionary, as we may need to modify some of its values
     model_specific = config['model']['model_specific'].copy()
-    conv_dims_direction = config['model']['model_specific']['conv_dims'].get('direction')
-    mlp_units_direction = config['model']['model_specific']['mlp_units'].get('direction')
 
-    embedding_dim = set_config_param(trial=trial,param_name='embedding_dim',param=model_specific['embedding_dimension']) #trial.suggest_int('embedding_dim', 8, 256)
-    conv_dims = []
-    conv_layers =  set_config_param(trial=trial,param_name='embedding_dim',param=model_specific['conv_layers']) #trial.suggest_int('conv_layers', 1, 4)
-    suggested_units = embedding_dim
-    for l in range(conv_layers):
-        if conv_dims_direction=="decreasing":
-            model_specific['conv_dims']['high'] = suggested_units
-        elif conv_dims_direction=="increasing":
-            model_specific['conv_dims']['low'] = suggested_units
-        elif conv_dims_direction=="constant":
-            model_specific['conv_dims'] = suggested_units
-        suggested_units = set_config_param(trial=trial,param_name='conv_dims_{}'.format(l),param=model_specific['conv_dims']) #trial.suggest_int('conv_dims_{}'.format(l), 10, max_units)
-        conv_dims.append(suggested_units)
-       # max_units = suggested_units
-
-    mlp_layers = set_config_param(trial=trial,param_name='mlp_layers',param=model_specific['mlp_layers'])  #trial.suggest_int('mlp_layers', 1, 4)
+    # start setting model parameters
+    #--------------------------------------
+    embedding_dim = set_config_param(trial=trial,param_name='embedding_dim',param=model_specific['embedding_dimension'])
+    conv_layers =  set_config_param(trial=trial,param_name='conv_layers',param=model_specific['conv_layers'])
+    conv_dims = set_config_param_list(trial=trial,param_name='conv_dims',param=model_specific['conv_dims'],length=conv_layers)
+    mlp_layers = set_config_param(trial=trial,param_name='mlp_layers',param=model_specific['mlp_layers'])
     # the number of units of the last gnn layer is the input dimension for the mlp
-    mlp_units = []
-    mlp_dropout_rate = set_config_param(trial=trial,param_name='mlp_dropout',param=model_specific['mlp_dropout'])  #trial.suggest_float('mlp_dropout', 0.1, 0.3)
-    mlp_dropouts = []
-    for l in range(mlp_layers):
-        suggested_units = set_config_param(trial=trial,param_name='mlp_units_{}'.format(l),param=model_specific['mlp_units']) #trial.suggest_int('mlp_units_{}'.format(l), 5, max_units)
-        mlp_units.append(suggested_units)
-        if mlp_units_direction=="decreasing":
-            model_specific['mlp_units']['high'] = suggested_units
-        elif mlp_units_direction=="increasing":
-            model_specific['mlp_units']['low'] = suggested_units
-        elif mlp_units_direction=="constant":
-            model_specific['mlp_units'] = suggested_units
-        mlp_dropouts.append(mlp_dropout_rate)
+    mlp_units = set_config_param_list(trial=trial,param_name='mlp_units',param=model_specific['mlp_units'],length=mlp_layers)
+    mlp_dropouts = set_config_param_list(trial=trial,param_name='mlp_dropouts',param=model_specific['mlp_dropouts'],length=mlp_layers)
 
     # add output dimension
     mlp_units.append(1)
