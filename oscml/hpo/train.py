@@ -63,11 +63,12 @@ def start(config_dev=None):
         with open(args.config) as json_config:
             config = json.load(json_config)
     else:
-        config = {'model': config_dev['model_name']}
-        config.update(config_dev["model"])
-        config.update(config_dev["optimizer"])
+        config = config_dev
+        #config = {'model': config_dev['model_name']}
+        #config.update(config_dev["model"])
+        #config.update(config_dev["optimizer"])
 
-    logging.info('config file=%s', config)
+    logging.info('config=%s', config)
 
     df_train, df_val, df_test, transformer  = get_dataframes(args.src, args.dataset)
 
@@ -79,7 +80,7 @@ def start(config_dev=None):
             args=args,
             objective=obj,
             log_dir=log_dir,
-            fixed_trial_params=config)
+            fixed_trial_params=None) #config)
 
 
 if __name__ == '__main__':

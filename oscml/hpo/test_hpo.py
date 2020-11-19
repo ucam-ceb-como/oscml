@@ -15,6 +15,23 @@ import oscml.hpo.start_rf_with_hpo
 import oscml.utils.util
 
 
+def create_config(model_name, model_specific):
+    return {
+        "model":{
+            "name": model_name,
+            "model_specific": model_specific,
+        }
+    }
+
+def create_config_attentivefp():
+    model_specific = {
+            'graph_feat_size': 200,
+            'num_layers': 4,
+            'num_timesteps': 2,
+            'dropout': 0.,
+        }
+    return create_config('AttentiveFP', model_specific)
+
 def create_config_template_optimizer():
     return {
         "optimizer": {
@@ -154,12 +171,12 @@ class Test_HPO(unittest.TestCase):
 
     def test_hpo_attentiveFP_hopv15_full_featurizer(self):
 
-        config = create_config_template_attentivefp()
+        config = create_config_attentivefp()
 
         testargs = ['test', 
             '--dataset', 'HOPV15',
             '--epochs', '1',
-            '--trials', '3'
+            '--trials', '2'         # will run twice with the same fixed params
             ]
         with unittest.mock.patch('sys.argv', testargs):
             oscml.hpo.train.start(config_dev=config)
@@ -169,12 +186,11 @@ class Test_HPO(unittest.TestCase):
         testargs = ['test', 
             '--dataset', 'HOPV15',
             '--epochs', '1',
-            '--trials', '1',
+            '--trials', '2',
             '--config', './conf/confhpo_attentivefp.json'
             ]
         with unittest.mock.patch('sys.argv', testargs):
             oscml.hpo.train.start()
-
 
     """
     def test_load_model_from_checkpoint(self):
@@ -362,8 +378,8 @@ if __name__ == '__main__':
     #suite.addTest(Test_HPO('test_train_bilstm_hopv15_with_fixed_trial'))
     #suite.addTest(Test_HPO('test_train_attentiveFP_cep25000_full_featurizer_with_fixed_trial'))
     #suite.addTest(Test_HPO('test_train_attentiveFP_cep25000_simple_featurizer_with_fixed_trial'))
-    suite.addTest(Test_HPO('test_hpo_attentiveFP_hopv15_full_featurizer_with_config_file'))
     #suite.addTest(Test_HPO('test_hpo_attentiveFP_hopv15_full_featurizer'))
+    suite.addTest(Test_HPO('test_hpo_attentiveFP_hopv15_full_featurizer_with_config_file'))
     #suite.addTest(Test_HPO('test_load_model_from_checkpoint'))
     #suite.addTest(Test_HPO('test_gnn_cep25000_ckpt_test_only'))
     #suite.addTest(Test_HPO('test_gnn_cep25000_ckpt_resume_training'))
