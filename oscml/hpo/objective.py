@@ -113,7 +113,7 @@ def objective(trial, config, df_train, df_val, df_test, transformer, log_dir, fe
 
     user_attrs = get_attrs(trial)
     #model_id = user_attrs['model']
-    model_name = config['model']
+    model_name = config['model']['name']
 
     # read data and preprocess, e.g. standarization, splitting into train, validation and test set
     #src = user_attrs['src']
@@ -125,14 +125,13 @@ def objective(trial, config, df_train, df_val, df_test, transformer, log_dir, fe
         optimizer = get_optimizer_params(trial)
         model, train_dl, val_dl, test_dl = oscml.hpo.hpo_bilstm.create(trial, config, df_train, df_val, df_test, optimizer, transformer, dataset)
 
+    #elif model_name == 'AttentiveFP':
+    #    optimizer = get_optimizer_params(trial)
+    #    model, train_dl, val_dl, test_dl = oscml.hpo.hpo_attentivefp.create(trial, config, df_train, df_val, df_test, optimizer)
+
     elif model_name == 'SimpleGNN':
         optimizer = get_optimizer_params(trial)
         model, train_dl, val_dl, test_dl = oscml.hpo.hpo_simplegnn.create(trial, config, df_train, df_val, df_test, optimizer, transformer, dataset)
-
-    #elif model_name == 'AttentiveFP':
-    #    optimizer = get_optimizer_params(trial)
-    #    model, train_dl, val_dl, test_dl = oscml.hpo.hpo_attentivefp.create(trial, config, df_train, df_val, df_test, optimizer,  dataset, log_dir, featurizer)
-
 
     # fit on training set and calculate metric on validation set
     trainer_params = {}
