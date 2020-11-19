@@ -9,8 +9,8 @@ import oscml.hpo.objective
 import oscml.hpo.optunawrapper
 
 
-def get_dataframes(src, dataset):
-    df_train, df_val, df_test, transformer = oscml.data.dataset.get_dataframes(dataset=dataset, src=src, train_size=283, test_size=30)
+def get_dataframes(src, dataset, datasetpath):
+    df_train, df_val, df_test, transformer = oscml.data.dataset.get_dataframes(dataset=dataset, src=src, train_size=283, test_size=30, path=datasetpath)
     return df_train, df_val, df_test, transformer
 
 def none_or_str(value):
@@ -39,6 +39,7 @@ def start(config_dev=None):
     parser.add_argument('--model', type=str, default=None, choices=['BILSTM', 'AttentiveFP', 'SimpleGNN'])
     parser.add_argument('--ckpt', type=str)
     parser.add_argument('--dataset', type=str)
+    parser.add_argument('--datasetpath', type=str, default=None)
     parser.add_argument('--seed', type=int, default=200)
     parser.add_argument('--cv', type=int, default=None)
     parser.add_argument('--storage', type=none_or_str, default=None)
@@ -57,6 +58,8 @@ def start(config_dev=None):
 
     logging.info('current working directory=%s', os.getcwd())
     args.log_dir = log_dir
+    if args.datasetpath:
+        args.datasetpath = args.src + '/' + args.datasetpath
     logging.info('args=%s', args)
 
     if args.config:
@@ -67,7 +70,7 @@ def start(config_dev=None):
 
     logging.info('config=%s', config)
 
-    df_train, df_val, df_test, transformer  = get_dataframes(args.src, args.dataset)
+    df_train, df_val, df_test, transformer  = get_dataframes(args.src, args.dataset, args.datasetpath)
 
     obj = functools.partial(oscml.hpo.objective.objective, config=config, args=args,
         df_train=df_train, df_val=df_val, df_test=df_test, transformer=transformer)
