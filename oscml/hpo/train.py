@@ -3,6 +3,7 @@ import datetime
 import functools
 import logging
 import os
+import json
 
 import oscml.hpo.objective
 import oscml.hpo.optunawrapper
@@ -59,8 +60,8 @@ def start(config_dev=None):
 
 
     if args.config:
-        # TODO: read the config file given by args.config which contains model etc.
-        config = {'model': args.model}
+        with open(args.config) as json_config:
+            config = json.load(json_config)
     else:
         config = {'model': config_dev['model_name']}
         config.update(config_dev["model"])
