@@ -65,6 +65,6 @@ def create(trial, config, df_train, df_val, df_test, optimizer, transformer, dat
 
     logging.info('model params=%s', model_params)
 
-    model = oscml.models.model_gnn.GNNSimple(**model_params, optimizer=optimizer)
+    model = oscml.models.model_gnn.SimpleGNN(**model_params, optimizer=optimizer)
 
     return model, train_dl, val_dl, test_dl

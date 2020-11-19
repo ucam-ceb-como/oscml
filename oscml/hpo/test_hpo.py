@@ -164,6 +164,18 @@ class Test_HPO(unittest.TestCase):
         with unittest.mock.patch('sys.argv', testargs):
             oscml.hpo.train.start(config_dev=config)
 
+    def test_hpo_attentiveFP_hopv15_full_featurizer_with_config_file(self):
+
+        testargs = ['test', 
+            '--dataset', 'HOPV15',
+            '--epochs', '1',
+            '--trials', '1',
+            '--config', './conf/confhpo_attentivefp.json'
+            ]
+        with unittest.mock.patch('sys.argv', testargs):
+            oscml.hpo.train.start()
+
+
     """
     def test_load_model_from_checkpoint(self):
 
@@ -349,7 +361,8 @@ if __name__ == '__main__':
     #suite.addTest(Test_HPO('test_train_bilstm_cep25000_with_fixed_trial'))
     #suite.addTest(Test_HPO('test_train_bilstm_hopv15_with_fixed_trial'))
     #suite.addTest(Test_HPO('test_train_attentiveFP_cep25000_full_featurizer_with_fixed_trial'))
-    suite.addTest(Test_HPO('test_train_attentiveFP_cep25000_simple_featurizer_with_fixed_trial'))
+    #suite.addTest(Test_HPO('test_train_attentiveFP_cep25000_simple_featurizer_with_fixed_trial'))
+    suite.addTest(Test_HPO('test_hpo_attentiveFP_hopv15_full_featurizer_with_config_file'))
     #suite.addTest(Test_HPO('test_hpo_attentiveFP_hopv15_full_featurizer'))
     #suite.addTest(Test_HPO('test_load_model_from_checkpoint'))
     #suite.addTest(Test_HPO('test_gnn_cep25000_ckpt_test_only'))
