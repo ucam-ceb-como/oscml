@@ -6,23 +6,11 @@ import pytorch_lightning as pl
 import oscml.data.dataset
 import oscml.data.dataset_cep
 import oscml.data.dataset_hopv15
-#import oscml.hpo.hpo_attentivefp
+import oscml.hpo.hpo_attentivefp
 import oscml.hpo.hpo_bilstm
 import oscml.hpo.hpo_simplegnn
 import oscml.hpo.optunawrapper
 
-
-def get_attrs(trial):
-    if isinstance(trial, optuna.trial.FixedTrial):
-        user_attrs = trial.user_attrs
-    else:
-        user_attrs = trial.study.user_attrs
-
-    #init_attrs = None
-    #if 'init_attrs' in user_attrs:
-    #    init_attrs = user_attrs['init_attrs']
-
-    return user_attrs
 
 class MetricsCallback(pl.Callback):
 
@@ -32,21 +20,6 @@ class MetricsCallback(pl.Callback):
 
     def on_validation_end(self, trainer, pl_module):
         self.metrics.append(trainer.callback_metrics)
-
-def fit(model_instance, train_dl, val_dl, trainer_params, trial):
-
-    user_attrs = get_attrs(trial)
-    #src = user_attrs['src']
-    #dst = user_attrs['dst']
-    epochs = user_attrs['epochs']
-    n_trials = user_attrs['trials']
-    metric = user_attrs['metric']
-    log_dir = user_attrs['log_dir']
-
-    trial_number = trial.number
-
-    return fit_or_test(model_instance, train_dl, val_dl, None, trainer_params,
-                epochs, metric, log_dir, trial, trial_number, n_trials)
 
 def fit_or_test(model, train_dl, val_dl, test_dl, trainer_params,
                 epochs, metric, log_dir, trial=None, trial_number=-1, n_trials=0):
@@ -115,32 +88,26 @@ def get_optimizer_params(trial):
         optimizer['nesterov'] = trial.suggest_categorical('nesterov', [True, False])
     return optimizer
 
-def objective(trial, config, df_train, df_val, df_test, transformer, log_dir, featurizer):
-
-    user_attrs = get_attrs(trial)
-    #model_id = user_attrs['model']
-    model_name = config['model']['name']
-
-    # read data and preprocess, e.g. standarization, splitting into train, validation and test set
-    #src = user_attrs['src']
-    dataset = user_attrs['dataset']
-    #df_train, df_val, df_test, transformer = oscml.data.dataset.get_dataframes(dataset=dataset, src=src, train_size=283, test_size=30)
+def objective(trial, config, args, df_train, df_val, df_test, transformer):
 
     # init model and data loaders
+    model_name = config['model']['name']
+
     if model_name == 'BILSTM':
         optimizer = get_optimizer_params(trial)
-        model, train_dl, val_dl, test_dl = oscml.hpo.hpo_bilstm.create(trial, config, df_train, df_val, df_test, optimizer, transformer, dataset)
+        model, train_dl, val_dl, test_dl = oscml.hpo.hpo_bilstm.create(trial, config, df_train, df_val, df_test, optimizer, transformer, args.dataset)
 
     elif model_name == 'AttentiveFP':
-        import oscml.hpo.hpo_attentivefp
         optimizer = get_optimizer_params(trial)
-        model, train_dl, val_dl, test_dl = oscml.hpo.hpo_attentivefp.create(trial, config, df_train, df_val, df_test, optimizer, dataset, log_dir, featurizer)
+        model, train_dl, val_dl, test_dl = oscml.hpo.hpo_attentivefp.create(trial, config, args, df_train, df_val, df_test, optimizer)
 
     elif model_name == 'SimpleGNN':
         optimizer = get_optimizer_params(trial)
-        model, train_dl, val_dl, test_dl = oscml.hpo.hpo_simplegnn.create(trial, config, df_train, df_val, df_test, optimizer, transformer, dataset)
+        model, train_dl, val_dl, test_dl = oscml.hpo.hpo_simplegnn.create(trial, config, df_train, df_val, df_test, optimizer, transformer, args.dataset)
 
     # fit on training set and calculate metric on validation set
     trainer_params = {}
-    metric_value = fit(model, train_dl, val_dl, trainer_params, trial)
+    trial_number = trial.number
+    metric_value = fit_or_test(model, train_dl, val_dl, None, trainer_params,
+                                args.epochs, args.metric, args.log_dir, trial, trial_number, args.trials)
     return metric_value

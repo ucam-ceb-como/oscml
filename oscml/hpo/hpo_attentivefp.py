@@ -8,19 +8,19 @@ import dgllife.utils
 import torch
 import torch.utils.data
 
-from oscml.hpo.optunawrapper import set_config_param
+from oscml.utils.util_config import set_config_param
 import oscml.utils.util_lightning
 
 
-def create(trial, config, df_train, df_val, df_test, optimizer, dataset, log_dir, featurizer):
+def create(trial, config, args, df_train, df_val, df_test, optimizer):
 
     # dataloaders
-    info = oscml.data.dataset.get_dataset_info(dataset)
+    info = oscml.data.dataset.get_dataset_info(args.dataset)
     column_smiles = info.column_smiles
     column_target = info.column_target
-    dgl_log_dir = log_dir + '/dgl_' + str(trial.number)
+    dgl_log_dir = args.log_dir + '/dgl_' + str(trial.number)
 
-    if featurizer == 'full':
+    if args.featurizer == 'full':
         node_featurizer = dgllife.utils.AttentiveFPAtomFeaturizer()
         edge_featurizer = dgllife.utils.AttentiveFPBondFeaturizer(self_loop=True)
         node_feat_size = node_featurizer.feat_size('h')     # = 39

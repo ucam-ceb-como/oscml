@@ -72,11 +72,6 @@ def start_hpo(args, objective, log_dir, fixed_trial_params=None):
         np.random.seed(args.seed)
         torch.manual_seed(args.seed)
 
-        #if init:
-        #    init_attrs = init(user_attrs)
-        #    user_attrs['init_attrs'] = init_attrs
-        #   logging.info('init finished')
-
         if args.fixedtrial:
             assert args.trials is None or args.trials == 1
             trial = optuna.trial.FixedTrial(fixed_trial_params)
@@ -86,31 +81,12 @@ def start_hpo(args, objective, log_dir, fixed_trial_params=None):
             best_value = objective(trial)
             logging.info('finished objective function call with %s=%s', args.metric, best_value)
 
-        #elif args.ckpt:
-        #    resume_attrs = {
-        #        'ckpt': args.ckpt,
-        #        'src': args.src,
-        #        'log_dir': log_dir,
-        #        'dataset': args.dataset,
-        #        'epochs': args.epochs,
-        #        'metric': args.metric
-        #    }
-        #    best_value = resume(**resume_attrs)
         else:
             study = create_study(direction=args.direction, seed=args.seed, storage=args.storage, study_name=args.study_name, load_if_exists=args.load_if_exists)
             for key, value in user_attrs.items():
                 study.set_user_attr(key, value)
 
-            #if args.config:
-            #    pass
-                #with open(args.config) as config_json:
-                #    #optuna_config = json.load(config_json)['HPO']['optuna']
-                #    config_model = json.load(config_json)[args.model]
-                #objective_fct = objective(config_model)
-            #else:
-            #    objective_fct = objective
-            objective_fct = objective
-            decorator = create_objective_decorator(objective_fct, args.trials)
+            decorator = create_objective_decorator(objective, args.trials)
 
             logging.info('starting HPO')
             study.optimize(decorator, n_trials=args.trials, n_jobs=args.jobs, timeout=args.timeout,

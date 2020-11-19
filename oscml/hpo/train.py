@@ -57,24 +57,21 @@ def start(config_dev=None):
     oscml.utils.util.init_file_logging(log_config_file, log_dir + '/oscml.log')
 
     logging.info('current working directory=%s', os.getcwd())
-
+    args.log_dir = log_dir
+    logging.info('args=%s', args)
 
     if args.config:
         with open(args.config) as json_config:
             config = json.load(json_config)
     else:
         config = config_dev
-        #config = {'model': config_dev['model_name']}
-        #config.update(config_dev["model"])
-        #config.update(config_dev["optimizer"])
 
     logging.info('config=%s', config)
 
     df_train, df_val, df_test, transformer  = get_dataframes(args.src, args.dataset)
 
-    obj = functools.partial(oscml.hpo.objective.objective, config=config, 
-        df_train=df_train, df_val=df_val, df_test=df_test, transformer=transformer, log_dir=log_dir, 
-        featurizer=args.featurizer)
+    obj = functools.partial(oscml.hpo.objective.objective, config=config, args=args,
+        df_train=df_train, df_val=df_val, df_test=df_test, transformer=transformer)
 
     return oscml.hpo.optunawrapper.start_hpo(
             args=args,
