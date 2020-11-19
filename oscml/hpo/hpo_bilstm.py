@@ -2,9 +2,10 @@ import logging
 
 import oscml.data.dataset
 import oscml.models.model_bilstm
+from oscml.utils.util_config import set_config_param, set_config_param_list
 
 def create(trial, config, df_train, df_val, df_test, optimizer, transformer, dataset):
-    
+
     info = oscml.data.dataset.get_dataset_info(dataset)
     number_subgraphs = info.number_subgraphs()
     max_sequence_length = info.max_sequence_length
@@ -14,18 +15,13 @@ def create(trial, config, df_train, df_val, df_test, optimizer, transformer, dat
             transformer, batch_size=250, max_sequence_length=max_sequence_length)
 
     # define models and params
-    embedding_dim = trial.suggest_int('embedding_dim', 8, 256)
+    model_specific = config['model']['model_specific'].copy()
+
+    embedding_dim = set_config_param(trial=trial,param_name='embedding_dim',param=model_specific['embedding_dimension'])
     lstm_hidden_dim = embedding_dim
-    mlp_layers =  trial.suggest_int('mlp_layers', 1, 4)
-    mlp_units = []
-    mlp_dropout_rate = trial.suggest_uniform('mlp_dropout', 0., 0.2)
-    mlp_dropouts = []
-    #max_units = 2 * lstm_hidden_dim
-    for l in range(mlp_layers):
-        suggested_units = trial.suggest_categorical('mlp_units_{}'.format(l), [20, 40, 60, 80, 120, 160, 200])
-        mlp_units.append(suggested_units)
-        #max_units = suggested_units
-        mlp_dropouts.append(mlp_dropout_rate)
+    mlp_layers = set_config_param(trial=trial,param_name='mlp_layers',param=model_specific['mlp_layers'])
+    mlp_units = set_config_param_list(trial=trial,param_name='mlp_units',param=model_specific['mlp_units'],length=mlp_layers)
+    mlp_dropouts = set_config_param_list(trial=trial,param_name='mlp_dropouts',param=model_specific['mlp_dropouts'],length=mlp_layers)
 
     # add output dimension
     mlp_units.append(1)
@@ -41,7 +37,7 @@ def create(trial, config, df_train, df_val, df_test, optimizer, transformer, dat
         'target_mean': transformer.target_mean,
         'target_std': transformer.target_std,
     }
-    
+
     logging.info('model params=%s', model_params)
 
     model = oscml.models.model_bilstm.BiLstmForPce(**model_params, optimizer=optimizer)
