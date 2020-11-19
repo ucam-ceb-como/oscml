@@ -30,7 +30,7 @@ def skip_invalid_smiles(df, smiles_column_name):
         if valid:
             info.update(m, smiles)
 
-    df['SMILES_valid'] = smiles_valid      
+    df['SMILES_valid'] = smiles_valid
     number_invalid_smiles = (df['SMILES_valid'] == False).sum()
     sleep(1)
     logging.info('number of invalid SMILES=' + str(number_invalid_smiles))
@@ -41,7 +41,7 @@ def skip_invalid_smiles(df, smiles_column_name):
     logging.info('number of selected DB entries=' + str(len(df)))
     logging.info('max length of valid SMILES=' + str(info.max_smiles_length))
     logging.info('max number of atoms in molecules with valid SMILES=' + str(info.max_molecule_size))
-    
+
     return df, info
 
 def store_CEP_with_valid_SMILES(path_source, path_dest, numbersamples=-1):
@@ -54,7 +54,7 @@ def store_CEP_with_valid_SMILES(path_source, path_dest, numbersamples=-1):
     oscml.data.dataset.store(df_dest, path_dest)
 
 def skip_all_small_pce_values(df, threshold):
-    mask = (df['pce'] >= threshold) 
+    mask = (df['pce'] >= threshold)
     size_total = len(df)
     df = df[mask]
     size_larger = len(df)
@@ -64,7 +64,7 @@ def skip_all_small_pce_values(df, threshold):
 
 def sample_down_small_pce_values(df, threshold, percentage):
     """
-    skip each sample with PCE value < DOWN_THRESHOLD 
+    skip each sample with PCE value < DOWN_THRESHOLD
     with probability DOWN_SKIP_PERCENTAGE
     """
     mask = (df['pce'] < threshold)
@@ -79,7 +79,7 @@ def sample_down_small_pce_values(df, threshold, percentage):
     logging.info('number of selected DB entries=' + str(len(df)))
     return df.copy()
 
-def clean_data(df, skip_invalid_smiles = False, min_row = None, max_row = None, 
+def clean_data(df, skip_invalid_smiles = False, min_row = None, max_row = None,
                threshold_skip = None, threshold_downsampling = None, threshold_percentage = None):
     df_cleaned = df[min_row:max_row].copy()
     max_smiles_length = None
@@ -116,7 +116,7 @@ def sample_without_replacement(df, number_samples, step=0.2, add_bin=False):
     if add_bin:
         # only for visualization of the distribution with a histogram
         df['bin'] = column_bin
-    df_sampled, df_rest = train_test_split(df, train_size=number_samples, shuffle=True, 
+    df_sampled, df_rest = train_test_split(df, train_size=number_samples, shuffle=True,
                                                 random_state=0, stratify=column_bin)
     logging.info('number of selected DB entries=' + str(len(df_sampled)))
     logging.info('remaining DB entries for sampling=' + str(len(df_rest)))
@@ -184,7 +184,7 @@ def create_dataset_info_for_CEP25000():
         'column_target': 'pce',
         'mol2seq': mol2seq,
         'node_types': d['node_types'],
-        'max_sequence_length': 60,  
+        'max_sequence_length': 60,
         'max_molecule_size': d['max_molecule_size'],                # 53
         'max_smiles_length': d['max_smiles_length'],                # 83
     }
