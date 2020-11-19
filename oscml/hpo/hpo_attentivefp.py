@@ -8,6 +8,7 @@ import dgllife.utils
 import torch
 import torch.utils.data
 
+from oscml.hpo.optunawrapper import set_config_param
 import oscml.utils.util_lightning
 
 
@@ -34,6 +35,7 @@ def create(trial, config, df_train, df_val, df_test, optimizer, dataset, log_dir
 
 
     # define models and params
+    """
     model_params =  {
         'node_feat_size': node_feat_size,
         'edge_feat_size': edge_feat_size,
@@ -41,6 +43,17 @@ def create(trial, config, df_train, df_val, df_test, optimizer, dataset, log_dir
         'num_layers': trial.suggest_int('num_layers', 1, 6),
         'num_timesteps': trial.suggest_int('num_timesteps', 1, 4),
         'dropout': trial.suggest_uniform('dropout', 0., 0.2),
+        'n_tasks': 1
+    }
+    """
+    model_specific = config['model']['model_specific'].copy()
+    model_params =  {
+        'node_feat_size': node_feat_size,
+        'edge_feat_size': edge_feat_size,
+        'graph_feat_size': set_config_param(trial=trial,param_name='graph_feat_size',param=model_specific['graph_feat_size']),
+        'num_layers': set_config_param(trial=trial,param_name='num_layers',param=model_specific['num_layers']),
+        'num_timesteps': set_config_param(trial=trial,param_name='num_timesteps',param=model_specific['num_timesteps']),
+        'dropout': set_config_param(trial=trial,param_name='dropout',param=model_specific['dropout']),
         'n_tasks': 1
     }
     
@@ -83,7 +96,7 @@ class SimpleAtomFeaturizer2(dgllife.utils.BaseAtomFeaturizer):
 
 # TODO AE URGENT: still edge feature size = 1 not = 0!!!
 class EmptyBondFeaturizes(dgllife.utils.BaseBondFeaturizer):
-      def __init__(self, bond_data_field='e', self_loop=False):
+    def __init__(self, bond_data_field='e', self_loop=False):
         super().__init__(
             featurizer_funcs={bond_data_field: dgllife.utils.ConcatFeaturizer(
                 #[dgllife.utils.bond_type_one_hot]

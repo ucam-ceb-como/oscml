@@ -126,8 +126,9 @@ def objective(trial, config, df_train, df_val, df_test, transformer, log_dir, fe
         model, train_dl, val_dl, test_dl = oscml.hpo.hpo_bilstm.create(trial, config, df_train, df_val, df_test, optimizer, transformer, dataset)
 
     #elif model_name == 'AttentiveFP':
+    #    import oscml.hpo.hpo_attentivefp
     #    optimizer = get_optimizer_params(trial)
-    #    model, train_dl, val_dl, test_dl = oscml.hpo.hpo_attentivefp.create(trial, config, df_train, df_val, df_test, optimizer)
+    #    model, train_dl, val_dl, test_dl = oscml.hpo.hpo_attentivefp.create(trial, config, df_train, df_val, df_test, optimizer, dataset, log_dir, featurizer)
 
     elif model_name == 'SimpleGNN':
         optimizer = get_optimizer_params(trial)

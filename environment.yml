@@ -22,3 +22,4 @@ dependencies:
     - matplotlib==3.3.2
     - seaborn==0.11.0
     - optuna==2.3.0
+    - dgllife==0.2.6
