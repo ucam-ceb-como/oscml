@@ -10,22 +10,17 @@ import torch.nn
 
 from oscml.utils.util import calculate_metrics
 
-def get_standard_params_for_trainer_short():
-    params = {
-        'max_epochs': 1,
-        'log_every_n_steps': 1,
-        'flush_logs_every_n_steps': 10,
-        'gpus': 1 if torch.cuda.is_available() else None,
-        }
-    return params
-
-def get_standard_params_for_trainer(metric):
+def get_standard_params_for_trainer(metric, save_checkpoints=True):
  
     # https://pytorch-lightning.readthedocs.io/en/latest/generated/pytorch_lightning.callbacks.ModelCheckpoint.html
     # By default, dirpath is None and will be set at runtime to the location specified 
     # by Trainer’s default_root_dir or weights_save_path arguments, 
     # and if the Trainer uses a logger, the path will also contain logger name and version.
-    checkpoint_callback = pl.callbacks.ModelCheckpoint(monitor=metric, save_last=True, period=1, save_top_k=10)
+    if save_checkpoints:
+        # by default, save the checkpoint for the last epoch and the epoch with the best validation error
+        checkpoint_callback = pl.callbacks.ModelCheckpoint(monitor=metric, save_last=True, period=1, save_top_k=1)
+    else:
+        checkpoint_callback = None
 
     # does not work at the moment on laptop with gpu
     #gpus = 1 if torch.cuda.is_available() else 0
@@ -117,7 +112,6 @@ def shared_epoch_end(tensor_step_outputs, is_validation, epoch, inverse_transfor
         #y_hat = outputs[1].detach().cpu().numpy()
         #y_hat_complete = np.concatenate((y_hat_complete, y_hat))
 
-        #TODO AE URGENT remove this:
         y = torch.flatten(outputs[0].detach().cpu())
         y = y.numpy()
         y_complete = np.concatenate((y_complete, y))
@@ -153,8 +147,8 @@ class ModelWrapper(OscmlModule):
         logging.info('initializing %s', locals())
 
         self.model = model
-        #TODO AE MID commented out save_hyp because performance descrease completely 
-        # (some problem when serializing the model to YAML)
+        # commented out save_hyperparameters() because performance descreased completely 
+        # (because there were some problem when serializing the wrapped model to YAML)
         #self.save_hyperparameters()
 
     def forward(self, *args, **kwargs):

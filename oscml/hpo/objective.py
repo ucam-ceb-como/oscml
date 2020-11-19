@@ -62,7 +62,13 @@ def fit_or_test(model, train_dl, val_dl, test_dl, trainer_params,
     logging.info('model for trial %s=%s', trial_number, model)
 
     # create standard params for Ligthning trainer
-    trainer_params = oscml.utils.util_lightning.get_standard_params_for_trainer(metric)
+    # if running an HPO then save no checkpoints
+    # otherwise create checkpoints for the last and best epoch
+    if trial and not isinstance(trial, optuna.trial.FixedTrial):
+        save_checkpoints = False
+    else:
+        save_checkpoints = True
+    trainer_params = oscml.utils.util_lightning.get_standard_params_for_trainer(metric, save_checkpoints)
 
     # create Lightning metric logger that logs metric values for each trial in its own csv file
     # version='' means that no version-subdirectory is created
@@ -125,10 +131,10 @@ def objective(trial, config, df_train, df_val, df_test, transformer, log_dir, fe
         optimizer = get_optimizer_params(trial)
         model, train_dl, val_dl, test_dl = oscml.hpo.hpo_bilstm.create(trial, config, df_train, df_val, df_test, optimizer, transformer, dataset)
 
-    #elif model_name == 'AttentiveFP':
-    #    import oscml.hpo.hpo_attentivefp
-    #    optimizer = get_optimizer_params(trial)
-    #    model, train_dl, val_dl, test_dl = oscml.hpo.hpo_attentivefp.create(trial, config, df_train, df_val, df_test, optimizer, dataset, log_dir, featurizer)
+    elif model_name == 'AttentiveFP':
+        import oscml.hpo.hpo_attentivefp
+        optimizer = get_optimizer_params(trial)
+        model, train_dl, val_dl, test_dl = oscml.hpo.hpo_attentivefp.create(trial, config, df_train, df_val, df_test, optimizer, dataset, log_dir, featurizer)
 
     elif model_name == 'SimpleGNN':
         optimizer = get_optimizer_params(trial)
