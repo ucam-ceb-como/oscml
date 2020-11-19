@@ -7,22 +7,25 @@
     },
 "model":{
     "name": "SimpleGNN",
-	"model_specific":{
-		"embedding_dimension": 256,
-		"conv_layers":{"type":"int","low":1,"high":4},
-		"conv_dims":{"type":"int","low":10,"high":15,"direction":"constant"},
+    "model_specific":{
+        "embedding_dimension": 256,
+        "conv_layers":{"type":"int","low":1,"high":4},
+        "conv_dims":{"type":"int","low":10,"high":15,"direction":"constant"},
         "mlp_layers":{"type":"int","low":1,"high":15},
-		"mlp_units":{"type":"int","low":5,"high":1500},
-		"mlp_dropout":{"type":"uniform","low":0.1,"high":0.3}
-		},
-	"training_specific":{
-		"opt_name":"Adam",
-		"lr":{"type":"loguniform","low":1e-5,"high":1e-2},
-		"epochs": 300,
-		"batch_size": 40
-		},
-	"dataloader":{
-		"type_dict": "label"
-	   }
-	}
+        "mlp_units":{"type":"int","low":5,"high":15, "direction":"increasing"},
+        "mlp_dropouts":{"type":"uniform","low":0.1,"high":0.3, "direction":"constant"}
+        },
+    "dataloader":{
+        "type_dict": "label"
+       }
+    },
+"training":{
+    "opt_name":"Adam",
+    "lr":{"type":"loguniform","low":1e-5,"high":1e-2},
+    "epochs": 300,
+    "batch_size": 40,
+    "patience": -1,
+    "metric":0,
+    "seed":1
+    }
 }
