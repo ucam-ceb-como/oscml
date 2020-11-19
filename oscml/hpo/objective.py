@@ -66,13 +66,14 @@ def fit_or_test(model, train_dl, val_dl, test_dl, trainer_params,
         # return the value for the metric specified in the start script
         value =  metrics_callback.metrics[-1][metric].item()
         logging.info('finished fitting for trial %s with %s = %s', trial_number, metric, value)
-        return value
 
-    else:
+    if test_dl:
         logging.info('testing trial %s / %s', trial_number, n_trials)
         result = trainer.test(model, test_dataloaders=test_dl)
-        logging.info('result=%s', result[0])
-        return result[0]
+        #logging.info('result=%s', result[0])
+
+    return value
+
 
 def get_optimizer_params(trial):
     name =  trial.suggest_categorical('opt_name', ['Adam', 'RMSprop', 'SGD'])
@@ -107,6 +108,6 @@ def objective(trial, config, args, df_train, df_val, df_test, transformer):
     # fit on training set and calculate metric on validation set
     trainer_params = {}
     trial_number = trial.number
-    metric_value = fit_or_test(model, train_dl, val_dl, None, trainer_params,
+    metric_value = fit_or_test(model, train_dl, val_dl, test_dl, trainer_params,
                                 args.epochs, args.metric, args.log_dir, trial, trial_number, args.trials)
     return metric_value

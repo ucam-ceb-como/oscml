@@ -36,8 +36,8 @@ def start(config_dev=None):
     parser.add_argument('--timeout', type=int, default=None, help='Stop study after the given number of second(s). If this argument is not set, the study is executed without time limitation.')
     parser.add_argument('--jobs', type=int, default=1)
     parser.add_argument('--config', type=str, default=None)
-    parser.add_argument('--model', type=str, default=None, choices=['BILSTM', 'AttentiveFP', 'SimpleGNN'])
-    parser.add_argument('--ckpt', type=str)
+    #parser.add_argument('--model', type=str, default=None, choices=['BILSTM', 'AttentiveFP', 'SimpleGNN'])
+    #parser.add_argument('--ckpt', type=str)
     parser.add_argument('--dataset', type=str)
     parser.add_argument('--datasetpath', type=str, default=None)
     parser.add_argument('--seed', type=int, default=200)
@@ -70,7 +70,7 @@ def start(config_dev=None):
 
     logging.info('config=%s', config)
 
-    df_train, df_val, df_test, transformer  = get_dataframes(args.src, args.dataset, args.datasetpath)
+    df_train, df_val, df_test, transformer = get_dataframes(args.src, args.dataset, args.datasetpath)
 
     obj = functools.partial(oscml.hpo.objective.objective, config=config, args=args,
         df_train=df_train, df_val=df_val, df_test=df_test, transformer=transformer)

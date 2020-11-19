@@ -4,7 +4,6 @@ import logging
 import numpy as np
 import pandas as pd
 import sklearn
-from time import sleep
 from tqdm import tqdm
 
 import oscml.data.dataset_cep
