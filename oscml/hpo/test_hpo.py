@@ -25,69 +25,32 @@ def create_config(model_name, model_specific):
 
 def create_config_attentivefp():
     model_specific = {
-            'graph_feat_size': 200,
-            'num_layers': 4,
-            'num_timesteps': 2,
-            'dropout': 0.,
-        }
+        'graph_feat_size': 200,
+        'num_layers': 4,
+        'num_timesteps': 2,
+        'dropout': 0.,
+    }
     return create_config('AttentiveFP', model_specific)
 
-def create_config_template_optimizer():
-    return {
-        "optimizer": {
-            'opt_name': 'Adam',             # Adam, SGD, RMSProp
-            'lr': 0.001,
-            'weight_decay': 0,
-            'momentum': 0,              # SGD and RMSProp only
-            'nesterov': False,          # SGD only
-        }
+def create_config_bilstm():
+    model_specific = {
+        'embedding_dimension': 128,
+        'mlp_layers': 3,
+        'mlp_units': [64, 32, 16],
+        "mlp_dropouts": 0.
     }
+    return create_config('BILSTM', model_specific)
 
-def create_config_template_bilstm():
-    d = {
-        "model_name": "BILSTM",
-        "model": {
-            'embedding_dim': 128,
-            'mlp_layers': 3,
-            'mlp_units_0': 60,
-            'mlp_units_1': 20,
-            'mlp_units_2': 20,
-            'mlp_dropout': 0.1
-        }
+def create_config_simplegnn():
+    model_specific = {
+        'embedding_dimension': 128,
+        "conv_layers": 4,
+        "conv_dims": [128, 128, 128, 128],
+        "mlp_layers": 2,
+        "mlp_units": [64, 32],
+        "mlp_dropouts": 0.2,
     }
-    d.update(create_config_template_optimizer())
-    return d
-
-def create_config_template_simplegnn():
-    d = {
-        "model_name": "SimpleGNN",
-        "model": {
-            'embedding_dim':30,
-            'conv_layers': 2,
-            'conv_dims_0': 30,
-            'conv_dims_1': 20, 
-            'mlp_layers': 3,
-            'mlp_units_0': 20,
-            'mlp_units_1': 10,
-            'mlp_units_2': 5,
-            'mlp_dropout': 0.2,
-        }
-    }
-    d.update(create_config_template_optimizer())
-    return d
-
-def create_config_template_attentivefp():
-    d = {
-        "model_name": "AttentiveFP",
-        "model": {
-            'graph_feat_size': 200,
-            'num_layers': 4,
-            'num_timesteps': 2,
-            'dropout': 0.,
-        }
-    }
-    d.update(create_config_template_optimizer())
-    return d
+    return create_config('SimpleGNN', model_specific)
 
 
 class Test_HPO(unittest.TestCase):
@@ -96,63 +59,51 @@ class Test_HPO(unittest.TestCase):
     def setUpClass(cls):
         oscml.utils.util.init_logging('.', './tmp')
 
-    def test_train_gnn_cep25000_with_fixed_trial(self):
+    def test_train_gnn_cep25000_one_trial(self):
 
-        config = create_config_template_simplegnn()
+        config = create_config_simplegnn()
 
-        testargs = ['test', 
-            '--fixedtrial', 'True',
-            '--dataset', 'CEP25000',
-            '--epochs', '1'
-        ]
-        with unittest.mock.patch('sys.argv', testargs):
-            oscml.hpo.train.start(config_dev=config)
-
-    def test_train_gnn_hopv15_with_fixed_trial(self):
-
-        config = create_config_template_simplegnn()
-
-        testargs = ['test', 
-            '--fixedtrial', 'True',
-            '--dataset', 'HOPV15',
-            '--epochs', '1'
-        ]
-        with unittest.mock.patch('sys.argv', testargs):
-            oscml.hpo.train.start(config_dev=config)
-
-    def test_train_bilstm_cep25000_with_fixed_trial(self):
-
-        config = create_config_template_bilstm()
-
-        testargs = ['test', 
-            '--fixedtrial', 'True',
+        testargs = ['test',
             '--dataset', 'CEP25000',
             '--epochs', '1',
+            '--trials', '1',
         ]
         with unittest.mock.patch('sys.argv', testargs):
             oscml.hpo.train.start(config_dev=config)
 
-    def test_train_bilstm_hopv15_with_fixed_trial(self):
+    def test_train_gnn_hopv15_one_trial(self):
 
-        config = create_config_template_bilstm()
+        config = create_config_simplegnn()
 
-        testargs = ['test', 
-            '--fixedtrial', 'True',
+        testargs = ['test',
             '--dataset', 'HOPV15',
-            '--epochs', '2'
+            '--epochs', '1',
+            '--trials', '1',
         ]
         with unittest.mock.patch('sys.argv', testargs):
             oscml.hpo.train.start(config_dev=config)
 
-    def test_train_attentiveFP_cep25000_full_featurizer_with_fixed_trial(self):
+    def test_train_bilstm_cep25000_one_trial(self):
 
-        config = create_config_template_attentivefp()
+        config = create_config_bilstm()
 
-        testargs = ['test', 
-            '--fixedtrial', 'True',
+        testargs = ['test',
             '--dataset', 'CEP25000',
             '--epochs', '1',
-            ]
+            '--trials', '1',
+        ]
+        with unittest.mock.patch('sys.argv', testargs):
+            oscml.hpo.train.start(config_dev=config)
+
+    def test_train_bilstm_hopv15_one_trial(self):
+
+        config = create_config_bilstm()
+
+        testargs = ['test',
+            '--dataset', 'HOPV15',
+            '--epochs', '2',
+            '--trials', '1',
+        ]
         with unittest.mock.patch('sys.argv', testargs):
             oscml.hpo.train.start(config_dev=config)
     
@@ -160,7 +111,7 @@ class Test_HPO(unittest.TestCase):
 
         config = create_config_attentivefp()
 
-        testargs = ['test', 
+        testargs = ['test',
             '--dataset', 'CEP25000',
             '--epochs', '1',
             '--trials', '1',
@@ -173,7 +124,7 @@ class Test_HPO(unittest.TestCase):
 
         config = create_config_attentivefp()
 
-        testargs = ['test', 
+        testargs = ['test',
             '--dataset', 'HOPV15',
             '--epochs', '1',
             '--trials', '2'         # will run twice with the same fixed params
@@ -183,7 +134,7 @@ class Test_HPO(unittest.TestCase):
 
     def test_hpo_attentiveFP_hopv15_full_featurizer_with_config_file(self):
 
-        testargs = ['test', 
+        testargs = ['test',
             '--dataset', 'HOPV15',
             '--epochs', '1',
             '--trials', '2',
@@ -369,16 +320,15 @@ class Test_HPO(unittest.TestCase):
 
 if __name__ == '__main__':
 
-    #unittest.main()
+    unittest.main()
 
-    suite = unittest.TestSuite()
-    #suite.addTest(Test_HPO('test_train_gnn_cep25000_with_fixed_trial'))
-    #suite.addTest(Test_HPO('test_train_gnn_hopv15_with_fixed_trial'))
-    #suite.addTest(Test_HPO('test_train_bilstm_cep25000_with_fixed_trial'))
-    #suite.addTest(Test_HPO('test_train_bilstm_hopv15_with_fixed_trial'))
-    #suite.addTest(Test_HPO('test_train_attentiveFP_cep25000_full_featurizer_with_fixed_trial'))
+    #suite = unittest.TestSuite()
+    #suite.addTest(Test_HPO('test_train_gnn_cep25000_one_trial'))
+    #suite.addTest(Test_HPO('test_train_gnn_hopv15_one_trial'))
+    #suite.addTest(Test_HPO('test_train_bilstm_cep25000_one_trial'))
+    #suite.addTest(Test_HPO('test_train_bilstm_hopv15_one_trial'))
     #suite.addTest(Test_HPO('test_train_attentiveFP_cep25000_simple_featurizer'))
-    suite.addTest(Test_HPO('test_hpo_attentiveFP_hopv15_full_featurizer'))
+    #suite.addTest(Test_HPO('test_hpo_attentiveFP_hopv15_full_featurizer'))
     #suite.addTest(Test_HPO('test_hpo_attentiveFP_hopv15_full_featurizer_with_config_file'))
     #suite.addTest(Test_HPO('test_load_model_from_checkpoint'))
     #suite.addTest(Test_HPO('test_gnn_cep25000_ckpt_test_only'))
@@ -389,5 +339,5 @@ if __name__ == '__main__':
     #suite.addTest(Test_HPO('test_rf_hpo_fixed_trial'))
     #suite.addTest(Test_HPO('test_rf_hpo_with_some_trials'))
     #suite.addTest(Test_HPO('test_rf_hpo_with_fixed_trial_and_negative_mean_score'))
-    runner = unittest.TextTestRunner()
-    runner.run(suite)
+    #runner = unittest.TextTestRunner()
+    #runner.run(suite)

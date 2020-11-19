@@ -1,4 +1,3 @@
-import json
 import logging
 import os
 
@@ -54,48 +53,27 @@ def callback_on_trial_finished(study, trial):
         logging.error('THE MAXIMUM NUMBER OF FAILED TRIALS HAS BEEN REACHED, AND THE STUDY WILL STOP NOW.')
         study.stop()
 
-def start_hpo(args, objective, log_dir, fixed_trial_params=None):
+def start_hpo(args, objective):
 
     #optuna.logging.enable_default_handler()
     #optuna.logging.enable_propagation()  # Propagate logs to the root logger.
     #optuna.logging.disable_default_handler()
     #optuna.logging.set_verbosity(optuna.logging.DEBUG)
 
-    user_attrs = vars(args).copy()
-
-    user_attrs.update({
-        'log_dir': log_dir
-    })
-    logging.info('user_attrs=%s', user_attrs)
-
     try:
         np.random.seed(args.seed)
         torch.manual_seed(args.seed)
 
-        if args.fixedtrial:
-            assert args.trials is None or args.trials == 1
-            trial = optuna.trial.FixedTrial(fixed_trial_params)
-            for key, value in user_attrs.items():
-                trial.set_user_attr(key, value)
-            logging.info('calling objective function with fixed trial')
-            best_value = objective(trial)
-            logging.info('finished objective function call with %s=%s', args.metric, best_value)
-
-        else:
-            study = create_study(direction=args.direction, seed=args.seed, storage=args.storage, study_name=args.study_name, load_if_exists=args.load_if_exists)
-            for key, value in user_attrs.items():
-                study.set_user_attr(key, value)
-
-            decorator = create_objective_decorator(objective, args.trials)
-
-            logging.info('starting HPO')
-            study.optimize(decorator, n_trials=args.trials, n_jobs=args.jobs, timeout=args.timeout,
-                    catch = (RuntimeError, ValueError, TypeError), callbacks=[callback_on_trial_finished],
-                    gc_after_trial=True)
-            logging.info('finished HPO')
-            path = log_dir + '/hpo_result.csv'
-            log_and_save(study, path)
-            best_value = study.best_trial.value
+        study = create_study(direction=args.direction, seed=args.seed, storage=args.storage, study_name=args.study_name, load_if_exists=args.load_if_exists)
+        decorator = create_objective_decorator(objective, args.trials)
+        logging.info('starting HPO')
+        study.optimize(decorator, n_trials=args.trials, n_jobs=args.jobs, timeout=args.timeout,
+                catch = (RuntimeError, ValueError, TypeError), callbacks=[callback_on_trial_finished],
+                gc_after_trial=True)
+        logging.info('finished HPO')
+        path = args.log_dir + '/hpo_result.csv'
+        log_and_save(study, path)
+        best_value = study.best_trial.value
 
         return best_value
 

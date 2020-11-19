@@ -37,7 +37,6 @@ def start(config_dev=None):
     parser.add_argument('--jobs', type=int, default=1)
     parser.add_argument('--config', type=str, default=None)
     parser.add_argument('--model', type=str, default=None, choices=['BILSTM', 'AttentiveFP', 'SimpleGNN'])
-    parser.add_argument('--fixedtrial', type=bool, default=False)
     parser.add_argument('--ckpt', type=str)
     parser.add_argument('--dataset', type=str)
     parser.add_argument('--seed', type=int, default=200)
@@ -73,11 +72,7 @@ def start(config_dev=None):
     obj = functools.partial(oscml.hpo.objective.objective, config=config, args=args,
         df_train=df_train, df_val=df_val, df_test=df_test, transformer=transformer)
 
-    return oscml.hpo.optunawrapper.start_hpo(
-            args=args,
-            objective=obj,
-            log_dir=log_dir,
-            fixed_trial_params=None) #config)
+    return oscml.hpo.optunawrapper.start_hpo(args=args, objective=obj)
 
 
 if __name__ == '__main__':

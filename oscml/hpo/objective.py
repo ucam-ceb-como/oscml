@@ -35,12 +35,11 @@ def fit_or_test(model, train_dl, val_dl, test_dl, trainer_params,
     logging.info('model for trial %s=%s', trial_number, model)
 
     # create standard params for Ligthning trainer
-    # if running an HPO then save no checkpoints
-    # otherwise create checkpoints for the last and best epoch
-    if trial and not isinstance(trial, optuna.trial.FixedTrial):
-        save_checkpoints = False
-    else:
-        save_checkpoints = True
+
+    # if the number of trials is 1 then save checkpoints for the last and best epoch
+    # otherwise if HPO is running (i.e. unspecified time-contrained number of trials or finite number > 1 )
+    # then save no checkpoints
+    save_checkpoints =  (n_trials is not None and n_trials == 1)
     trainer_params = oscml.utils.util_lightning.get_standard_params_for_trainer(metric, save_checkpoints)
 
     # create Lightning metric logger that logs metric values for each trial in its own csv file
