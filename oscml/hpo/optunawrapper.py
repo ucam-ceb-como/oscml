@@ -10,6 +10,41 @@ import torch
 
 os.environ["SLURM_JOB_NAME"]="bash"
 
+def set_config_param(trial, param_name, param):
+    if isinstance(param, dict):
+        try:
+            param_local = param.copy()
+            param_local.pop('direction', None) # remove "direction" if exists
+            param_type = param_local.pop('type')
+            if param_type == 'categorical':
+                # name, choices
+                return trial.suggest_categorical(name=param_name, **param_local)
+            elif param_type == 'discrete_uniform':
+                # name, low, high, q
+                return trial.suggest_discrete_uniform(name=param_name, **param_local)
+            elif param_type == 'float':
+                # name, low, high, *[, step, log]
+                return trial.suggest_float(name=param_name, **param_local)
+            elif param_type == 'int':
+                # name, low, high[, step, log]
+                return trial.suggest_int(name=param_name, **param_local)
+            elif param_type == 'loguniform':
+                # name, low, high
+                return trial.suggest_loguniform(name=param_name, **param_local)
+            elif param_type == 'uniform':
+                # name, low, high
+                return trial.suggest_uniform(name=param_name, **param_local)
+        except KeyError as exc:
+            print(exc)
+            raise exc
+        except TypeError as exc:
+            print(exc)
+            raise exc
+        except ValueError as exc:
+            print(exc)
+            raise exc
+    else:
+        return param
 
 def create_objective_decorator(objective, n_trials):
     def decorator(trial):
@@ -86,7 +121,7 @@ def start_hpo(args, objective, log_dir, fixed_trial_params=None):
             logging.info('calling objective function with fixed trial')
             best_value = objective(trial)
             logging.info('finished objective function call with %s=%s', args.metric, best_value)
-        
+
         #elif args.ckpt:
         #    resume_attrs = {
         #        'ckpt': args.ckpt,
