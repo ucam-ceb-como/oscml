@@ -64,15 +64,17 @@ def fit_or_test(model, train_dl, val_dl, test_dl, trainer_params,
         trainer.fit(model, train_dataloader=train_dl, val_dataloaders=val_dl)
 
         # return the value for the metric specified in the start script
-        value =  metrics_callback.metrics[-1][metric].item()
-        logging.info('finished fitting for trial %s with %s = %s', trial_number, metric, value)
+        val_error =  metrics_callback.metrics[-1][metric].item()
+        logging.info('finished fitting for trial %s with %s = %s', trial_number, metric, val_error)
 
     if test_dl:
         logging.info('testing trial %s / %s', trial_number, n_trials)
-        result = trainer.test(model, test_dataloaders=test_dl)
-        #logging.info('result=%s', result[0])
+        test_result = trainer.test(model, test_dataloaders=test_dl)[0]
+        #logging.info('result=%s', test_result)
 
-    return value
+    if epochs > 0:
+        return val_error
+    return test_result
 
 
 def get_optimizer_params(trial):

@@ -7,6 +7,7 @@ from unittest.mock import patch
 import pytorch_lightning as pl
 
 import oscml.hpo.optunawrapper
+import oscml.hpo.resume
 import oscml.hpo.train
 import oscml.hpo.start_bilstm_with_hpo
 import oscml.hpo.start_gnn_with_hpo
@@ -143,25 +144,24 @@ class Test_HPO(unittest.TestCase):
         with unittest.mock.patch('sys.argv', testargs):
             oscml.hpo.train.start()
 
-    """
     def test_load_model_from_checkpoint(self):
 
         #load model
         path = './res/test_checkpoint_gnn_cep25000_e10/last.ckpt'
-        model_class = oscml.models.model_gnn.GNNSimple
+        model_class = oscml.models.model_gnn.SimpleGNN
         model = model_class.load_from_checkpoint(path)
 
         logging.info(model)
 
         print(model.optimizer)
 
-        self.assertEqual('Adam', model.optimizer['name'])
-        self.assertEqual(3, len(model.conv_modules))
-        # 4 hidden layer with 4 ReLUs and Dropout and 1 output layer
-        self.assertEqual(10, len(model.mlp))
+        self.assertEqual('SGD', model.optimizer['name'])
+        self.assertEqual(4, len(model.conv_modules))
+        # 2 hidden layer with 2 ReLUs and Dropout and 1 output layer
+        self.assertEqual(7, len(model.mlp))
         # check second layer
-        self.assertEqual(16, model.mlp[3].in_features)
-        self.assertEqual(11, model.mlp[3].out_features)
+        self.assertEqual(11, model.mlp[0].in_features)
+        self.assertEqual(11, model.mlp[0].out_features)
 
         self.assertAlmostEqual(4.126659584567247, model.target_mean, 4)
         self.assertAlmostEqual(2.407382175602577, model.target_std, 4)
@@ -187,88 +187,37 @@ class Test_HPO(unittest.TestCase):
         # test
         result = trainer.test(model, test_dataloaders=val_dl) 
         print(result)
-        # the value is the validation result copied from the corresponding log file / metric.csv file
-        self.assertAlmostEqual(2.7822956321521035, result[0]['mse'], 4)
+        # the value is the validation error at epoch 10 copied from the corresponding log file / metric.csv file
+        self.assertAlmostEqual(5.795882524953438, result[0]['mse'], 4)
+
 
     def test_gnn_cep25000_ckpt_test_only(self):
         testargs = ['test', 
             '--epochs', '0',
             '--ckpt',  './res/test_checkpoint_gnn_cep25000_e10/last.ckpt',
-            '--dataset', oscml.data.dataset_cep.CEP25000
+            '--dataset', oscml.data.dataset_cep.CEP25000,
+            '--model', 'SimpleGNN',
         ]
 
         with unittest.mock.patch('sys.argv', testargs):
-
-            result = oscml.hpo.optunawrapper.start_hpo(
-                init=None,
-                objective=None,
-                metric='val_loss', 
-                direction='minimize',
-                resume=oscml.hpo.start_gnn_with_hpo.resume
-            )
-            self.assertAlmostEqual(2.8787141593397987, result['mse'], 4)
+            result = oscml.hpo.resume.start()
+            # the value is the test error at epoch 10 copied from the corresponding log file / metric.csv file           
+            self.assertAlmostEqual(5.80646424256214, result['mse'], 4)
     
     def test_gnn_cep25000_ckpt_resume_training(self):
         testargs = ['test', 
             '--epochs', '1',
             '--ckpt',  './res/test_checkpoint_gnn_cep25000_e10/last.ckpt',
-            '--dataset', oscml.data.dataset_cep.CEP25000
+            '--dataset', oscml.data.dataset_cep.CEP25000,
+            '--model', 'SimpleGNN',
         ]
 
         with unittest.mock.patch('sys.argv', testargs):
+            result = oscml.hpo.resume.start()
+            logging.info('result=%s', result)
 
-            value = oscml.hpo.optunawrapper.start_hpo(
-                init=None,
-                objective=None,
-                metric='val_loss', 
-                direction='minimize',
-                resume=oscml.hpo.start_gnn_with_hpo.resume
-            )
-
-    def test_infinite_trials_and_time_out_gnn(self):
-        testargs = ['test', 
-            '--dataset', 'HOPV15',
-            '--epochs', '1',
-            '--timeout', '60'
-        ]
-        with unittest.mock.patch('sys.argv', testargs):
-            best_value = oscml.hpo.start_gnn_with_hpo.start()
-
-    def test_infinite_trials_and_time_out_bilstm(self):
-        testargs = ['test', 
-            '--dataset', 'CEP25000',
-            '--epochs', '1',
-            '--timeout', '60'
-        ]
-        with unittest.mock.patch('sys.argv', testargs):
-            best_value = oscml.hpo.start_gnn_with_hpo.start()
-
-    def objective_raising_error(self, trial):
-        #time.sleep(1)
-        raise RuntimeError('some fancy error')
-
-    def test_objective_raising_error(self):
-
-        testargs = ['test', 
-            '--dataset', 'CEP25000',
-            '--epochs', '1',
-            '--timeout', '20'
-        ]
-
-        caught_error = False
-        with unittest.mock.patch('sys.argv', testargs):
-            try:
-                best_value = oscml.hpo.optunawrapper.start_hpo(
-                        init=None, 
-                        objective=self.objective_raising_error, 
-                        metric='val_loss', 
-                        direction='minimize'
-                    )
-            except (RuntimeError, ValueError):
-                caught_error = True
-        
-        self.assertEqual(True, caught_error)
     
+    """
     def test_rf_hpo_fixed_trial(self):
 
         testargs = ['test', 
@@ -320,11 +269,11 @@ class Test_HPO(unittest.TestCase):
 
 if __name__ == '__main__':
 
-    #unittest.main()
+    unittest.main()
 
-    suite = unittest.TestSuite()
+    #suite = unittest.TestSuite()
     #suite.addTest(Test_HPO('test_train_gnn_cep25000_one_trial'))
-    suite.addTest(Test_HPO('test_train_gnn_hopv15_one_trial'))
+    #suite.addTest(Test_HPO('test_train_gnn_hopv15_one_trial'))
     #suite.addTest(Test_HPO('test_train_bilstm_cep25000_one_trial'))
     #suite.addTest(Test_HPO('test_train_bilstm_hopv15_one_trial'))
     #suite.addTest(Test_HPO('test_train_attentiveFP_cep25000_simple_featurizer'))
@@ -335,9 +284,8 @@ if __name__ == '__main__':
     #suite.addTest(Test_HPO('test_gnn_cep25000_ckpt_resume_training'))
     #suite.addTest(Test_HPO('test_infinite_trials_and_time_out_gnn'))
     #suite.addTest(Test_HPO('test_infinite_trials_and_time_out_bilstm'))
-    #suite.addTest(Test_HPO('test_objective_raising_error'))
     #suite.addTest(Test_HPO('test_rf_hpo_fixed_trial'))
     #suite.addTest(Test_HPO('test_rf_hpo_with_some_trials'))
     #suite.addTest(Test_HPO('test_rf_hpo_with_fixed_trial_and_negative_mean_score'))
-    runner = unittest.TextTestRunner()
-    runner.run(suite)
+    #runner = unittest.TextTestRunner()
+    #runner.run(suite)
