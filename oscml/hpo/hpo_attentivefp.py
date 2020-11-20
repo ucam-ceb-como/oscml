@@ -46,21 +46,25 @@ def create(trial, config, args, df_train, df_val, df_test, optimizer):
         'n_tasks': 1
     }
     """
-    model_specific = config['model']['model_specific'].copy()
-    model_params =  {
+
+    # set model parameters from the config file
+    #--------------------------------------
+    model_params = {}
+    for key, value in config['model']['model_specific'].items():
+        model_params.update({key: set_config_param(trial=trial,param_name=key,param=value, all_params=model_params)})
+
+    # add extra params not defined in the config file
+    extra_params = {
         'node_feat_size': node_feat_size,
         'edge_feat_size': edge_feat_size,
-        'graph_feat_size': set_config_param(trial=trial,param_name='graph_feat_size',param=model_specific['graph_feat_size']),
-        'num_layers': set_config_param(trial=trial,param_name='num_layers',param=model_specific['num_layers']),
-        'num_timesteps': set_config_param(trial=trial,param_name='num_timesteps',param=model_specific['num_timesteps']),
-        'dropout': set_config_param(trial=trial,param_name='dropout',param=model_specific['dropout']),
         'n_tasks': 1
     }
-    
+    model_params.update(extra_params)
+
     logging.info('model params=%s', model_params)
 
-    train_dl, val_dl, test_dl = oscml.hpo.hpo_attentivefp.get_dataloaders(df_train, df_val, df_test, 
-            column_smiles=column_smiles, column_target=column_target, batch_size=250, log_dir=dgl_log_dir, 
+    train_dl, val_dl, test_dl = oscml.hpo.hpo_attentivefp.get_dataloaders(df_train, df_val, df_test,
+            column_smiles=column_smiles, column_target=column_target, batch_size=250, log_dir=dgl_log_dir,
             node_featurizer=node_featurizer, edge_featurizer=edge_featurizer)
 
     model_predictor = dgllife.model.AttentiveFPPredictor(**model_params)
@@ -74,7 +78,7 @@ def create(trial, config, args, df_train, df_val, df_test, optimizer):
 
 
 class SimpleAtomFeaturizer(dgllife.utils.BaseAtomFeaturizer):
-    
+
     def __init__(self, atom_data_field='h'):
         super().__init__(
             featurizer_funcs={atom_data_field: dgllife.utils.ConcatFeaturizer(
@@ -124,7 +128,7 @@ def get_dataloaders(df_train, df_val, df_test, column_smiles, column_target, bat
 
     dl_train = torch.utils.data.DataLoader(dataset=dgl_ds_train, batch_size=batch_size, shuffle=True,
                                 collate_fn=collate_molgraphs, num_workers=0)
-    
+
     dgl_ds_val = dgllife.data.MoleculeCSVDataset(df=df_val,
                                  smiles_to_graph=smiles_to_graph,
                                  node_featurizer=node_featurizer,
@@ -190,15 +194,15 @@ def collate_molgraphs(data):
         masks = torch.stack(masks, dim=0)
 
     #return smiles, bg, labels, masks
-    #TODO AE MED Device cpu gpu 
+    #TODO AE MED Device cpu gpu
     node_feats = bg.ndata.pop('h')  # .to(args['device'])
     edge_feats = bg.edata.pop('e')  # .to(args['device'])
 
     x = [bg, node_feats, edge_feats]
 
     # Here, we only use one label value, so we don't the mask
-    # run_a_train_epoch() in regression_train.py 
+    # run_a_train_epoch() in regression_train.py
     # labels, masks = labels.to(args['device']), masks.to(args['device'])
-    y = labels 
+    y = labels
 
     return x, y

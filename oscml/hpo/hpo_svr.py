@@ -8,6 +8,7 @@ import rdkit
 import rdkit.Chem
 import rdkit.Chem.AllChem
 from oscml.utils.util_config import set_config_param
+import oscml.models.model_kernel
 
 def create(trial, config, df_train, df_val, df_test, training_params, dataset):
 
@@ -16,11 +17,23 @@ def create(trial, config, df_train, df_val, df_test, training_params, dataset):
 
     # set model parameters from the config file
     #--------------------------------------
+    """
+        'kernel'
+        'gamma_structural'
+    """
     model_params = {}
     for key, value in config['model']['model_specific'].items():
         model_params.update({key: set_config_param(trial=trial,param_name=key,param=value, all_params=model_params)})
 
     # set fingerprint parameters from the config file
+    #--------------------------------------
+    """
+        'type'
+        'nBits'
+        'radius'
+        'useBondTypes'
+        'useChirality'
+    """
     fp_params = {}
     for key, value in config['model']['fingerprint_specific'].items():
         fp_params.update({key: set_config_param(trial=trial,param_name=key,param=value, all_params=fp_params)})
@@ -39,14 +52,28 @@ def create(trial, config, df_train, df_val, df_test, training_params, dataset):
 
     if training_params['cross_validation']:
         df_train = pd.concat([df_train, df_val])
-        x_train, y_train = get_fp(df_train, fp_params, info.column_smiles, info.column_target)
+        x_train, y_train, scaler_svr_physical_data = oscml.models.model_kernel.preprocess_data_phys_and_struct(
+            df_train, fp_params, train_size=1, column_smiles=info.column_smiles,
+            columns_phys=None, column_y=info.column_target)
         x_val = None
         y_val = None
     else:
-        x_train, y_train = get_fp(df_train, fp_params, info.column_smiles, info.column_target)
-        x_val, y_val = get_fp(df_val, fp_params, info.column_smiles, info.column_target)
+        x_train, y_train, scaler_svr_physical_data = oscml.models.model_kernel.preprocess_data_phys_and_struct(
+            df_train, fp_params, train_size=1, column_smiles=info.column_smiles,
+            columns_phys=None, column_y=info.column_target)
 
-    model = sklearn.ensemble.RandomForestRegressor(**model_params, criterion=training_params['criterion'], n_jobs=1, verbose=0, random_state=0)
+        x_val, y_val, scaler_svr_physical_data = oscml.models.model_kernel.preprocess_data_phys_and_struct(df_val,
+                                                                                                            fp_params,
+                                                                                                            train_size=1,
+                                                                                                            column_smiles=info.column_smiles,
+                                                                                                            columns_phys=None,
+                                                                                                            column_y=info.column_target,
+                                                                                                            scaler_svr_physical_data=scaler_svr_physical_data)
+
+    training_params_local = training_params.copy()
+    training_params_local.pop('cross_validation',None)
+    training_params_local.pop('criterion',None)
+    model = oscml.models.model_kernel.SVRWrapper(**model_params,**training_params_local)
 
     return model, x_train, y_train, x_val, y_val
 
