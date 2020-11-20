@@ -11,10 +11,6 @@ import oscml.data.dataset_hopv15
 import oscml.hpo.optunawrapper
 import oscml.hpo.resume
 import oscml.hpo.train
-import oscml.hpo.start_bilstm_with_hpo
-import oscml.hpo.start_gnn_with_hpo
-import oscml.hpo.start_mnist_with_hpo
-import oscml.hpo.start_rf_with_hpo
 import oscml.utils.util
 
 
@@ -165,13 +161,13 @@ class Test_HPO(unittest.TestCase):
         with unittest.mock.patch('sys.argv', testargs):
             oscml.hpo.train.start(config_dev=config)
 
-    def test_hpo_attentiveFP_cep25000_full_featurizer_with_config_file(self):
+    def test_hpo_attentiveFP_hopv15_full_featurizer_with_config_file(self):
 
         testargs = ['test',
             '--dataset', 'HOPV15',
             '--epochs', '1',
             '--trials', '2',
-            '--config', './conf/confhpo_attentivefp.json'
+            '--config', './res/test_confhpo/confhpo_attentivefp_hopv15.json'
             ]
         with unittest.mock.patch('sys.argv', testargs):
             oscml.hpo.train.start()
@@ -284,13 +280,13 @@ if __name__ == '__main__':
     #suite.addTest(Test_HPO('test_train_bilstm_hopv15_one_trial'))
     #suite.addTest(Test_HPO('test_train_attentiveFP_cep25000_simple_featurizer'))
     #suite.addTest(Test_HPO('test_hpo_attentiveFP_hopv15_full_featurizer'))
-    #suite.addTest(Test_HPO('test_hpo_attentiveFP_cep25000_full_featurizer_with_config_file'))
+    suite.addTest(Test_HPO('test_hpo_attentiveFP_hopv15_full_featurizer_with_config_file'))
     #suite.addTest(Test_HPO('test_load_model_from_checkpoint'))
     #suite.addTest(Test_HPO('test_gnn_cep25000_ckpt_test_only'))
     #suite.addTest(Test_HPO('test_gnn_cep25000_ckpt_resume_training'))
     #suite.addTest(Test_HPO('test_infinite_trials_and_time_out_gnn'))
     #suite.addTest(Test_HPO('test_infinite_trials_and_time_out_bilstm'))
     #suite.addTest(Test_HPO('test_train_rf_cep25000_one_trial_with_config_file'))
-    suite.addTest(Test_HPO('test_train_svr_hopv15_one_trial_with_config_file'))
+    #suite.addTest(Test_HPO('test_train_svr_hopv15_one_trial_with_config_file'))
     runner = unittest.TextTestRunner()
     runner.run(suite)

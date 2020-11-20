@@ -118,12 +118,12 @@ def objective(trial, config, args, df_train, df_val, df_test, transformer):
 
     elif model_name == 'RF':
         training_params = get_training_params(trial, config['training'])
-        model, x_train, y_train, x_val, y_val = oscml.hpo.hpo_rf.create(trial, config, df_train, df_val, df_test, training_params, args.dataset)
+        model, x_train, y_train, x_val, y_val = oscml.hpo.hpo_rf.create(trial, config, df_train, df_val, df_test, training_params)
         trainer_type = "scikit_learn"
 
     elif model_name == 'SVR':
         training_params = get_training_params(trial, config['training'])
-        model, x_train, y_train, x_val, y_val = oscml.hpo.hpo_svr.create(trial, config, df_train, df_val, df_test, training_params, args.dataset)
+        model, x_train, y_train, x_val, y_val = oscml.hpo.hpo_svr.create(trial, config, df_train, df_val, df_test, training_params)
         trainer_type = "scikit_learn"
 
     # fit on training set and calculate metric on validation set

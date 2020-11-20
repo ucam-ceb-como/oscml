@@ -147,10 +147,10 @@ def get_dataframes(dataset, train_size=-1, test_size=-1):
         raise RuntimeError('unknown dataset type dict=' + str(dataset_type))
 
 class DatasetInfo:
-    def __init__(self, id=None, column_smiles=None, column_target=None, mol2seq=None, node_types=None, max_sequence_length=None, max_molecule_size=0, max_smiles_length=0):
+    def __init__(self, id=None, mol2seq=None, node_types=None, max_sequence_length=None, max_molecule_size=0, max_smiles_length=0):
         self.id=id
-        self.column_smiles = column_smiles
-        self.column_target = column_target
+        #self.column_smiles = column_smiles
+        #self.column_target = column_target
         if mol2seq:
             self.mol2seq = mol2seq
         else:    
@@ -177,8 +177,8 @@ class DatasetInfo:
     def as_dict(self):
         d = {}
         d['id'] = self.id
-        d['column_smiles'] = self.column_smiles
-        d['column_target'] = self.column_target
+        #d['column_smiles'] = self.column_smiles
+        #d['column_target'] = self.column_target
         d['max_sequence_length'] = self.max_sequence_length
         d['max_molecule_size'] = self.max_molecule_size
         d['max_smiles_length'] = self.max_smiles_length

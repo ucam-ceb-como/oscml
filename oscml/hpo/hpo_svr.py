@@ -1,19 +1,19 @@
 import logging
-import sklearn
-import oscml.data.dataset
-import pandas as pd
-from oscml.utils.util_config import set_config_param
-from oscml.utils.util import smiles2mol, concat
+
 import rdkit
 import rdkit.Chem
 import rdkit.Chem.AllChem
-from oscml.utils.util_config import set_config_param
+import pandas as pd
+
+import oscml.data.dataset
 import oscml.models.model_kernel
+from oscml.utils.util import smiles2mol
+from oscml.utils.util_config import set_config_param
 
-def create(trial, config, df_train, df_val, df_test, training_params, dataset):
+def create(trial, config, df_train, df_val, df_test, training_params):
 
-    info = oscml.data.dataset.get_dataset_info(dataset)
-    node_type_number = len(info.node_types)
+    x_column = config['dataset']['x_column'][0]
+    y_column = config['dataset']['y_column'][0]
 
     # set model parameters from the config file
     #--------------------------------------
@@ -44,30 +44,27 @@ def create(trial, config, df_train, df_val, df_test, training_params, dataset):
 
     # at the moment the only supported fingerprint choice is morgan
     fp_type = fp_params.pop('type',None)
-    if fp_type=='morgan':
-        get_fp = get_Morgan_fingerprints
-    else:
-        logging.exception('', exc_info=True)
+    if not fp_type=='morgan':
         raise ValueError("Unknown fingerprint type '"+ fp_type+"'. Only 'morgan' fingerprints supported.")
 
     if training_params['cross_validation']:
         df_train = pd.concat([df_train, df_val])
         x_train, y_train, scaler_svr_physical_data = oscml.models.model_kernel.preprocess_data_phys_and_struct(
-            df_train, fp_params, train_size=1, column_smiles=info.column_smiles,
-            columns_phys=None, column_y=info.column_target)
+            df_train, fp_params, train_size=1, column_smiles=x_column,
+            columns_phys=None, column_y=y_column)
         x_val = None
         y_val = None
     else:
         x_train, y_train, scaler_svr_physical_data = oscml.models.model_kernel.preprocess_data_phys_and_struct(
-            df_train, fp_params, train_size=1, column_smiles=info.column_smiles,
-            columns_phys=None, column_y=info.column_target)
+            df_train, fp_params, train_size=1, column_smiles=x_column,
+            columns_phys=None, column_y=y_column)
 
         x_val, y_val, scaler_svr_physical_data = oscml.models.model_kernel.preprocess_data_phys_and_struct(df_val,
                                                                                                             fp_params,
                                                                                                             train_size=1,
-                                                                                                            column_smiles=info.column_smiles,
+                                                                                                            column_smiles=x_column,
                                                                                                             columns_phys=None,
-                                                                                                            column_y=info.column_target,
+                                                                                                            column_y=y_column,
                                                                                                             scaler_svr_physical_data=scaler_svr_physical_data)
 
     training_params_local = training_params.copy()
@@ -79,7 +76,7 @@ def create(trial, config, df_train, df_val, df_test, training_params, dataset):
 
 
 def get_Morgan_fingerprints(df, params_morgan, columns_smiles, column_y):
-    logging.info('generating Morgan fingerprint samples according to params=' + str(params_morgan))
+    logging.info('generating Morgan fingerprint samples according to params=%s', params_morgan)
     x = []
     y = []
     for i in range(len(df)):

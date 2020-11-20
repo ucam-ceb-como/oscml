@@ -1,18 +1,18 @@
 import logging
-import sklearn
-import oscml.data.dataset
+
 import pandas as pd
-from oscml.utils.util_config import set_config_param
-from oscml.utils.util import smiles2mol, concat
 import rdkit
 import rdkit.Chem
 import rdkit.Chem.AllChem
+import sklearn
+
+from oscml.utils.util import smiles2mol
 from oscml.utils.util_config import set_config_param
 
-def create(trial, config, df_train, df_val, df_test, training_params, dataset):
+def create(trial, config, df_train, df_val, df_test, training_params):
 
-    info = oscml.data.dataset.get_dataset_info(dataset)
-    node_type_number = len(info.node_types)
+    x_column = config['dataset']['x_column'][0]
+    y_column = config['dataset']['y_column'][0]
 
     # set model parameters from the config file
     #--------------------------------------
@@ -39,12 +39,12 @@ def create(trial, config, df_train, df_val, df_test, training_params, dataset):
 
     if training_params['cross_validation']:
         df_train = pd.concat([df_train, df_val])
-        x_train, y_train = get_fp(df_train, fp_params, info.column_smiles, info.column_target)
+        x_train, y_train = get_fp(df_train, fp_params, x_column, y_column)
         x_val = None
         y_val = None
     else:
-        x_train, y_train = get_fp(df_train, fp_params, info.column_smiles, info.column_target)
-        x_val, y_val = get_fp(df_val, fp_params, info.column_smiles, info.column_target)
+        x_train, y_train = get_fp(df_train, fp_params, x_column, y_column)
+        x_val, y_val = get_fp(df_val, fp_params, x_column, y_column)
 
     model = sklearn.ensemble.RandomForestRegressor(**model_params, criterion=training_params['criterion'], n_jobs=1, verbose=0, random_state=0)
 
@@ -52,7 +52,7 @@ def create(trial, config, df_train, df_val, df_test, training_params, dataset):
 
 
 def get_Morgan_fingerprints(df, params_morgan, columns_smiles, column_y):
-    logging.info('generating Morgan fingerprint samples according to params=' + str(params_morgan))
+    logging.info('generating Morgan fingerprint samples according to params=%s', params_morgan)
     x = []
     y = []
     for i in range(len(df)):
