@@ -10,7 +10,7 @@ import oscml.hpo.hpo_attentivefp
 import oscml.hpo.hpo_bilstm
 import oscml.hpo.hpo_simplegnn
 import oscml.hpo.optunawrapper
-
+from pytorch_lightning.callbacks.early_stopping import EarlyStopping
 
 class MetricsCallback(pl.Callback):
 
@@ -31,6 +31,9 @@ def fit_or_test(model, train_dl, val_dl, test_dl, trainer_params,
     if trial:
         pruning_callback = optuna.integration.PyTorchLightningPruningCallback(trial, monitor=metric)
         callbacks.append(pruning_callback)
+
+    early_stopping_callback = EarlyStopping(monitor='val_loss', min_delta=0.0, patience=3, verbose=False, mode='min')
+    callbacks.append(early_stopping_callback)
 
     logging.info('model for trial %s=%s', trial_number, model)
 
