@@ -4,7 +4,7 @@ import functools
 import logging
 import os
 import json
-
+from collections import OrderedDict
 import oscml.hpo.objective
 import oscml.hpo.optunawrapper
 
@@ -17,12 +17,12 @@ def none_or_str(value):
     if value == 'None':
         return None
     return value
-        
+
 def bool_or_str(value):
     if value == 'False':
         return False
     elif value == 'True':
-        return True        
+        return True
     return value
 
 def start(config_dev=None):
@@ -64,7 +64,7 @@ def start(config_dev=None):
 
     if args.config:
         with open(args.config) as json_config:
-            config = json.load(json_config)
+            config = json.load(json_config, object_pairs_hook=OrderedDict)
     else:
         config = config_dev
 
