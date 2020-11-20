@@ -5,20 +5,20 @@
     "cudnn_benchmark": false
 },
 "dataset":{
-    "src": "./data/processed/CEP25000.csv",
+    "src": "./data/processed/CEPDB_25000.csv",
     "z-stand": "False",
-    "x_column": ["smiles"],
+    "x_column": ["SMILES_str"],
     "y_column": ["pce"]
     },
 "model":{
     "name": "BILSTM",
     "model_specific":{
-        "embedding_dimension":{"type":"int","low":8,"high":256},
+        "embedding_dim":{"type":"int","low":8,"high":256},
         "mlp_layers":{"type":"int","low":1,"high":4},
-        "mlp_units":{"type":"int","low":1,"high":15,"direction":"increasing"},
-        "mlp_dropouts":{"type":"uniform","low":0.1,"high":0.3,"direction":"constant"}
+        "mlp_units":{"type":"int","low":1,"high":15,"direction":"decreasing","length":"mlp_layers"},
+        "mlp_dropouts":{"type":"uniform","low":0.1,"high":0.3,"direction":"constant","length":"mlp_layers"}
         },
-	"max_sequence_length": 60, 
+	"max_sequence_length": 60,
 	"type_dict": "CEPDB or HOPV15"
     },
 "training":{

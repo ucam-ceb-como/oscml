@@ -5,20 +5,20 @@
     "cudnn_benchmark": false
 },
 "dataset":{
-    "src": "./data/processed/CEP25000.csv",
+    "src": "./data/processed/CEPDB_25000.csv",
     "z-stand": "False",
-    "x_column": ["smiles"],
+    "x_column": ["SMILES_str"],
     "y_column": ["pce"]
     },
 "model":{
     "name": "SimpleGNN",
     "model_specific":{
-        "embedding_dimension": 256,
+        "embedding_dim": 256,
         "conv_layers":{"type":"int","low":1,"high":4},
-        "conv_dims":{"type":"int","low":10,"high":15,"direction":"constant"},
+        "conv_dims":{"type":"int","low":10,"high":15,"direction":"constant","length":"conv_layers"},
         "mlp_layers":{"type":"int","low":1,"high":15},
-        "mlp_units":{"type":"int","low":5,"high":15, "direction":"increasing"},
-        "mlp_dropouts":{"type":"uniform","low":0.1,"high":0.3, "direction":"constant"}
+        "mlp_units":{"type":"int","low":5,"high":15,"length":"mlp_layers","direction":"constant"},
+        "mlp_dropouts":{"type":"uniform","low":0.1,"high":0.3,"length":"mlp_layers","direction":"constant"}
         },
 	"type_dict": "CEPDB or HOPV15"
     },

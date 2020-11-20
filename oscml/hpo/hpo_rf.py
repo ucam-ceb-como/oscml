@@ -20,53 +20,40 @@ def create(trial, config, df_train, df_val, df_test, training_params, dataset):
     fp_specific = config['model']['fingerprint_specific'].copy()
     training_specific = config['training'].copy()
 
-    # model_params
-    n_estimators = set_config_param(trial=trial,param_name='n_estimators',param=model_specific['n_estimators'])
-    max_depth = set_config_param(trial=trial,param_name='max_depth',param=model_specific['max_depth'])
-    min_samples_split = set_config_param(trial=trial,param_name='min_samples_split',param=model_specific['min_samples_split'])
-    min_samples_leaf = set_config_param(trial=trial,param_name='min_samples_leaf',param=model_specific['min_samples_leaf'])
-    max_features = set_config_param(trial=trial,param_name='max_features',param=model_specific['max_features'])
-    bootstrap = set_config_param(trial=trial,param_name='bootstrap',param=model_specific['bootstrap'])
-    max_samples = set_config_param(trial=trial,param_name='max_samples',param=model_specific['max_samples'])
-    cross_validation = set_config_param(trial=trial,param_name='cross_validation',param=model_specific['cross_validation'])
-    # fingerprint params
-    fp_type = set_config_param(trial=trial,param_name='fp_type',param=fp_specific['type'])
-    fp_nBits = set_config_param(trial=trial,param_name='fp_nBits',param=fp_specific['nBits'])
-    fp_radius = set_config_param(trial=trial,param_name='fp_radius',param=fp_specific['radius'])
-    fp_use_chirality = set_config_param(trial=trial,param_name='fp_use_chirality',param=fp_specific['useChirality'])
-    fp_use_bond_types = set_config_param(trial=trial,param_name='fp_use_bond_types',param=fp_specific['useBondTypes'])
+    # set model parameters from the config file
+    model_params = {}
+    for key, value in config['model']['model_specific'].items():
+        model_params.update({key: set_config_param(trial=trial,param_name=key,param=value, all_params=model_params)})
 
-    model_params =  {
-        'n_estimators': n_estimators,
-        'max_depth': max_depth,
-        'min_samples_split': min_samples_split,
-        'min_samples_leaf': min_samples_leaf,
-        'max_features': max_features,
-        'bootstrap': bootstrap,
-        'max_samples': max_samples
-    }
-    fp_params = {
-        # fingerprint params
-        'nBits': fp_nBits,
-        'radius': fp_radius,
-        'useChirality': fp_use_chirality,
-        'useBondTypes': fp_use_bond_types
-    }
-
-    if cross_validation:
-        df_train = pd.concat([df_train, df_val])
-        x_train, y_train = get_Morgan_fingerprints(df_train, fp_params, info.column_smiles, info.column_target)
-        x_val = None
-        y_val = None
-    else:
-        x_train, y_train = get_Morgan_fingerprints(df_train, fp_params, info.column_smiles, info.column_target)
-        x_val, y_val = get_Morgan_fingerprints(df_val, fp_params, info.column_smiles, info.column_target)
+    # set fingerprint parameters from the config file
+    fp_params = {}
+    for key, value in config['model']['fingerprint_specific'].items():
+        fp_params.update({key: set_config_param(trial=trial,param_name=key,param=value, all_params=fp_params)})
 
 
     logging.info('model params=%s', model_params)
-    model = sklearn.ensemble.RandomForestRegressor(**model_params, **training_params, n_jobs=1, verbose=0, random_state=0)
+    logging.info('fingerprting params=%s', fp_params)
 
-    return model, x_train, y_train, x_val, y_val, cross_validation
+    # at the moment the only supported fingerprint choice is morgan
+    fp_type = fp_params.pop('type',None)
+    if fp_type=='morgan':
+        get_fp = get_Morgan_fingerprints
+    else:
+        logging.exception('', exc_info=True)
+        raise ValueError("Unknown fingerprint type '"+ fp_type+"'. Only 'morgan' fingerprints supported.")
+
+    if training_params['cross_validation']:
+        df_train = pd.concat([df_train, df_val])
+        x_train, y_train = get_fp(df_train, fp_params, info.column_smiles, info.column_target)
+        x_val = None
+        y_val = None
+    else:
+        x_train, y_train = get_fp(df_train, fp_params, info.column_smiles, info.column_target)
+        x_val, y_val = get_fp(df_val, fp_params, info.column_smiles, info.column_target)
+
+    model = sklearn.ensemble.RandomForestRegressor(**model_params, criterion=training_params['criterion'], n_jobs=1, verbose=0, random_state=0)
+
+    return model, x_train, y_train, x_val, y_val
 
 
 def get_Morgan_fingerprints(df, params_morgan, columns_smiles, column_y):
