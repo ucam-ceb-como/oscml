@@ -122,7 +122,7 @@ def objective(trial, config, args, df_train, df_val, df_test, transformer):
 
     # fit on training set and calculate metric on validation set
     if tainer_type == "pl_lightning":
-    trial_number = trial.number
+        trial_number = trial.number
         metric_value = fit_or_test(model, train_dl, val_dl, test_dl, training_params,
                                 args.epochs, args.metric, args.log_dir, trial, trial_number, args.trials)
     else:
