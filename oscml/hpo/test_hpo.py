@@ -14,9 +14,9 @@ import oscml.hpo.train
 import oscml.utils.util
 
 
-def create_config(dataset_type, model_name, model_specific):
+def create_config(type_dict, model_name, model_specific):
 
-    if dataset_type == oscml.data.dataset_cep.CEP25000:
+    if type_dict == oscml.data.dataset_cep.CEP25000:
         dataset = {
             "src": "./data/processed/CEPDB_25000.csv",
             "z-stand": "True",
@@ -24,7 +24,7 @@ def create_config(dataset_type, model_name, model_specific):
             "y_column": ["pce"],
             "type_dict": oscml.data.dataset_cep.CEP25000
         }
-    elif dataset_type == oscml.data.dataset_hopv15.HOPV15:
+    elif type_dict == oscml.data.dataset_hopv15.HOPV15:
         dataset = {
             "src": "./data/raw/HOPV_15_revised_2.data",
             "z-stand": "True",
@@ -33,13 +33,7 @@ def create_config(dataset_type, model_name, model_specific):
             "type_dict": oscml.data.dataset_hopv15.HOPV15
         }
 
-    return {
-        "dataset": dataset,
-        "model":{
-            "name": model_name,
-            "model_specific": model_specific,
-        },
-        "training":{
+    training = {
             "optimiser":{
                 "name":"Adam",
                 "lr":0.001,
@@ -50,27 +44,43 @@ def create_config(dataset_type, model_name, model_specific):
             "patience": -1,
             "metric": 'val_loss'
         }
-    }
 
-def create_config_attentivefp(dataset_type):
+    return {
+        "dataset": dataset,
+        "model":{
+            "name": model_name,
+            "model_specific": model_specific,            
+        },
+        "training": training
+    } 
+
+def create_config_attentivefp(type_dict, featurizer):
     model_specific = {
         'graph_feat_size': 200,
         'num_layers': 4,
         'num_timesteps': 2,
         'dropout': 0.,
     }
-    return create_config(dataset_type, 'AttentiveFP', model_specific)
+    d = create_config(type_dict, 'AttentiveFP', model_specific)
+    d['model'].update({'featurizer': featurizer})
+    return d
 
-def create_config_bilstm(dataset_type):
+def create_config_bilstm(type_dict):
     model_specific = {
         'embedding_dim': 128,
         'mlp_layers': 3,
         'mlp_units': [64, 32, 16],
         "mlp_dropouts": [0., 0., 0.]
     }
-    return create_config(dataset_type, 'BILSTM', model_specific)
+    d = create_config(type_dict, 'BILSTM', model_specific)
+    if type_dict == oscml.data.dataset_cep.CEP25000:
+        max_sequence_length = 60
+    else:
+        max_sequence_length = 150
+    d['model'].update({'type_dict': type_dict, 'max_sequence_length': max_sequence_length})
+    return d
 
-def create_config_simplegnn(dataset_type):
+def create_config_simplegnn(type_dict):
     model_specific = {
         'embedding_dim': 128,
         "conv_layers": 4,
@@ -79,8 +89,9 @@ def create_config_simplegnn(dataset_type):
         "mlp_units": [64, 32],
         "mlp_dropouts": [0.1, 0.2],
     }
-    return create_config(dataset_type, 'SimpleGNN', model_specific)
-
+    d = create_config(type_dict, 'SimpleGNN', model_specific)
+    d['model'].update({'type_dict': type_dict})
+    return d
 
 class Test_HPO(unittest.TestCase):
 
@@ -93,7 +104,7 @@ class Test_HPO(unittest.TestCase):
         config = create_config_simplegnn(oscml.data.dataset_cep.CEP25000)
 
         testargs = ['test',
-            '--dataset', 'CEP25000',
+            #'--dataset', 'CEP25000',
             '--epochs', '1',
             '--trials', '1',
         ]
@@ -105,7 +116,7 @@ class Test_HPO(unittest.TestCase):
         config = create_config_simplegnn(oscml.data.dataset_hopv15.HOPV15)
 
         testargs = ['test',
-            '--dataset', 'HOPV15',
+            #'--dataset', 'HOPV15',
             '--epochs', '1',
             '--trials', '1',
         ]
@@ -117,7 +128,7 @@ class Test_HPO(unittest.TestCase):
         config = create_config_bilstm(oscml.data.dataset_cep.CEP25000)
 
         testargs = ['test',
-            '--dataset', 'CEP25000',
+            #'--dataset', 'CEP25000',
             '--epochs', '1',
             '--trials', '1',
         ]
@@ -129,7 +140,7 @@ class Test_HPO(unittest.TestCase):
         config = create_config_bilstm(oscml.data.dataset_hopv15.HOPV15)
 
         testargs = ['test',
-            '--dataset', 'HOPV15',
+            #'--dataset', oscml.data.dataset_hopv15.HOPV15,
             '--epochs', '2',
             '--trials', '1',
         ]
@@ -138,25 +149,24 @@ class Test_HPO(unittest.TestCase):
     
     def test_train_attentiveFP_cep25000_simple_featurizer(self):
 
-        config = create_config_attentivefp(oscml.data.dataset_cep.CEP25000)
+        config = create_config_attentivefp(oscml.data.dataset_cep.CEP25000, 'simple')
 
         testargs = ['test',
-            '--dataset', 'CEP25000',
             '--epochs', '1',
             '--trials', '1',
-            '--featurizer', 'simple'
+            '--dataset', oscml.data.dataset_cep.CEP25000,
             ]
         with unittest.mock.patch('sys.argv', testargs):
             oscml.hpo.train.start(config_dev=config)
 
     def test_hpo_attentiveFP_hopv15_full_featurizer(self):
 
-        config = create_config_attentivefp(oscml.data.dataset_hopv15.HOPV15)
+        config = create_config_attentivefp(oscml.data.dataset_hopv15.HOPV15, 'full')
 
         testargs = ['test',
-            '--dataset', 'HOPV15',
             '--epochs', '1',
-            '--trials', '2'         # will run twice with the same fixed params
+            '--trials', '2',
+            '--dataset', oscml.data.dataset_hopv15.HOPV15,
             ]
         with unittest.mock.patch('sys.argv', testargs):
             oscml.hpo.train.start(config_dev=config)
@@ -164,10 +174,10 @@ class Test_HPO(unittest.TestCase):
     def test_hpo_attentiveFP_hopv15_full_featurizer_with_config_file(self):
 
         testargs = ['test',
-            '--dataset', 'HOPV15',
             '--epochs', '1',
             '--trials', '2',
-            '--config', './res/test_confhpo/confhpo_attentivefp_hopv15.json'
+            '--config', './res/test_confhpo/confhpo_attentivefp_hopv15.json',
+            '--dataset', oscml.data.dataset_hopv15.HOPV15,
             ]
         with unittest.mock.patch('sys.argv', testargs):
             oscml.hpo.train.start()
@@ -247,7 +257,7 @@ class Test_HPO(unittest.TestCase):
     def test_train_rf_cep25000_one_trial_with_config_file(self):
 
         testargs = ['test',
-            '--dataset', 'CEP25000',
+            '--dataset', oscml.data.dataset_cep.CEP25000,
             '--metric', 'mse',
             '--direction', 'minimize',
             '--trials', '1',
@@ -259,7 +269,7 @@ class Test_HPO(unittest.TestCase):
     def test_train_svr_hopv15_one_trial_with_config_file(self):
 
         testargs = ['test',
-            '--dataset', 'HOPV15',
+            '--dataset', oscml.data.dataset_hopv15.HOPV15,
             '--metric', 'mse',
             '--direction', 'minimize',
             '--trials', '1',
@@ -274,19 +284,17 @@ if __name__ == '__main__':
     #unittest.main()
 
     suite = unittest.TestSuite()
-    #suite.addTest(Test_HPO('test_train_gnn_cep25000_one_trial'))
-    #suite.addTest(Test_HPO('test_train_gnn_hopv15_one_trial'))
-    #suite.addTest(Test_HPO('test_train_bilstm_cep25000_one_trial'))
-    #suite.addTest(Test_HPO('test_train_bilstm_hopv15_one_trial'))
-    #suite.addTest(Test_HPO('test_train_attentiveFP_cep25000_simple_featurizer'))
-    #suite.addTest(Test_HPO('test_hpo_attentiveFP_hopv15_full_featurizer'))
+    suite.addTest(Test_HPO('test_train_gnn_cep25000_one_trial'))
+    suite.addTest(Test_HPO('test_train_gnn_hopv15_one_trial'))
+    suite.addTest(Test_HPO('test_train_bilstm_cep25000_one_trial'))
+    suite.addTest(Test_HPO('test_train_bilstm_hopv15_one_trial'))
+    suite.addTest(Test_HPO('test_train_attentiveFP_cep25000_simple_featurizer'))
+    suite.addTest(Test_HPO('test_hpo_attentiveFP_hopv15_full_featurizer'))
     suite.addTest(Test_HPO('test_hpo_attentiveFP_hopv15_full_featurizer_with_config_file'))
     #suite.addTest(Test_HPO('test_load_model_from_checkpoint'))
     #suite.addTest(Test_HPO('test_gnn_cep25000_ckpt_test_only'))
     #suite.addTest(Test_HPO('test_gnn_cep25000_ckpt_resume_training'))
-    #suite.addTest(Test_HPO('test_infinite_trials_and_time_out_gnn'))
-    #suite.addTest(Test_HPO('test_infinite_trials_and_time_out_bilstm'))
-    #suite.addTest(Test_HPO('test_train_rf_cep25000_one_trial_with_config_file'))
-    #suite.addTest(Test_HPO('test_train_svr_hopv15_one_trial_with_config_file'))
+    suite.addTest(Test_HPO('test_train_rf_cep25000_one_trial_with_config_file'))
+    suite.addTest(Test_HPO('test_train_svr_hopv15_one_trial_with_config_file'))
     runner = unittest.TextTestRunner()
     runner.run(suite)

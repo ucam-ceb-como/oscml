@@ -118,14 +118,13 @@ def read_and_split(filepath, split_column='ml_phase'):
     logging.info('split data into sets of size (train / val / test)=%s / %s / %s', len(df_train), len(df_val), len(df_test))
     return df_train, df_val, df_test
 
-def get_dataframes(dataset, train_size=-1, test_size=-1):
+def get_dataframes(dataset, type_dict, train_size=-1, test_size=-1):
 
     src = dataset['src']
     x_column = dataset['x_column'][0]
     y_column = dataset['y_column'][0]
-    dataset_type = dataset['type_dict']
 
-    if dataset_type == oscml.data.dataset_hopv15.HOPV15:
+    if type_dict == oscml.data.dataset_hopv15.HOPV15:
         df = oscml.data.dataset_hopv15.read(src)
         df = oscml.data.dataset.clean_data(df, None, x_column, y_column)
 
@@ -134,7 +133,7 @@ def get_dataframes(dataset, train_size=-1, test_size=-1):
     
         return (df_train, df_val, df_test, transformer)
 
-    elif dataset_type == oscml.data.dataset_cep.CEP25000:
+    elif type_dict == oscml.data.dataset_cep.CEP25000:
         df_train, df_val, df_test = oscml.data.dataset.read_and_split(src)
         # for testing only
         #df_train, df_val, df_test = df_train[:1500], df_val[:500], df_test[:500]
@@ -143,8 +142,7 @@ def get_dataframes(dataset, train_size=-1, test_size=-1):
 
         return (df_train, df_val, df_test, transformer)
     
-    else:
-        raise RuntimeError('unknown dataset type dict=' + str(dataset_type))
+    raise RuntimeError('unknown dataset type dict=' + str(type_dict))
 
 class DatasetInfo:
     def __init__(self, id=None, mol2seq=None, node_types=None, max_sequence_length=None, max_molecule_size=0, max_smiles_length=0):

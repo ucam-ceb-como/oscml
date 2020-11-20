@@ -12,13 +12,14 @@ from oscml.utils.util_config import set_config_param
 import oscml.utils.util_lightning
 
 
-def create(trial, config, args, df_train, df_val, df_test, optimizer):
+def create(trial, config, df_train, df_val, df_test, optimizer, log_dir):
 
     x_column = config['dataset']['x_column'][0]
     y_column = config['dataset']['y_column'][0]
-    dgl_log_dir = args.log_dir + '/dgl_' + str(trial.number)
+    featurizer_config = config['model']['featurizer'] 
+    dgl_log_dir = log_dir + '/dgl_' + str(trial.number)
 
-    if args.featurizer == 'full':
+    if featurizer_config == 'full':
         node_featurizer = dgllife.utils.AttentiveFPAtomFeaturizer()
         edge_featurizer = dgllife.utils.AttentiveFPBondFeaturizer(self_loop=True)
         node_feat_size = node_featurizer.feat_size('h')     # = 39

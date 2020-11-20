@@ -4,14 +4,15 @@ import oscml.data.dataset
 import oscml.models.model_bilstm
 from oscml.utils.util_config import set_config_param
 
-def create(trial, config, df_train, df_val, df_test, optimizer, transformer, dataset):
+def create(trial, config, df_train, df_val, df_test, optimizer, transformer):
 
-    info = oscml.data.dataset.get_dataset_info(dataset)
+    type_dict = config['model']['type_dict']
+    info = oscml.data.dataset.get_dataset_info(type_dict)
     number_subgraphs = info.number_subgraphs()
-    max_sequence_length = info.max_sequence_length
+    max_sequence_length = config['model']['max_sequence_length']
 
     # dataloaders
-    train_dl, val_dl, test_dl = oscml.models.model_bilstm.get_dataloaders(dataset, df_train, df_val, df_test,
+    train_dl, val_dl, test_dl = oscml.models.model_bilstm.get_dataloaders(type_dict, df_train, df_val, df_test,
             transformer, batch_size=250, max_sequence_length=max_sequence_length)
 
     # set model parameters from the config file

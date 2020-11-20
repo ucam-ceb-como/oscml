@@ -1,8 +1,4 @@
-import logging
 import unittest
-
-import numpy as np
-import pandas as pd
 
 import oscml.data.dataset
 import oscml.data.dataset_cep
@@ -10,7 +6,6 @@ import oscml.data.dataset_hopv15
 import oscml.features.fingerprint
 import oscml.features.fingerprint_ertl_ifg
 import oscml.utils.util
-from oscml.utils.util import smiles2mol
 
 class TestFeatures(unittest.TestCase):
 
@@ -25,9 +20,8 @@ class TestFeatures(unittest.TestCase):
             "z-stand": "False",
             "x_column": ["smiles"],
             "y_column": ["pce"],
-            "type_dict": oscml.data.dataset_hopv15.HOPV15
         }
-        df, _, _, _ = oscml.data.dataset.get_dataframes(dataset=dataset_config, train_size=100, test_size=30)
+        df, _, _, _ = oscml.data.dataset.get_dataframes(dataset=dataset_config, type_dict=oscml.data.dataset_hopv15.HOPV15, train_size=100, test_size=30)
 
         df['rdkitmol'] = oscml.utils.util.smiles2mol_df(df, 'smiles')
         fg_ertl_dictionary = oscml.features.fingerprint.create_functional_group_ertl_dictionary(df)

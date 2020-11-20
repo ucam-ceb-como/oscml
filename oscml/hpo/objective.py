@@ -96,24 +96,24 @@ def get_training_params(trial, training_settings):
             training_params[key] = set_config_param(trial=trial,param_name=key,param=value, all_params=training_params)
     return training_params
 
-def objective(trial, config, args, df_train, df_val, df_test, transformer):
+def objective(trial, config, args, df_train, df_val, df_test, transformer, log_dir):
 
     # init model and data loaders
     model_name = config['model']['name']
 
     if model_name == 'BILSTM':
         training_params = get_training_params(trial, config['training'])
-        model, train_dl, val_dl, test_dl = oscml.hpo.hpo_bilstm.create(trial, config, df_train, df_val, df_test, training_params['optimiser'], transformer, args.dataset)
+        model, train_dl, val_dl, test_dl = oscml.hpo.hpo_bilstm.create(trial, config, df_train, df_val, df_test, training_params['optimiser'], transformer)
         trainer_type = "pl_lightning"
 
     elif model_name == 'AttentiveFP':
         training_params = get_training_params(trial, config['training'])
-        model, train_dl, val_dl, test_dl = oscml.hpo.hpo_attentivefp.create(trial, config, args, df_train, df_val, df_test, training_params['optimiser'])
+        model, train_dl, val_dl, test_dl = oscml.hpo.hpo_attentivefp.create(trial, config, df_train, df_val, df_test, training_params['optimiser'], log_dir)
         trainer_type = "pl_lightning"
 
     elif model_name == 'SimpleGNN':
         training_params = get_training_params(trial, config['training'])
-        model, train_dl, val_dl, test_dl = oscml.hpo.hpo_simplegnn.create(trial, config, df_train, df_val, df_test, training_params['optimiser'], transformer, args.dataset)
+        model, train_dl, val_dl, test_dl = oscml.hpo.hpo_simplegnn.create(trial, config, df_train, df_val, df_test, training_params['optimiser'], transformer)
         trainer_type = "pl_lightning"
 
     elif model_name == 'RF':
@@ -129,7 +129,7 @@ def objective(trial, config, args, df_train, df_val, df_test, transformer):
     # fit on training set and calculate metric on validation set
     if trainer_type == "pl_lightning":
         trial_number = trial.number
-        metric_value = fit_or_test(model, train_dl, val_dl, test_dl, training_params, args.epochs, args.metric, args.log_dir, trial, trial_number, args.trials)
+        metric_value = fit_or_test(model, train_dl, val_dl, test_dl, training_params, args.epochs, args.metric, log_dir, trial, trial_number, args.trials)
     else:
         metric_value = oscml.utils.util_sklearn.train_and_test(x_train, y_train, x_val, y_val, model,
                                                                   training_params['cross_validation'], training_params['criterion'])

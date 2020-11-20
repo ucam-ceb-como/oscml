@@ -4,13 +4,14 @@ import oscml.data.dataset
 import oscml.models.model_gnn
 from oscml.utils.util_config import set_config_param
 
-def create(trial, config, df_train, df_val, df_test, optimizer, transformer, dataset):
+def create(trial, config, df_train, df_val, df_test, optimizer, transformer):
 
-    info = oscml.data.dataset.get_dataset_info(dataset)
+    type_dict = config['model']['type_dict']
+    info = oscml.data.dataset.get_dataset_info(type_dict)
     node_type_number = len(info.node_types)
 
     #dataloaders
-    train_dl, val_dl, test_dl = oscml.models.model_gnn.get_dataloaders(dataset, df_train, df_val, df_test,
+    train_dl, val_dl, test_dl = oscml.models.model_gnn.get_dataloaders(type_dict, df_train, df_val, df_test,
             transformer, batch_size=250)
 
     # set model parameters from the config file
