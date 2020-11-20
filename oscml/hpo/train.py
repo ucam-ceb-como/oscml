@@ -5,6 +5,11 @@ import logging
 import os
 import json
 from collections import OrderedDict
+
+import torch
+import numpy as np
+import random
+
 import oscml.hpo.objective
 import oscml.hpo.optunawrapper
 
@@ -49,6 +54,14 @@ def start(config_dev=None):
     parser.add_argument('--direction', type=str, default='minimize')
     parser.add_argument('--featurizer', type=str, choices=['simple', 'full'], default='full')
     args = parser.parse_args()
+
+    torch.manual_seed(args.seed)
+    torch.cuda.manual_seed_all(args.seed)
+    torch.backends.cudnn.deterministic = True
+    torch.backends.cudnn.benchmark = False
+    np.random.seed(args.seed)
+    random.seed(args.seed)
+    os.environ['PYTHONHASHSEED'] = str(args.seed)
 
     # init file logging
     log_config_file = args.src + '/conf/logging.yaml'

@@ -32,8 +32,8 @@ def create_study(direction, seed, **kwargs):
     # pruner = optuna.pruners.MedianPruner(n_startup_trials=5, n_warmup_steps=30, interval_steps=10)
     # pruner = optuna.pruners.PercentilePruner(25.0, n_startup_trials=5, n_warmup_steps=30, interval_steps=10) #keep top 25%
     # #pruner = ThresholdPruner(upper=1.0)
-    #pruner = optuna.pruners.HyperbandPruner(min_resource=1, max_resource=epochs, reduction_factor=3)
-    pruner = None
+    pruner = optuna.pruners.HyperbandPruner(min_resource=1, max_resource=9, reduction_factor=3)
+    #pruner = None
     sampler = optuna.samplers.TPESampler(consider_prior=True, n_startup_trials=10, seed=seed)
     study = optuna.create_study(direction=direction, pruner=pruner, sampler=sampler, **kwargs)
     return study

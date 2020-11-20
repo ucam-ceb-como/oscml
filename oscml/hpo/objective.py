@@ -11,6 +11,7 @@ import oscml.hpo.hpo_bilstm
 import oscml.hpo.hpo_simplegnn
 import oscml.hpo.hpo_rf
 import oscml.hpo.optunawrapper
+from pytorch_lightning.callbacks.early_stopping import EarlyStopping
 from oscml.utils.util_config import set_config_param
 import oscml.utils.util_sklearn
 
@@ -33,6 +34,9 @@ def fit_or_test(model, train_dl, val_dl, test_dl, training_params,
     if trial:
         pruning_callback = optuna.integration.PyTorchLightningPruningCallback(trial, monitor=metric)
         callbacks.append(pruning_callback)
+
+    early_stopping_callback = EarlyStopping(monitor='val_loss', min_delta=0.0, patience=3, verbose=False, mode='min')
+    callbacks.append(early_stopping_callback)
 
     logging.info('model for trial %s=%s', trial_number, model)
 
@@ -118,9 +122,9 @@ def objective(trial, config, args, df_train, df_val, df_test, transformer):
 
     # fit on training set and calculate metric on validation set
     if tainer_type == "pl_lightning":
-        trial_number = trial.number
+    trial_number = trial.number
         metric_value = fit_or_test(model, train_dl, val_dl, test_dl, training_params,
-                                    args.epochs, args.metric, args.log_dir, trial, trial_number, args.trials)
+                                args.epochs, args.metric, args.log_dir, trial, trial_number, args.trials)
     else:
         metric_value = oscml.utils.util_sklearn.train_and_test(x_train, y_train, x_val, y_val, model,
                                                                   training_params['cross_validation'], training_params['criterion'])
