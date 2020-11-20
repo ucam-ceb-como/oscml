@@ -67,21 +67,21 @@ def create_config_attentivefp(dataset_type):
 
 def create_config_bilstm(dataset_type):
     model_specific = {
-        'embedding_dimension': 128,
+        'embedding_dim': 128,
         'mlp_layers': 3,
         'mlp_units': [64, 32, 16],
-        "mlp_dropouts": 0.
+        "mlp_dropouts": [0., 0., 0.]
     }
     return create_config(dataset_type, 'BILSTM', model_specific)
 
 def create_config_simplegnn(dataset_type):
     model_specific = {
-        'embedding_dimension': 128,
+        'embedding_dim': 128,
         "conv_layers": 4,
         "conv_dims": [128, 128, 128, 128],
         "mlp_layers": 2,
         "mlp_units": [64, 32],
-        "mlp_dropouts": 0.2,
+        "mlp_dropouts": [0.1, 0.2],
     }
     return create_config(dataset_type, 'SimpleGNN', model_specific)
 
@@ -165,7 +165,7 @@ class Test_HPO(unittest.TestCase):
         with unittest.mock.patch('sys.argv', testargs):
             oscml.hpo.train.start(config_dev=config)
 
-    def test_hpo_attentiveFP_hopv15_full_featurizer_with_config_file(self):
+    def test_hpo_attentiveFP_cep25000_full_featurizer_with_config_file(self):
 
         testargs = ['test',
             '--dataset', 'HOPV15',
@@ -248,56 +248,30 @@ class Test_HPO(unittest.TestCase):
             result = oscml.hpo.resume.start()
             logging.info('result=%s', result)
 
-    
-    """
-    def test_rf_hpo_fixed_trial(self):
+    def test_train_rf_cep25000_one_trial_with_config_file(self):
 
-        testargs = ['test', 
-            '--fixedtrial', 'True',
-            '--dataset', 'HOPV15',
+        testargs = ['test',
+            '--dataset', 'CEP25000',
+            '--metric', 'mse',
+            '--direction', 'minimize',
+            '--trials', '1',
+            '--config', './conf/confhpo_rf.json',
         ]
         with unittest.mock.patch('sys.argv', testargs):
-            best_value = oscml.hpo.optunawrapper.start_hpo(
-                    init=oscml.hpo.start_rf_with_hpo.init, 
-                    objective=oscml.hpo.start_rf_with_hpo.objective, 
-                    metric='mse', 
-                    direction='minimize',
-                    fixed_trial_params=oscml.hpo.start_rf_with_hpo.fixed_trial()
-                )
+            oscml.hpo.train.start()
 
-    def test_rf_hpo_with_some_trials(self):
+    def test_train_svr_hopv15_one_trial_with_config_file(self):
 
-        testargs = ['test', 
-            '--trials', '10',
+        testargs = ['test',
             '--dataset', 'HOPV15',
+            '--metric', 'mse',
+            '--direction', 'minimize',
+            '--trials', '1',
+            '--config', './res/test_confhpo/confhpo_svr_hopv15.json',
         ]
         with unittest.mock.patch('sys.argv', testargs):
-            best_value = oscml.hpo.optunawrapper.start_hpo(
-                    init=oscml.hpo.start_rf_with_hpo.init, 
-                    objective=oscml.hpo.start_rf_with_hpo.objective, 
-                    metric='mse', 
-                    direction='minimize',
-                    fixed_trial_params=oscml.hpo.start_rf_with_hpo.fixed_trial()
-                )
+            oscml.hpo.train.start()
 
-    def test_rf_hpo_with_fixed_trial_and_negative_mean_score(self):
-
-        testargs = ['test', 
-                '--fixedtrial', 'True',
-                '--dataset', 'HOPV15',
-            ]
-        with unittest.mock.patch('sys.argv', testargs):
-            best_value = oscml.hpo.optunawrapper.start_hpo(
-                    init=oscml.hpo.start_rf_with_hpo.init, 
-                    objective=oscml.hpo.start_rf_with_hpo.objective, 
-                    metric='mse', 
-                    direction='minimize',
-                    fixed_trial_params={
-                        'type': 'morgan', 'nBits': 256, 'radius': 5, 'useChirality': True, 'useBondTypes': True,
-                        'n_estimators': 98, 'max_depth': 48, 'min_samples_split': 3, 'min_samples_leaf': 4, 'max_features': 1.0, 'bootstrap': False, 'max_samples': 10}
-
-                )
-    """
 
 if __name__ == '__main__':
 
@@ -306,18 +280,17 @@ if __name__ == '__main__':
     suite = unittest.TestSuite()
     #suite.addTest(Test_HPO('test_train_gnn_cep25000_one_trial'))
     #suite.addTest(Test_HPO('test_train_gnn_hopv15_one_trial'))
-    suite.addTest(Test_HPO('test_train_bilstm_cep25000_one_trial'))
+    #suite.addTest(Test_HPO('test_train_bilstm_cep25000_one_trial'))
     #suite.addTest(Test_HPO('test_train_bilstm_hopv15_one_trial'))
     #suite.addTest(Test_HPO('test_train_attentiveFP_cep25000_simple_featurizer'))
     #suite.addTest(Test_HPO('test_hpo_attentiveFP_hopv15_full_featurizer'))
-    #suite.addTest(Test_HPO('test_hpo_attentiveFP_hopv15_full_featurizer_with_config_file'))
+    #suite.addTest(Test_HPO('test_hpo_attentiveFP_cep25000_full_featurizer_with_config_file'))
     #suite.addTest(Test_HPO('test_load_model_from_checkpoint'))
     #suite.addTest(Test_HPO('test_gnn_cep25000_ckpt_test_only'))
     #suite.addTest(Test_HPO('test_gnn_cep25000_ckpt_resume_training'))
     #suite.addTest(Test_HPO('test_infinite_trials_and_time_out_gnn'))
     #suite.addTest(Test_HPO('test_infinite_trials_and_time_out_bilstm'))
-    #suite.addTest(Test_HPO('test_rf_hpo_fixed_trial'))
-    #suite.addTest(Test_HPO('test_rf_hpo_with_some_trials'))
-    #suite.addTest(Test_HPO('test_rf_hpo_with_fixed_trial_and_negative_mean_score'))
+    #suite.addTest(Test_HPO('test_train_rf_cep25000_one_trial_with_config_file'))
+    suite.addTest(Test_HPO('test_train_svr_hopv15_one_trial_with_config_file'))
     runner = unittest.TextTestRunner()
     runner.run(suite)

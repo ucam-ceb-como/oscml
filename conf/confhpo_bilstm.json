@@ -19,7 +19,7 @@
         "mlp_dropouts":{"type":"uniform","low":0.1,"high":0.3,"direction":"constant","length":"mlp_layers"}
         },
 	"max_sequence_length": 60,
-	"type_dict": "CEPDB or HOPV15"
+	"type_dict": "CEPDB"
     },
 "training":{
 	"optimiser":{

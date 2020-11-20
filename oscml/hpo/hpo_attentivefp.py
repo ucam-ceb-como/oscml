@@ -14,10 +14,8 @@ import oscml.utils.util_lightning
 
 def create(trial, config, args, df_train, df_val, df_test, optimizer):
 
-    # dataloaders
-    info = oscml.data.dataset.get_dataset_info(args.dataset)
-    column_smiles = info.column_smiles
-    column_target = info.column_target
+    x_column = config['dataset']['x_column'][0]
+    y_column = config['dataset']['y_column'][0]
     dgl_log_dir = args.log_dir + '/dgl_' + str(trial.number)
 
     if args.featurizer == 'full':
@@ -64,7 +62,7 @@ def create(trial, config, args, df_train, df_val, df_test, optimizer):
     logging.info('model params=%s', model_params)
 
     train_dl, val_dl, test_dl = oscml.hpo.hpo_attentivefp.get_dataloaders(df_train, df_val, df_test,
-            column_smiles=column_smiles, column_target=column_target, batch_size=250, log_dir=dgl_log_dir,
+            column_smiles=x_column, column_target=y_column, batch_size=250, log_dir=dgl_log_dir,
             node_featurizer=node_featurizer, edge_featurizer=edge_featurizer)
 
     model_predictor = dgllife.model.AttentiveFPPredictor(**model_params)
