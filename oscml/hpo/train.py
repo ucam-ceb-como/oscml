@@ -68,6 +68,10 @@ def start(config_dev=None):
     else:
         config = config_dev
 
+    # temporary copy for refactoring towards dataset section in configuration file
+    if 'type_dict' in config['model']:
+        config['dataset'].update({'type' : config['model']['type_dict']})
+
     logging.info('config=%s', config)
 
     df_train, df_val, df_test, transformer = get_dataframes(args.src, args.dataset, args.datasetpath)
