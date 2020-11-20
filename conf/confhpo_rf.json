@@ -19,8 +19,7 @@
 		"min_samples_leaf":{"type":"int","low":1,"high":5},
 		"max_features":{"type":"categorical","choices":[0.05, 0.1, 0.5, 1.0]},
 		"bootstrap": {"type":"categorical","choices":[true, false]},
-		"max_samples":{"type":"int","low":5,"high":50},
-        "cross_validation": false
+		"max_samples":{"type":"int","low":5,"high":50}
 	},
 	"fingerprint_specific":{
 		"type":"morgan",
@@ -31,6 +30,7 @@
 		}
     },
 "training":{
-    "criterion": "mse"
+    "criterion": "mse",
+    "cross_validation": false
     }
 }
