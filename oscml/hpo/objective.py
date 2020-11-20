@@ -10,6 +10,7 @@ import oscml.hpo.hpo_attentivefp
 import oscml.hpo.hpo_bilstm
 import oscml.hpo.hpo_simplegnn
 import oscml.hpo.hpo_rf
+import oscml.hpo.hpo_svr
 import oscml.hpo.optunawrapper
 from pytorch_lightning.callbacks.early_stopping import EarlyStopping
 from oscml.utils.util_config import set_config_param
@@ -103,28 +104,32 @@ def objective(trial, config, args, df_train, df_val, df_test, transformer):
     if model_name == 'BILSTM':
         training_params = get_training_params(trial, config['training'])
         model, train_dl, val_dl, test_dl = oscml.hpo.hpo_bilstm.create(trial, config, df_train, df_val, df_test, training_params['optimiser'], transformer, args.dataset)
-        tainer_type = "pl_lightning"
+        trainer_type = "pl_lightning"
 
     elif model_name == 'AttentiveFP':
         training_params = get_training_params(trial, config['training'])
         model, train_dl, val_dl, test_dl = oscml.hpo.hpo_attentivefp.create(trial, config, args, df_train, df_val, df_test, training_params['optimiser'])
-        tainer_type = "pl_lightning"
+        trainer_type = "pl_lightning"
 
     elif model_name == 'SimpleGNN':
         training_params = get_training_params(trial, config['training'])
         model, train_dl, val_dl, test_dl = oscml.hpo.hpo_simplegnn.create(trial, config, df_train, df_val, df_test, training_params['optimiser'], transformer, args.dataset)
-        tainer_type = "pl_lightning"
+        trainer_type = "pl_lightning"
 
     elif model_name == 'RF':
         training_params = get_training_params(trial, config['training'])
         model, x_train, y_train, x_val, y_val = oscml.hpo.hpo_rf.create(trial, config, df_train, df_val, df_test, training_params, args.dataset)
-        tainer_type = "scikit_learn"
+        trainer_type = "scikit_learn"
+
+    elif model_name == 'SVR':
+        training_params = get_training_params(trial, config['training'])
+        model, x_train, y_train, x_val, y_val = oscml.hpo.hpo_svr.create(trial, config, df_train, df_val, df_test, training_params, args.dataset)
+        trainer_type = "scikit_learn"
 
     # fit on training set and calculate metric on validation set
-    if tainer_type == "pl_lightning":
+    if trainer_type == "pl_lightning":
         trial_number = trial.number
-        metric_value = fit_or_test(model, train_dl, val_dl, test_dl, training_params,
-                                args.epochs, args.metric, args.log_dir, trial, trial_number, args.trials)
+        metric_value = fit_or_test(model, train_dl, val_dl, test_dl, training_params, args.epochs, args.metric, args.log_dir, trial, trial_number, args.trials)
     else:
         metric_value = oscml.utils.util_sklearn.train_and_test(x_train, y_train, x_val, y_val, model,
                                                                   training_params['cross_validation'], training_params['criterion'])
