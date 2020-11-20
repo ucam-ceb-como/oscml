@@ -9,8 +9,10 @@ import oscml.data.dataset_hopv15
 import oscml.hpo.hpo_attentivefp
 import oscml.hpo.hpo_bilstm
 import oscml.hpo.hpo_simplegnn
+import oscml.hpo.hpo_rf
 import oscml.hpo.optunawrapper
-
+from oscml.utils.util_config import set_config_param
+import oscml.utils.util_sklearn
 
 class MetricsCallback(pl.Callback):
 
@@ -21,7 +23,7 @@ class MetricsCallback(pl.Callback):
     def on_validation_end(self, trainer, pl_module):
         self.metrics.append(trainer.callback_metrics)
 
-def fit_or_test(model, train_dl, val_dl, test_dl, trainer_params,
+def fit_or_test(model, train_dl, val_dl, test_dl, training_params,
                 epochs, metric, log_dir, trial=None, trial_number=-1, n_trials=0):
 
     # create callbacks for Optuna for receiving the metric values from Lightning and for
@@ -50,7 +52,7 @@ def fit_or_test(model, train_dl, val_dl, test_dl, trainer_params,
 
     # put all trainer params together
     trainer_params.update({
-        'max_epochs': epochs,
+        'max_epochs': training_params['epochs'],
         'logger': csv_logger,
         'callbacks': callbacks
     })
@@ -77,18 +79,17 @@ def fit_or_test(model, train_dl, val_dl, test_dl, trainer_params,
     return test_result
 
 
-def get_optimizer_params(trial):
-    name =  trial.suggest_categorical('opt_name', ['Adam', 'RMSprop', 'SGD'])
-    optimizer = {
-        'name': name,
-        'lr': trial.suggest_loguniform('lr', 1e-5, 1e-1),
-        'weight_decay': trial.suggest_uniform('weight_decay', 0, 0.01)
-    }
-    if name in ['RMSprop', 'SGD']:
-        optimizer['momentum'] = trial.suggest_uniform('momentum', 0, 0.01)
-    if name == 'SGD':
-        optimizer['nesterov'] = trial.suggest_categorical('nesterov', [True, False])
-    return optimizer
+def get_training_params(trial, training_settings):
+    training_params = training_settings.copy()
+    for key, value in training_params.items():
+        if key == 'optimiser':
+            optimiser = {}
+            for opt_key, opt_value in training_params[key].items():
+                optimiser.update({opt_key: set_config_param(trial=trial,param_name=opt_key,param=opt_value)})
+            training_params[key] = optimiser
+        else:
+            training_params[key] = set_config_param(trial=trial,param_name=key,param=value)
+    return training_params
 
 def objective(trial, config, args, df_train, df_val, df_test, transformer):
 
@@ -96,20 +97,32 @@ def objective(trial, config, args, df_train, df_val, df_test, transformer):
     model_name = config['model']['name']
 
     if model_name == 'BILSTM':
-        optimizer = get_optimizer_params(trial)
-        model, train_dl, val_dl, test_dl = oscml.hpo.hpo_bilstm.create(trial, config, df_train, df_val, df_test, optimizer, transformer, args.dataset)
+        training_params = get_training_params(trial, config['training'])
+        model, train_dl, val_dl, test_dl = oscml.hpo.hpo_bilstm.create(trial, config, df_train, df_val, df_test, training_params['optimiser'], transformer, args.dataset)
+        tainer_type = "pl_lightning"
 
     elif model_name == 'AttentiveFP':
-        optimizer = get_optimizer_params(trial)
-        model, train_dl, val_dl, test_dl = oscml.hpo.hpo_attentivefp.create(trial, config, args, df_train, df_val, df_test, optimizer)
+        training_params = get_training_params(trial, config['training'])
+        model, train_dl, val_dl, test_dl = oscml.hpo.hpo_attentivefp.create(trial, config, args, df_train, df_val, df_test, training_params['optimiser'])
+        tainer_type = "pl_lightning"
 
     elif model_name == 'SimpleGNN':
-        optimizer = get_optimizer_params(trial)
-        model, train_dl, val_dl, test_dl = oscml.hpo.hpo_simplegnn.create(trial, config, df_train, df_val, df_test, optimizer, transformer, args.dataset)
+        training_params = get_training_params(trial, config['training'])
+        model, train_dl, val_dl, test_dl = oscml.hpo.hpo_simplegnn.create(trial, config, df_train, df_val, df_test, training_params['optimiser'], transformer, args.dataset)
+        tainer_type = "pl_lightning"
+
+    elif model_name == 'RF':
+        training_params = get_training_params(trial, config['training'])
+        model, x_train, y_train, x_val, y_val, cross_validation = oscml.hpo.hpo_rf.create(trial, config, df_train, df_val, df_test, training_params, args.dataset)
+        tainer_type = "scikit_learn"
 
     # fit on training set and calculate metric on validation set
-    trainer_params = {}
-    trial_number = trial.number
-    metric_value = fit_or_test(model, train_dl, val_dl, test_dl, trainer_params,
-                                args.epochs, args.metric, args.log_dir, trial, trial_number, args.trials)
+    if tainer_type == "pl_lightning":
+        trial_number = trial.number
+        metric_value = fit_or_test(model, train_dl, val_dl, test_dl, training_params,
+                                    args.epochs, args.metric, args.log_dir, trial, trial_number, args.trials)
+    else:
+        metric_value = oscml.utils.util_sklearn.train_and_test(x_train, y_train, x_val, y_val, model,
+                                                                  cross_validation, training_params['criterion'])
+
     return metric_value
