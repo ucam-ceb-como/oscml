@@ -121,32 +121,34 @@ def read_and_split(filepath, split_column='ml_phase'):
 
 def get_dataframes(dataset, src, train_size=-1, test_size=-1, path=None):
 
-    if dataset == oscml.data.dataset_hopv15.HOPV15:
+    x_column = dataset['x_column'][0]
+    y_column = dataset['y_column'][0]
+    dataset_type = dataset['type_dict']
+
+    if dataset_type == oscml.data.dataset_hopv15.HOPV15:
         if not path:
             path = oscml.data.dataset.path_hopv_15(src)
         df = oscml.data.dataset_hopv15.read(path)
-        info = oscml.data.dataset.get_dataset_info(dataset)
-        df = oscml.data.dataset.clean_data(df, None, info.column_smiles, info.column_target)
+        df = oscml.data.dataset.clean_data(df, None, x_column, y_column)
 
         df_train, df_val, df_test, transformer = oscml.data.dataset.split_data_frames_and_transform(
-                df, column_smiles=info.column_smiles, column_target=info.column_target, train_size=train_size, test_size=test_size)
+                df, column_smiles=x_column, column_target=y_column, train_size=train_size, test_size=test_size)
     
         return (df_train, df_val, df_test, transformer)
 
-    elif dataset == oscml.data.dataset_cep.CEP25000:
+    elif dataset_type == oscml.data.dataset_cep.CEP25000:
         if not path:
             path = oscml.data.dataset.path_cepdb_25000(src)
-        info = oscml.data.dataset.get_dataset_info(dataset)
         df_train, df_val, df_test = oscml.data.dataset.read_and_split(path)
         # for testing only
         #df_train, df_val, df_test = df_train[:1500], df_val[:500], df_test[:500]
-        transformer = oscml.data.dataset.create_transformer(df_train, 
-                column_target=info.column_target, column_x=info.column_smiles)
+        transformer = oscml.data.dataset.create_transformer(df_train,
+                column_target=y_column, column_x=x_column)
 
         return (df_train, df_val, df_test, transformer)
     
     else:
-        raise RuntimeError('unknown dataset=' + str(dataset))
+        raise RuntimeError('unknown dataset type dict=' + str(dataset_type))
 
 class DatasetInfo:
     def __init__(self, id=None, column_smiles=None, column_target=None, mol2seq=None, node_types=None, max_sequence_length=None, max_molecule_size=0, max_smiles_length=0):

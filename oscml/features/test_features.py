@@ -20,8 +20,14 @@ class TestFeatures(unittest.TestCase):
 
     def test_fingerprints(self):
 
-        name = oscml.data.dataset_hopv15.HOPV15
-        df, _, _, _ = oscml.data.dataset.get_dataframes(dataset=name, src='.', train_size=100, test_size=30)
+        dataset_config = {
+            "src": "./data/processed/CEP25000.csv",
+            "z-stand": "False",
+            "x_column": ["smiles"],
+            "y_column": ["pce"],
+            "type_dict": oscml.data.dataset_hopv15.HOPV15
+        }
+        df, _, _, _ = oscml.data.dataset.get_dataframes(dataset=dataset_config, src='.', train_size=100, test_size=30)
 
         df['rdkitmol'] = oscml.utils.util.smiles2mol_df(df, 'smiles')
         fg_ertl_dictionary = oscml.features.fingerprint.create_functional_group_ertl_dictionary(df)

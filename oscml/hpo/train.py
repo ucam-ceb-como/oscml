@@ -74,7 +74,7 @@ def start(config_dev=None):
 
     logging.info('config=%s', config)
 
-    df_train, df_val, df_test, transformer = get_dataframes(args.src, args.dataset, args.datasetpath)
+    df_train, df_val, df_test, transformer = get_dataframes(args.src, config['dataset'], args.datasetpath)
 
     obj = functools.partial(oscml.hpo.objective.objective, config=config, args=args,
         df_train=df_train, df_val=df_val, df_test=df_test, transformer=transformer)
