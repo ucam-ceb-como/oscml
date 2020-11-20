@@ -10,6 +10,7 @@ import oscml.hpo.hpo_attentivefp
 import oscml.hpo.hpo_bilstm
 import oscml.hpo.hpo_simplegnn
 import oscml.hpo.hpo_rf
+import oscml.hpo.hpo_svr
 import oscml.hpo.optunawrapper
 from pytorch_lightning.callbacks.early_stopping import EarlyStopping
 from oscml.utils.util_config import set_config_param
@@ -84,49 +85,53 @@ def fit_or_test(model, train_dl, val_dl, test_dl, training_params,
 
 
 def get_training_params(trial, training_settings):
-    training_params = training_settings.copy()
-    for key, value in training_params.items():
+    training_params = {}
+    for key, value in training_settings.items():
         if key == 'optimiser':
             optimiser = {}
-            for opt_key, opt_value in training_params[key].items():
-                optimiser.update({opt_key: set_config_param(trial=trial,param_name=opt_key,param=opt_value)})
+            for opt_key, opt_value in training_settings[key].items():
+                optimiser.update({opt_key: set_config_param(trial=trial,param_name=opt_key,param=opt_value, all_params=optimiser)})
             training_params[key] = optimiser
         else:
-            training_params[key] = set_config_param(trial=trial,param_name=key,param=value)
+            training_params[key] = set_config_param(trial=trial,param_name=key,param=value, all_params=training_params)
     return training_params
 
-def objective(trial, config, args, df_train, df_val, df_test, transformer):
+def objective(trial, config, args, df_train, df_val, df_test, transformer, log_dir):
 
     # init model and data loaders
     model_name = config['model']['name']
 
     if model_name == 'BILSTM':
         training_params = get_training_params(trial, config['training'])
-        model, train_dl, val_dl, test_dl = oscml.hpo.hpo_bilstm.create(trial, config, df_train, df_val, df_test, training_params['optimiser'], transformer, args.dataset)
-        tainer_type = "pl_lightning"
+        model, train_dl, val_dl, test_dl = oscml.hpo.hpo_bilstm.create(trial, config, df_train, df_val, df_test, training_params['optimiser'], transformer)
+        trainer_type = "pl_lightning"
 
     elif model_name == 'AttentiveFP':
         training_params = get_training_params(trial, config['training'])
-        model, train_dl, val_dl, test_dl = oscml.hpo.hpo_attentivefp.create(trial, config, args, df_train, df_val, df_test, training_params['optimiser'])
-        tainer_type = "pl_lightning"
+        model, train_dl, val_dl, test_dl = oscml.hpo.hpo_attentivefp.create(trial, config, df_train, df_val, df_test, training_params['optimiser'], log_dir)
+        trainer_type = "pl_lightning"
 
     elif model_name == 'SimpleGNN':
         training_params = get_training_params(trial, config['training'])
-        model, train_dl, val_dl, test_dl = oscml.hpo.hpo_simplegnn.create(trial, config, df_train, df_val, df_test, training_params['optimiser'], transformer, args.dataset)
-        tainer_type = "pl_lightning"
+        model, train_dl, val_dl, test_dl = oscml.hpo.hpo_simplegnn.create(trial, config, df_train, df_val, df_test, training_params['optimiser'], transformer)
+        trainer_type = "pl_lightning"
 
     elif model_name == 'RF':
         training_params = get_training_params(trial, config['training'])
-        model, x_train, y_train, x_val, y_val, cross_validation = oscml.hpo.hpo_rf.create(trial, config, df_train, df_val, df_test, training_params, args.dataset)
-        tainer_type = "scikit_learn"
+        model, x_train, y_train, x_val, y_val = oscml.hpo.hpo_rf.create(trial, config, df_train, df_val, df_test, training_params)
+        trainer_type = "scikit_learn"
+
+    elif model_name == 'SVR':
+        training_params = get_training_params(trial, config['training'])
+        model, x_train, y_train, x_val, y_val = oscml.hpo.hpo_svr.create(trial, config, df_train, df_val, df_test, training_params)
+        trainer_type = "scikit_learn"
 
     # fit on training set and calculate metric on validation set
-    if tainer_type == "pl_lightning":
-    trial_number = trial.number
-        metric_value = fit_or_test(model, train_dl, val_dl, test_dl, training_params,
-                                args.epochs, args.metric, args.log_dir, trial, trial_number, args.trials)
+    if trainer_type == "pl_lightning":
+        trial_number = trial.number
+        metric_value = fit_or_test(model, train_dl, val_dl, test_dl, training_params, args.epochs, args.metric, log_dir, trial, trial_number, args.trials)
     else:
         metric_value = oscml.utils.util_sklearn.train_and_test(x_train, y_train, x_val, y_val, model,
-                                                                  cross_validation, training_params['criterion'])
+                                                                  training_params['cross_validation'], training_params['criterion'])
 
     return metric_value

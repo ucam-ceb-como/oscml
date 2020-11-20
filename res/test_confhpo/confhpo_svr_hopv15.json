@@ -5,21 +5,16 @@
     "cudnn_benchmark": false
 },
 "dataset":{
-    "src": "./data/processed/CEPDB_25000.csv",
+    "src": "./data/raw/HOPV_15_revised_2.data",
     "z-stand": "False",
-    "x_column": ["SMILES_str"],
+    "x_column": ["smiles"],
     "y_column": ["pce"]
     },
 "model":{
-    "name": "RF",
+	"name": "SVR",
 	"model_specific":{
-		"n_estimators":{"type":"int","low":16,"high":256},
-		"max_depth":{"type":"int","low":10,"high":100},
-		"min_samples_split":{"type":"int","low":2,"high":5},
-		"min_samples_leaf":{"type":"int","low":1,"high":5},
-		"max_features":{"type":"categorical","choices":[0.05, 0.1, 0.5, 1.0]},
-		"bootstrap": {"type":"categorical","choices":[true, false]},
-		"max_samples":{"type":"int","low":5,"high":50}
+		"kernel": "rbf_kernel_phys_and_struct",
+        "gamma_structural": {"type":"loguniform","low":0.001,"high":20.0}
 	},
 	"fingerprint_specific":{
 		"type":"morgan",
@@ -27,10 +22,12 @@
 		"radius": {"type":"categorical","choices": [2, 3, 4, 5]},
 		"useChirality": {"type":"categorical","choices":[true, false]},
 		"useBondTypes":{"type":"categorical","choices":[true, false]}
-		}
-    },
+	}
+},
 "training":{
+	"C":{"type":"loguniform","low":0.1,"high":20.0},
+	"epsilon":{"type":"loguniform","low":0.0001,"high":1.0},
     "criterion": "mse",
-    "cross_validation": false
-    }
+	"cross_validation": false
+}
 }

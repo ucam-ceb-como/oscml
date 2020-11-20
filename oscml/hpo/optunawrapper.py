@@ -1,10 +1,8 @@
 import logging
 import os
 
-import numpy as np
 import optuna
 import optuna.samplers
-import torch
 
 
 os.environ["SLURM_JOB_NAME"]="bash"
@@ -53,7 +51,7 @@ def callback_on_trial_finished(study, trial):
         logging.error('THE MAXIMUM NUMBER OF FAILED TRIALS HAS BEEN REACHED, AND THE STUDY WILL STOP NOW.')
         study.stop()
 
-def start_hpo(args, objective):
+def start_hpo(args, objective, log_dir):
 
     #optuna.logging.enable_default_handler()
     #optuna.logging.enable_propagation()  # Propagate logs to the root logger.
@@ -61,8 +59,6 @@ def start_hpo(args, objective):
     #optuna.logging.set_verbosity(optuna.logging.DEBUG)
 
     try:
-        np.random.seed(args.seed)
-        torch.manual_seed(args.seed)
 
         study = create_study(direction=args.direction, seed=args.seed, storage=args.storage, study_name=args.study_name, load_if_exists=args.load_if_exists)
         decorator = create_objective_decorator(objective, args.trials)
@@ -71,7 +67,7 @@ def start_hpo(args, objective):
                 catch = (RuntimeError, ValueError, TypeError), callbacks=[callback_on_trial_finished],
                 gc_after_trial=True)
         logging.info('finished HPO')
-        path = args.log_dir + '/hpo_result.csv'
+        path = log_dir + '/hpo_result.csv'
         log_and_save(study, path)
         best_value = study.best_trial.value
 

@@ -8,8 +8,16 @@ from oscml.utils.util import concat
 def train_and_test(x_train, y_train, x_test, y_test, model, cross_validation, metric):
        
     logging.info(concat('fitting for', model))
-    len_x_test = (len(x_test)) if x_test else None
-    len_y_test = (len(y_test)) if y_test else None
+    if x_test is None:
+        len_x_test = None
+    else:
+        len_x_test = len(x_test)
+    if y_test is None:
+        len_y_test = None
+    else:
+        len_y_test = len(y_test)
+    #len_x_test = (len(x_test)) if x_test else None
+    #len_y_test = (len(y_test)) if y_test else None
     logging.info(concat('sample size =', len(x_train), len(y_train), len_x_test, len_y_test))
     logging.info(concat('cross_validation=', cross_validation))
     

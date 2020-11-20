@@ -10,7 +10,7 @@ import oscml.models.model_bilstm
 import oscml.models.model_gnn
 
 
-def resume(args):
+def resume(args, log_dir):
 
     # TODO AE URGENT
     dataset_config = {
@@ -37,12 +37,12 @@ def resume(args):
         trainer_params = {}
         # n_trials = 1 to activate saving checkpoints
         result = oscml.hpo.objective.fit_or_test(model, train_dl, val_dl, test_dl, trainer_params,
-                    args.epochs, args.metric, args.log_dir, n_trials=1)
+                    args.epochs, args.metric, log_dir, n_trials=1)
 
     else:
         trainer_params = {}
         result = oscml.hpo.objective.fit_or_test(model, None, None, test_dl, trainer_params,
-                    args.epochs, args.metric, args.log_dir)
+                    args.epochs, args.metric, log_dir)
     
     logging.info('result=%s', result)
     return result
@@ -71,12 +71,11 @@ def start():
     oscml.utils.util.init_file_logging(log_config_file, log_dir + '/oscml.log')
 
     logging.info('current working directory=%s', os.getcwd())
-    args.log_dir = log_dir
     if args.datasetpath:
         args.datasetpath = args.src + '/' + args.datasetpath
     logging.info('args=%s', args)
 
-    return resume(args)
+    return resume(args, log_dir)
 
 
 if __name__ == '__main__':
