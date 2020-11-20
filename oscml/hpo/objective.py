@@ -9,6 +9,7 @@ import oscml.data.dataset_hopv15
 import oscml.hpo.hpo_attentivefp
 import oscml.hpo.hpo_bilstm
 import oscml.hpo.hpo_simplegnn
+import oscml.hpo.hpo_rf
 import oscml.hpo.optunawrapper
 
 
@@ -106,6 +107,10 @@ def objective(trial, config, args, df_train, df_val, df_test, transformer):
     elif model_name == 'SimpleGNN':
         optimizer = get_optimizer_params(trial)
         model, train_dl, val_dl, test_dl = oscml.hpo.hpo_simplegnn.create(trial, config, df_train, df_val, df_test, optimizer, transformer, args.dataset)
+
+    elif model_name == 'RF':
+        optimizer = get_optimizer_params(trial)
+        model, train_dl, val_dl, test_dl = oscml.hpo.hpo_rf.create(trial, config, df_train, df_val, df_test, optimizer, transformer, dataset)
 
     # fit on training set and calculate metric on validation set
     trainer_params = {}
