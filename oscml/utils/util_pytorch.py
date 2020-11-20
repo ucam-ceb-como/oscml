@@ -135,5 +135,7 @@ def create_mlp(mlp_dim_list, dropout_list=None):
         if i < number_mlp_layers - 1:
             mlp_modules.append(nn.ReLU())
             if dropout_list:
-                mlp_modules.append(nn.Dropout(dropout_list[i]))
+                dropout = dropout_list[i]
+                if dropout > 0:
+                    mlp_modules.append(nn.Dropout(dropout))
     return nn.Sequential(*mlp_modules)
