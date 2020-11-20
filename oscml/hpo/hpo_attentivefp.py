@@ -16,7 +16,8 @@ def create(trial, config, df_train, df_val, df_test, optimizer, log_dir):
 
     x_column = config['dataset']['x_column'][0]
     y_column = config['dataset']['y_column'][0]
-    featurizer_config = config['model']['featurizer'] 
+    featurizer_config = config['model']['featurizer']
+    batch_size = config['training']['batch_size']
     dgl_log_dir = log_dir + '/dgl_' + str(trial.number)
 
     if featurizer_config == 'full':
@@ -63,7 +64,7 @@ def create(trial, config, df_train, df_val, df_test, optimizer, log_dir):
     logging.info('model params=%s', model_params)
 
     train_dl, val_dl, test_dl = oscml.hpo.hpo_attentivefp.get_dataloaders(df_train, df_val, df_test,
-            column_smiles=x_column, column_target=y_column, batch_size=250, log_dir=dgl_log_dir,
+            column_smiles=x_column, column_target=y_column, batch_size=batch_size, log_dir=dgl_log_dir,
             node_featurizer=node_featurizer, edge_featurizer=edge_featurizer)
 
     model_predictor = dgllife.model.AttentiveFPPredictor(**model_params)

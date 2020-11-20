@@ -7,12 +7,13 @@ from oscml.utils.util_config import set_config_param
 def create(trial, config, df_train, df_val, df_test, optimizer, transformer):
 
     type_dict = config['model']['type_dict']
+    batch_size = config['training']['batch_size']
     info = oscml.data.dataset.get_dataset_info(type_dict)
     node_type_number = len(info.node_types)
 
     #dataloaders
     train_dl, val_dl, test_dl = oscml.models.model_gnn.get_dataloaders(type_dict, df_train, df_val, df_test,
-            transformer, batch_size=250)
+            transformer, batch_size=batch_size)
 
     # set model parameters from the config file
     #--------------------------------------

@@ -36,7 +36,7 @@ def start(config_dev=None):
     parser = argparse.ArgumentParser()
     parser.add_argument('--src', type=str, default='.')
     parser.add_argument('--dst', type=str, default='.')
-    parser.add_argument('--epochs', type=int, default=1)
+    #parser.add_argument('--epochs', type=int, default=1)
     parser.add_argument('--trials', type=int, default=None)
     parser.add_argument('--timeout', type=int, default=None, help='Stop study after the given number of second(s). If this argument is not set, the study is executed without time limitation.')
     parser.add_argument('--jobs', type=int, default=1)
@@ -50,8 +50,11 @@ def start(config_dev=None):
     parser.add_argument('--storage', type=none_or_str, default=None)
     parser.add_argument('--study_name', type=none_or_str, default=None)
     parser.add_argument('--load_if_exists', type=bool_or_str, default=False)
-    parser.add_argument('--metric', type=str, default='val_loss')
-    parser.add_argument('--direction', type=str, default='minimize')
+    #parser.add_argument('--metric', type=str, default='val_loss')
+    # TODO default for --direction is quite error prone for HPO, can easily be forgotten
+    # should it be moved to the config file?
+    # should we provide a HPO section in the config file?
+    parser.add_argument('--direction', type=str, default='minimize', choices=['minimize', 'maximize'])
     #parser.add_argument('--featurizer', type=str, choices=['simple', 'full'], default='full')
     args = parser.parse_args()
 

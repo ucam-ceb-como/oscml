@@ -26,7 +26,11 @@ class MetricsCallback(pl.Callback):
         self.metrics.append(trainer.callback_metrics)
 
 def fit_or_test(model, train_dl, val_dl, test_dl, training_params,
-                epochs, metric, log_dir, trial=None, trial_number=-1, n_trials=0):
+                log_dir, trial=None, trial_number=-1, n_trials=0):
+
+    epochs = training_params['epochs']
+    metric = training_params['metric']
+    patience = training_params['patience']
 
     # create callbacks for Optuna for receiving the metric values from Lightning and for
     # pruning trials
@@ -36,8 +40,9 @@ def fit_or_test(model, train_dl, val_dl, test_dl, training_params,
         pruning_callback = optuna.integration.PyTorchLightningPruningCallback(trial, monitor=metric)
         callbacks.append(pruning_callback)
 
-    early_stopping_callback = EarlyStopping(monitor='val_loss', min_delta=0.0, patience=3, verbose=False, mode='min')
-    callbacks.append(early_stopping_callback)
+    if patience > 0:
+        early_stopping_callback = EarlyStopping(monitor=metric, min_delta=0.0, patience=patience, verbose=False, mode='min')
+        callbacks.append(early_stopping_callback)
 
     logging.info('model for trial %s=%s', trial_number, model)
 
@@ -57,7 +62,7 @@ def fit_or_test(model, train_dl, val_dl, test_dl, training_params,
 
     # put all trainer params together
     trainer_params.update({
-        'max_epochs': training_params['epochs'],
+        'max_epochs': epochs,
         'logger': csv_logger,
         'callbacks': callbacks
     })
@@ -129,7 +134,7 @@ def objective(trial, config, args, df_train, df_val, df_test, transformer, log_d
     # fit on training set and calculate metric on validation set
     if trainer_type == "pl_lightning":
         trial_number = trial.number
-        metric_value = fit_or_test(model, train_dl, val_dl, test_dl, training_params, args.epochs, args.metric, log_dir, trial, trial_number, args.trials)
+        metric_value = fit_or_test(model, train_dl, val_dl, test_dl, training_params, log_dir, trial, trial_number, args.trials)
     else:
         metric_value = oscml.utils.util_sklearn.train_and_test(x_train, y_train, x_val, y_val, model,
                                                                   training_params['cross_validation'], training_params['criterion'])

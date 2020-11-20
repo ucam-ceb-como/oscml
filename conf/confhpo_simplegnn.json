@@ -28,9 +28,9 @@
 		"lr":{"type":"loguniform","low":1e-5,"high":1e-2},
 		"weight_decay":{"type":"loguniform","low":1e-5,"high":0.01}
 		},
-	"batch_size": 40,
-	"epochs": 300,
+	"batch_size": 250,
+	"epochs": 10,
 	"patience": -1,
-	"metric": 0
+	"metric": "val_loss"
     }
 }
