@@ -71,6 +71,8 @@ def start(config_dev=None):
     # temporary copy for refactoring towards dataset section in configuration file
     if 'type_dict' in config['model']:
         config['dataset'].update({'type_dict' : config['model']['type_dict']})
+    else:
+        config['dataset'].update({'type_dict' : args.dataset})
 
     logging.info('config=%s', config)
 
