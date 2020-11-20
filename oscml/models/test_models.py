@@ -97,12 +97,12 @@ class TestModels(unittest.TestCase):
         output = model(batch)
         print(output)
 
-    def internal_test_bilstm_dataloader(self, dataset_type, x_column):
+    def internal_test_bilstm_dataloader(self, dataset_type, src, x_column):
         info = oscml.data.dataset.get_dataset_info(dataset_type)
         max_sequence_length = info.max_sequence_length
 
         dataset_config = {
-            "src": "./data/processed/CEP25000.csv",
+            "src": src,
             "z-stand": "False",
             "x_column": [x_column],
             "y_column": ["pce"],
@@ -110,7 +110,7 @@ class TestModels(unittest.TestCase):
         }
 
         logging.info('dataset=%s, max sequence length=%s', dataset_config, max_sequence_length)
-        df_train, df_val, df_test, transformer = oscml.data.dataset.get_dataframes(dataset=dataset_config, src='.', train_size=283, test_size=30)
+        df_train, df_val, df_test, transformer = oscml.data.dataset.get_dataframes(dataset=dataset_config, train_size=283, test_size=30)
 
         train_dl, _, _ = oscml.models.model_bilstm.get_dataloaders(dataset_type, df_train, df_val, df_test, 
             transformer, batch_size=40, max_sequence_length=max_sequence_length)  
@@ -122,10 +122,10 @@ class TestModels(unittest.TestCase):
             break
     
     def test_bilstm_dataloader_for_hopv15(self):
-        self.internal_test_bilstm_dataloader(dataset_type=oscml.data.dataset_hopv15.HOPV15, x_column='smiles')
+        self.internal_test_bilstm_dataloader(dataset_type=oscml.data.dataset_hopv15.HOPV15, src='./data/raw/HOPV_15_revised_2.data', x_column='smiles')
         
     def test_bilstm_dataloader_for_cep25000(self):
-        self.internal_test_bilstm_dataloader(dataset_type=oscml.data.dataset_cep.CEP25000, x_column='SMILES_str')
+        self.internal_test_bilstm_dataloader(dataset_type=oscml.data.dataset_cep.CEP25000, src='./data/processed/CEPDB_25000.csv', x_column='SMILES_str')
 
 if __name__ == '__main__':
     unittest.main()

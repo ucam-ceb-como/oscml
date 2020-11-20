@@ -9,8 +9,8 @@ import oscml.hpo.objective
 import oscml.hpo.optunawrapper
 
 
-def get_dataframes(src, dataset, datasetpath):
-    df_train, df_val, df_test, transformer = oscml.data.dataset.get_dataframes(dataset=dataset, src=src, train_size=283, test_size=30, path=datasetpath)
+def get_dataframes(dataset):
+    df_train, df_val, df_test, transformer = oscml.data.dataset.get_dataframes(dataset=dataset, train_size=283, test_size=30)
     return df_train, df_val, df_test, transformer
 
 def none_or_str(value):
@@ -70,11 +70,11 @@ def start(config_dev=None):
 
     # temporary copy for refactoring towards dataset section in configuration file
     if 'type_dict' in config['model']:
-        config['dataset'].update({'type' : config['model']['type_dict']})
+        config['dataset'].update({'type_dict' : config['model']['type_dict']})
 
     logging.info('config=%s', config)
 
-    df_train, df_val, df_test, transformer = get_dataframes(args.src, config['dataset'], args.datasetpath)
+    df_train, df_val, df_test, transformer = get_dataframes(config['dataset'])
 
     obj = functools.partial(oscml.hpo.objective.objective, config=config, args=args,
         df_train=df_train, df_val=df_val, df_test=df_test, transformer=transformer)
