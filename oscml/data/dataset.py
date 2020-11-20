@@ -10,7 +10,6 @@ import oscml.data.dataset_cep
 import oscml.data.dataset_hopv15
 import oscml.features.weisfeilerlehman
 import oscml.models.model_gnn
-from oscml.utils.util import concat
 from oscml.utils.util import smiles2mol
 
 def path_cepdb_valid_smiles(root='.'):
@@ -56,7 +55,7 @@ class DataTransformer():
 def create_transformer(df, column_target, column_x=None):
     mean = float(df[column_target].mean())
     std = float(df[column_target].std(ddof=0))
-    logging.info(concat('calculated target mean=', mean, ', target std=', std))
+    logging.info('calculated target mean=%s, target std=%s', mean, std)
     return DataTransformer(column_target, mean, std, column_x)
 
 def add_node2index(original, new, zero_index_for_new):
@@ -83,17 +82,17 @@ def clean_data(df, mol2seq, column_smiles, column_target):
         mask_known.append(contains_only_known_types)
 
     mask_known = np.array(mask_known)
-    logging.info('molecules with known atom types=' + str(len(df[mask_known])))
+    logging.info('molecules with known atom types=%s', len(df[mask_known]))
     mask_notna = df[column_target].notna().to_numpy()
-    logging.info(concat('molecules with given target value for ', column_target, '=', len(df[mask_notna])))
+    logging.info('molecules with given target value for %s = %s', column_target, len(df[mask_notna]))
     mask = np.logical_and(mask_known, mask_notna)
     df_cleaned = df[mask].copy()
-    logging.info('molecules with both=' + str(len(df_cleaned)))
+    logging.info('molecules with both=%s', len(df_cleaned))
     
     return df_cleaned
 
 def store(df, filepath):
-    logging.info('storing ' + filepath)
+    logging.info('storing %s', filepath)
     # store without the internal index of Pandas Dataframe
     df.to_csv(filepath, index=False)
 
@@ -104,49 +103,48 @@ def split_data_frames_and_transform(df, column_smiles, column_target, train_size
                     train_size=train_plus_val_size, shuffle=True, random_state=0)
     df_train, df_val = sklearn.model_selection.train_test_split(df_train, 
                     train_size=train_size, shuffle=True, random_state=0)
-    logging.info(concat('train=', len(df_train), ', val=', len(df_val), ', test=', len(df_test)))
+    logging.info('train=%s, val=%s, test=%s', len(df_train), len(df_val), len(df_test))
 
     transformer = create_transformer(df_train, column_target, column_smiles)
 
     return df_train, df_val, df_test, transformer
 
 def read_and_split(filepath, split_column='ml_phase'):
-    logging.info('reading ' +  filepath)
+    logging.info('reading %s', filepath)
     df = pd.read_csv(filepath)
     df_train = df[(df[split_column] == 'train')].copy()
     df_val = df[(df[split_column] == 'val')].copy()
     df_test = df[(df[split_column] == 'test')].copy()
-    logging.info(concat('split data into sets of size (train val test)=', len(df_train), len(df_val), len(df_test)))
+    logging.info('split data into sets of size (train / val / test)=%s / %s / %s', len(df_train), len(df_val), len(df_test))
     return df_train, df_val, df_test
 
-def get_dataframes(dataset, src, train_size=-1, test_size=-1, path=None):
+def get_dataframes(dataset, train_size=-1, test_size=-1):
 
-    if dataset == oscml.data.dataset_hopv15.HOPV15:
-        if not path:
-            path = oscml.data.dataset.path_hopv_15(src)
-        df = oscml.data.dataset_hopv15.read(path)
-        info = oscml.data.dataset.get_dataset_info(dataset)
-        df = oscml.data.dataset.clean_data(df, None, info.column_smiles, info.column_target)
+    src = dataset['src']
+    x_column = dataset['x_column'][0]
+    y_column = dataset['y_column'][0]
+    dataset_type = dataset['type_dict']
+
+    if dataset_type == oscml.data.dataset_hopv15.HOPV15:
+        df = oscml.data.dataset_hopv15.read(src)
+        df = oscml.data.dataset.clean_data(df, None, x_column, y_column)
 
         df_train, df_val, df_test, transformer = oscml.data.dataset.split_data_frames_and_transform(
-                df, column_smiles=info.column_smiles, column_target=info.column_target, train_size=train_size, test_size=test_size)
+                df, column_smiles=x_column, column_target=y_column, train_size=train_size, test_size=test_size)
     
         return (df_train, df_val, df_test, transformer)
 
-    elif dataset == oscml.data.dataset_cep.CEP25000:
-        if not path:
-            path = oscml.data.dataset.path_cepdb_25000(src)
-        info = oscml.data.dataset.get_dataset_info(dataset)
-        df_train, df_val, df_test = oscml.data.dataset.read_and_split(path)
+    elif dataset_type == oscml.data.dataset_cep.CEP25000:
+        df_train, df_val, df_test = oscml.data.dataset.read_and_split(src)
         # for testing only
         #df_train, df_val, df_test = df_train[:1500], df_val[:500], df_test[:500]
-        transformer = oscml.data.dataset.create_transformer(df_train, 
-                column_target=info.column_target, column_x=info.column_smiles)
+        transformer = oscml.data.dataset.create_transformer(df_train,
+                column_target=y_column, column_x=x_column)
 
         return (df_train, df_val, df_test, transformer)
     
     else:
-        raise RuntimeError('unknown dataset=' + str(dataset))
+        raise RuntimeError('unknown dataset type dict=' + str(dataset_type))
 
 class DatasetInfo:
     def __init__(self, id=None, column_smiles=None, column_target=None, mol2seq=None, node_types=None, max_sequence_length=None, max_molecule_size=0, max_smiles_length=0):

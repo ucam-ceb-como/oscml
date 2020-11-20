@@ -12,7 +12,16 @@ import oscml.models.model_gnn
 
 def resume(args):
 
-    df_train, df_val, df_test, transformer = oscml.hpo.train.get_dataframes(args.src, args.dataset, args.datasetpath)
+    # TODO AE URGENT
+    dataset_config = {
+        "src": args.datasetpath,
+        "z-stand": "False",
+        "x_column": ["smiles"],
+        "y_column": ["pce"],
+        "type": args.dataset
+    }
+
+    df_train, df_val, df_test, transformer = oscml.hpo.train.get_dataframes(dataset_config)
 
     if args.model == 'SimpleGNN':
         train_dl, val_dl, test_dl = oscml.models.model_gnn.get_dataloaders(args.dataset, df_train, df_val, df_test,
