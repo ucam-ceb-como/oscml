@@ -36,9 +36,9 @@ def fit_or_test(model, train_dl, val_dl, test_dl, training_params,
     # pruning trials
     metrics_callback = MetricsCallback()
     callbacks = [metrics_callback]
-    if trial:
-        pruning_callback = optuna.integration.PyTorchLightningPruningCallback(trial, monitor=metric)
-        callbacks.append(pruning_callback)
+    #if trial:
+    #    pruning_callback = optuna.integration.PyTorchLightningPruningCallback(trial, monitor=metric)
+    #    callbacks.append(pruning_callback)
 
     if patience > 0:
         early_stopping_callback = EarlyStopping(monitor=metric, min_delta=0.0, patience=patience, verbose=False, mode='min')
