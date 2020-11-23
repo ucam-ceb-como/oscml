@@ -15,7 +15,7 @@
     "model_specific":{
         "embedding_dim": 256,
         "conv_layers":{"type":"int","low":1,"high":4},
-        "conv_dims":{"type":"int","low":10,"high":15,"direction":"constant","length":"conv_layers"},
+        "conv_dims":{"type":"int","low":10,"high":15,"direction":"constant","length":"embedding_dim"},
         "mlp_layers":{"type":"int","low":1,"high":15},
         "mlp_units":{"type":"int","low":5,"high":15,"length":"mlp_layers","direction":"constant"},
         "mlp_dropouts":{"type":"uniform","low":0.1,"high":0.3,"length":"mlp_layers","direction":"constant"}

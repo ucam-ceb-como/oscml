@@ -10,40 +10,26 @@ def set_config_param(trial, param_name, param, all_params):
 
     # if param is a list, process it as list
     if isinstance(param, list):
+        # 1. case when e.g. param : [1,2,3,...]
         param_suggestion = set_config_param_list(trial, param_name, param)
     elif isinstance(param, dict):
-        # parameter defined as a dictionary can be used for:
-        # 1) defining multiple values of a parameter via list and adding required
-        #    list length, e.g.:
-        #      - param : {"values": [1,3, 4], "length":5} - this would create [1,3,4,4,4]
-        #      - param : {"values": [1,3, 4], "length":"other_param"} - this would create a list whose length
-        #            will be equal to the value assigned to the "other_param". "other_param" value must be
-        #            a single integer number and must be defined in the config file prior to the current param!
-        #   Note:  - param : {"values": [1,3, 4]} - this allowed, but it is better to simply use - param : [1,3, 4]
-        #   Note: parameters defined via the above options are NOT ADDED TO TRIAL object
-        # 2) defining a single or multiple values of a parameter via optuna sampler, e.g.:
-        #   - param : {"optuna_keys:values"} - this would ADD A SINGLE PARAMETER TO TRIAL and sample its value using optuna
-        #            suggest function
-        #   - param : {"optuna_keys:values","length":5} - this would ADD 5 PARAMETERS TO TRIAL and sample their values using optuna
-        #            suggest function
-        #   - param : {"optuna_keys:values","length":"other_param"} - this would ADD N PARAMETERS TO TRIAL and sample their values using optuna
-        #            suggest function, where N is the value assigned to the "other_param".
-        values = param.get('values')
-        length = param.get('length')
-
-        if values is not None:
-            # this is a list-based parameter
+        starting_value = get_starting_value(param, all_params)
+        length = get_length_value(param, all_params)
+        if 'values' in param:
+            # 2. param : {"values": [1,3,4], "length":5}
+            #    param : {"values": [1,3,4]} - also supported, but it is better then to just use param : [1,3,4]
+            param_suggestion = set_config_param_list(trial, param_name, param['values'], length, starting_value)
+        elif 'type' in param:
             if length is not None:
-                if isinstance(length, str):
-                    length = all_params[param['length']]
-            param_suggestion = set_config_param_list(trial, param_name, param['values'], length)
-        else:
-            if length is not None:
-                if isinstance(length, str):
-                    length = all_params[param['length']]
-                param_suggestion = set_config_param_list(trial, param_name, param, length)
+                # 3. param : {"optuna params and values", "length":5}
+                param_suggestion = set_config_param_list(trial, param_name, param, length, starting_value)
             else:
-                param_suggestion = set_config_param_single(trial, param_name, param)
+                # 4. param : {"optuna params and values"}
+                #    "starting_value" not needed here, this is not a list param
+                param_suggestion = set_config_param_single(trial, param_name, param, starting_value)
+        else:
+            # 5. param : {"starting_value":".."} - sinlge valued param linked with some other param
+            param_suggestion = set_config_param_single(trial, param_name, param, starting_value)
     else:
         # this is a single value, fixed parameter:
         # e.g. param : 1 or param : "Adam" etc..
@@ -51,26 +37,90 @@ def set_config_param(trial, param_name, param, all_params):
     return param_suggestion
 
 
+def get_length_value(param, all_params):
+    length = param.get('length')
+    if length is not None:
+        if isinstance(length, str):
+            length, val_idx = get_key_and_idx(length)
+            if isinstance(all_params[length], list):
+                if val_idx is not None:
+                    length = all_params[length][val_idx]
+                else:
+                    length = len(all_params[length])
+            else:
+                length = all_params[length]
+    return length
+
+def get_key_and_idx(key_idx_str):
+    idx = None
+    key_str = key_idx_str
+    if key_str is not None:
+        if '[' in key_idx_str and ']' in key_idx_str:
+            key_str, idx = key_idx_str.split('[')
+            idx = int(idx.split(']')[0])
+    return key_str, idx
+
+def get_starting_value(param, all_params):
+    starting_value = param.get('starting_value')
+    if starting_value is not None:
+        if isinstance(starting_value, str):
+            starting_value, value_idx = get_key_and_idx(starting_value)
+            if value_idx is not None:
+                # case when "starting_value": "a_string[idx]" and "a_string" is a key in the "all_params" dictionary
+                starting_value = all_params[starting_value][value_idx]
+            else:
+                if starting_value in all_params:
+                    # case when "starting_value": "a_string" and "a_string" is a key in the "all_params" dictionary
+                    starting_value = all_params[starting_value]
+                #else:
+                #    # case when "starting_value": "a_string" where "a_string" is not a key in the "all_params" dictionary
+                #    return starting_value
+        #else:
+        #    # case when e.g. "starting_value": 4 or "starting_value": 1.3 etc..
+        #    return starting_value
+    #else:
+    return starting_value
+
 # sets model parameter that can have mulitple values (list)
-def set_config_param_list(trial, param_name, param, length=None):
+def set_config_param_list(trial, param_name, param, length=None, starting_value=None):
     if length is None:
         length = len(param)
     param_suggestions = []
-    for i in range(length):
-        suggested_value = set_config_param_single(trial=trial,param_name=param_name+'_{}'.format(i),param=param)
-        suggested_value = process_list_param(suggested_value,i)
-        param_suggestions.append(suggested_value)
-        param = apply_direction(param,suggested_value)
+    i = 0
+    while i < length:
+        suggested_value = set_config_param_single(trial=trial,param_name=param_name+'_{}'.format(i),param=param, starting_value=starting_value)
+        if starting_value is not None:
+            if isinstance(starting_value, list):
+                for j in range(len(starting_value)):
+                    param_suggestions.append(suggested_value[j])
+                    if j >= length:break
+                i = j
+            else:
+                param_suggestions.append(suggested_value)
+
+            starting_value = None
+            param = apply_direction(param,suggested_value)
+            i = i + 1
+        else:
+            suggested_value = process_list_param(suggested_value,i)
+            param_suggestions.append(suggested_value)
+            param = apply_direction(param,suggested_value)
+            i = i + 1
     return param_suggestions
 
 # sets a single model parameter value from the config file
-def set_config_param_single(trial, param_name, param):
-    if isinstance(param, dict):
+def set_config_param_single(trial, param_name, param, starting_value=None):
+    if starting_value is not None:
+        # remove starting_value from param
+        # so it is processed / applied only once
+        return starting_value
+    elif isinstance(param, dict):
         if 'type' in param:
             try:
                 param_local = param.copy()
                 param_local.pop('direction', None) # remove "direction" if exists
-                param_local.pop('length', None) # remove "direction" if exists
+                param_local.pop('length', None) # remove "length" if exists
+                param_local.pop('starting_value', None) # remove "starting_value" if exists
                 param_type = param_local.pop('type')
                 if param_type == 'categorical':
                     # name, choices
