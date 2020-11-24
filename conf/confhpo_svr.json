@@ -8,7 +8,8 @@
     "src": "./data/processed/CEPDB_25000.csv",
     "z-stand": "False",
     "x_column": ["SMILES_str"],
-    "y_column": ["pce"]
+    "y_column": ["pce"],
+	"split": "ml_phase"
     },
 "model":{
 	"name": "SVR",

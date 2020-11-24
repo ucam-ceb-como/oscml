@@ -22,13 +22,15 @@ def create_config(type_dict, model_name, model_specific):
             "z-stand": "True",
             "x_column": ["SMILES_str"],
             "y_column": ["pce"],
+            "split": "ml_phase"
         }
     elif type_dict == oscml.data.dataset_hopv15.HOPV15:
         dataset = {
-            "src": "./data/raw/HOPV_15_revised_2.data",
+            "src": "./data/processed/HOPV_15_revised_2_processed_homo.csv",
             "z-stand": "True",
             "x_column": ["smiles"],
             "y_column": ["pce"],
+            "split": [200, None, 36]
         }
 
     training = {
@@ -143,7 +145,7 @@ class Test_HPO(unittest.TestCase):
 
         testargs = ['test',
             '--trials', '1',
-            '--dataset', oscml.data.dataset_cep.CEP25000,
+            #'--dataset', oscml.data.dataset_cep.CEP25000,
             ]
         with unittest.mock.patch('sys.argv', testargs):
             oscml.hpo.train.start(config_dev=config)
@@ -154,7 +156,7 @@ class Test_HPO(unittest.TestCase):
 
         testargs = ['test',
             '--trials', '2',
-            '--dataset', oscml.data.dataset_hopv15.HOPV15,
+            #'--dataset', oscml.data.dataset_hopv15.HOPV15,
             ]
         with unittest.mock.patch('sys.argv', testargs):
             oscml.hpo.train.start(config_dev=config)
@@ -219,7 +221,7 @@ class Test_HPO(unittest.TestCase):
         testargs = ['test', 
             '--epochs', '0',
             '--ckpt',  './res/test_checkpoint_gnn_cep25000_e10/last.ckpt',
-            '--dataset', oscml.data.dataset_cep.CEP25000,
+            #'--dataset', oscml.data.dataset_cep.CEP25000,
             '--model', 'SimpleGNN',
         ]
 
@@ -232,7 +234,7 @@ class Test_HPO(unittest.TestCase):
         testargs = ['test', 
             '--epochs', '1',
             '--ckpt',  './res/test_checkpoint_gnn_cep25000_e10/last.ckpt',
-            '--dataset', oscml.data.dataset_cep.CEP25000,
+            #'--dataset', oscml.data.dataset_cep.CEP25000,
             '--model', 'SimpleGNN',
         ]
 
@@ -243,11 +245,11 @@ class Test_HPO(unittest.TestCase):
     def test_train_rf_cep25000_one_trial_with_config_file(self):
 
         testargs = ['test',
-            '--dataset', oscml.data.dataset_cep.CEP25000,
+            #'--dataset', oscml.data.dataset_cep.CEP25000,
             #'--metric', 'mse',
             '--direction', 'minimize',
             '--trials', '1',
-            '--config', './conf/confhpo_rf.json',
+            '--config', './res/test_confhpo/confhpo_rf_cep25000.json',
         ]
         with unittest.mock.patch('sys.argv', testargs):
             oscml.hpo.train.start()
@@ -255,7 +257,7 @@ class Test_HPO(unittest.TestCase):
     def test_train_svr_hopv15_one_trial_with_config_file(self):
 
         testargs = ['test',
-            '--dataset', oscml.data.dataset_hopv15.HOPV15,
+            #'--dataset', oscml.data.dataset_hopv15.HOPV15,
             #'--metric', 'mse',
             '--direction', 'minimize',
             '--trials', '1',

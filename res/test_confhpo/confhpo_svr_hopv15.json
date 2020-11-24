@@ -5,16 +5,19 @@
     "cudnn_benchmark": false
 },
 "dataset":{
-    "src": "./data/raw/HOPV_15_revised_2.data",
+    "src": "./data/processed/HOPV_15_revised_2_processed_homo.csv",
     "z-stand": "False",
     "x_column": ["smiles"],
-    "y_column": ["pce"]
+    "y_column": ["pce"],
+	"split": [200, null, 36]
     },
 "model":{
 	"name": "SVR",
 	"model_specific":{
 		"kernel": "rbf_kernel_phys_and_struct",
-        "gamma_structural": {"type":"loguniform","low":0.001,"high":20.0}
+        "gamma_structural": {"type":"loguniform","low":0.001,"high":20.0},
+		"C":{"type":"loguniform","low":0.1,"high":20.0},
+		"epsilon":{"type":"loguniform","low":0.0001,"high":1.0}
 	},
 	"fingerprint_specific":{
 		"type":"morgan",
@@ -25,8 +28,6 @@
 	}
 },
 "training":{
-	"C":{"type":"loguniform","low":0.1,"high":20.0},
-	"epsilon":{"type":"loguniform","low":0.0001,"high":1.0},
     "criterion": "mse",
 	"cross_validation": false
 }

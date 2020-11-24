@@ -14,8 +14,8 @@ import oscml.hpo.objective
 import oscml.hpo.optunawrapper
 
 
-def get_dataframes(dataset, type_dict, seed):
-    df_train, df_val, df_test, transformer = oscml.data.dataset.get_dataframes(dataset=dataset, type_dict=type_dict, train_size=283, test_size=30, seed = seed)
+def get_dataframes(dataset, seed):
+    df_train, df_val, df_test, transformer = oscml.data.dataset.get_dataframes(dataset=dataset, seed = seed)
     return df_train, df_val, df_test, transformer
 
 def none_or_str(value):
@@ -43,7 +43,7 @@ def start(config_dev=None):
     parser.add_argument('--config', type=str, default=None)
     #parser.add_argument('--model', type=str, default=None, choices=['BILSTM', 'AttentiveFP', 'SimpleGNN'])
     #parser.add_argument('--ckpt', type=str)
-    parser.add_argument('--dataset', type=str)
+    #parser.add_argument('--dataset', type=str)
     #parser.add_argument('--datasetpath', type=str, default=None)
     parser.add_argument('--seed', type=int, default=200)
     parser.add_argument('--cv', type=int, default=None)
@@ -83,14 +83,7 @@ def start(config_dev=None):
 
     logging.info('config=%s', config)
 
-    # TODO type_dict should only be necessary for BILSTM and SimpleGNN because they
-    # need the dictionary information, refactor reading files, splitting etc. to get
-    # rid of args.dataset
-    if 'type_dict' in config['model']:
-        type_dict = config['model']['type_dict']
-    else:
-        type_dict = args.dataset
-    df_train, df_val, df_test, transformer = get_dataframes(config['dataset'], type_dict, args.seed)
+    df_train, df_val, df_test, transformer = get_dataframes(config['dataset'], args.seed)
 
     obj = functools.partial(oscml.hpo.objective.objective, config=config, args=args,
         df_train=df_train, df_val=df_val, df_test=df_test, transformer=transformer, log_dir=log_dir)

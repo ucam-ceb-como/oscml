@@ -67,10 +67,7 @@ def create(trial, config, df_train, df_val, df_test, training_params):
             df_test, fp_params, train_size=1, column_smiles=x_column,
             columns_phys=None, column_y=y_column, scaler_svr_physical_data=scaler_svr_physical_data)
     
-    training_params_local = training_params.copy()
-    training_params_local.pop('cross_validation',None)
-    training_params_local.pop('criterion',None)
-    model = oscml.models.model_kernel.SVRWrapper(**model_params,**training_params_local)
+    model = oscml.models.model_kernel.SVRWrapper(**model_params)
 
     return model, x_train, y_train, x_val, y_val, x_test, y_test
 

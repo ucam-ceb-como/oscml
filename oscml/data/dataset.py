@@ -96,18 +96,26 @@ def store(df, filepath):
     # store without the internal index of Pandas Dataframe
     df.to_csv(filepath, index=False)
 
-def split_data_frames_and_transform(df, column_smiles, column_target, train_size, test_size, seed):
-    
-    train_plus_val_size = len(df) - test_size
+def read_and_split_by_size(filepath, split_size_array, seed):
+    logging.info('reading %s', filepath)
+    df = pd.read_csv(filepath)
+
+    train_size, val_size, test_size = split_size_array
+    if not train_size:
+        train_size = len(df) - val_size - test_size
+    elif not val_size:
+        val_size = len(df) - train_size - test_size
+    elif not test_size:
+        test_size = len(df) - train_size - val_size
+
+    train_plus_val_size = train_size + val_size
     df_train, df_test = sklearn.model_selection.train_test_split(df, 
                     train_size=train_plus_val_size, shuffle=True, random_state=seed)
     df_train, df_val = sklearn.model_selection.train_test_split(df_train, 
                     train_size=train_size, shuffle=True, random_state=seed+1)
     logging.info('train=%s, val=%s, test=%s', len(df_train), len(df_val), len(df_test))
 
-    transformer = create_transformer(df_train, column_target, column_smiles)
-
-    return df_train, df_val, df_test, transformer
+    return df_train, df_val, df_test
 
 def read_and_split(filepath, split_column='ml_phase'):
     logging.info('reading %s', filepath)
@@ -118,31 +126,26 @@ def read_and_split(filepath, split_column='ml_phase'):
     logging.info('split data into sets of size (train / val / test)=%s / %s / %s', len(df_train), len(df_val), len(df_test))
     return df_train, df_val, df_test
 
-def get_dataframes(dataset, type_dict, train_size=-1, test_size=-1, seed=200):
+def get_dataframes(dataset, seed=200):
 
     src = dataset['src']
     x_column = dataset['x_column'][0]
     y_column = dataset['y_column'][0]
+    split = dataset['split']
 
-    if type_dict == oscml.data.dataset_hopv15.HOPV15:
-        df = oscml.data.dataset_hopv15.read(src)
-        df = oscml.data.dataset.clean_data(df, None, x_column, y_column)
-
-        df_train, df_val, df_test, transformer = oscml.data.dataset.split_data_frames_and_transform(
-                df, column_smiles=x_column, column_target=y_column, train_size=train_size, test_size=test_size, seed=seed), 
-    
-        return (df_train, df_val, df_test, transformer)
-
-    elif type_dict == oscml.data.dataset_cep.CEP25000:
-        df_train, df_val, df_test = oscml.data.dataset.read_and_split(src)
+    if isinstance(split, str):
+        # split is the name of the split column with values train, val and test
+        df_train, df_val, df_test = oscml.data.dataset.read_and_split(src, split_column=split)
         # for testing only
         #df_train, df_val, df_test = df_train[:1500], df_val[:500], df_test[:500]
-        transformer = oscml.data.dataset.create_transformer(df_train,
-                column_target=y_column, column_x=x_column)
 
-        return (df_train, df_val, df_test, transformer)
-    
-    raise RuntimeError('unknown dataset type dict=' + str(type_dict))
+    else:
+        # split is an array specifying the number of samples for train, val and test set
+        df_train, df_val, df_test = read_and_split_by_size(src, split_size_array=split, seed=seed)
+
+    transformer = create_transformer(df_train, column_target=y_column, column_x=x_column)
+    return (df_train, df_val, df_test, transformer)
+ 
 
 class DatasetInfo:
     def __init__(self, id=None, mol2seq=None, node_types=None, max_sequence_length=None, max_molecule_size=0, max_smiles_length=0):
