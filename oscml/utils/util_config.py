@@ -10,7 +10,7 @@ def set_config_param(trial, param_name, param, all_params):
 
     # if param is a list, process it as list
     if isinstance(param, list):
-        # 1. case when e.g. param : [1,2,3,...]
+        # 1. e.g. param : [1,2,3,...]
         param_suggestion = set_config_param_list(trial, param_name, param)
     elif isinstance(param, dict):
         starting_value = get_starting_value(param, all_params)
@@ -22,17 +22,18 @@ def set_config_param(trial, param_name, param, all_params):
         elif 'type' in param:
             if length is not None:
                 # 3. param : {"optuna params and values", "length":5}
+                #    param : {"optuna params and values", "length":5, "starting_value":...}
                 param_suggestion = set_config_param_list(trial, param_name, param, length, starting_value)
             else:
                 # 4. param : {"optuna params and values"}
-                #    "starting_value" not needed here, this is not a list param
+                #    param : {"optuna params and values","starting_value":...}
                 param_suggestion = set_config_param_single(trial, param_name, param, starting_value)
         else:
             # 5. param : {"starting_value":".."} - sinlge valued param linked with some other param
             param_suggestion = set_config_param_single(trial, param_name, param, starting_value)
     else:
         # this is a single value, fixed parameter:
-        # e.g. param : 1 or param : "Adam" etc..
+        # 6. param : 1 or param : "Adam" etc..
         param_suggestion = set_config_param_single(trial, param_name, param)
     return param_suggestion
 
@@ -99,7 +100,7 @@ def set_config_param_list(trial, param_name, param, length=None, starting_value=
                 param_suggestions.append(suggested_value)
 
             starting_value = None
-            param = apply_direction(param,suggested_value)
+            param = apply_direction(param,param_suggestions[-1])
             i = i + 1
         else:
             suggested_value = process_list_param(suggested_value,i)
@@ -167,8 +168,12 @@ def apply_direction(param,prev_value):
         if 'direction' in param:
             if param['direction']=="decreasing":
                 param['high'] = prev_value
+                if param['high'] < param['low']:
+                    param['low'] = param['high']
             elif param['direction']=="increasing":
                 param['low'] = prev_value
+                if param['low'] > param['high']:
+                    param['high'] = param['low']
             elif param['direction']=="constant":
                 param = prev_value
     return param
