@@ -59,20 +59,20 @@ def create(trial, config, df_train, df_val, df_test, training_params):
             df_train, fp_params, train_size=1, column_smiles=x_column,
             columns_phys=None, column_y=y_column)
 
-        x_val, y_val, scaler_svr_physical_data = oscml.models.model_kernel.preprocess_data_phys_and_struct(df_val,
-                                                                                                            fp_params,
-                                                                                                            train_size=1,
-                                                                                                            column_smiles=x_column,
-                                                                                                            columns_phys=None,
-                                                                                                            column_y=y_column,
-                                                                                                            scaler_svr_physical_data=scaler_svr_physical_data)
+        x_val, y_val, _ = oscml.models.model_kernel.preprocess_data_phys_and_struct(
+            df_val, fp_params, train_size=1, column_smiles=x_column,
+            columns_phys=None, column_y=y_column, scaler_svr_physical_data=scaler_svr_physical_data)
 
+    x_test, y_test, _ = oscml.models.model_kernel.preprocess_data_phys_and_struct(
+            df_test, fp_params, train_size=1, column_smiles=x_column,
+            columns_phys=None, column_y=y_column, scaler_svr_physical_data=scaler_svr_physical_data)
+    
     training_params_local = training_params.copy()
     training_params_local.pop('cross_validation',None)
     training_params_local.pop('criterion',None)
     model = oscml.models.model_kernel.SVRWrapper(**model_params,**training_params_local)
 
-    return model, x_train, y_train, x_val, y_val
+    return model, x_train, y_train, x_val, y_val, x_test, y_test
 
 
 def get_Morgan_fingerprints(df, params_morgan, columns_smiles, column_y):

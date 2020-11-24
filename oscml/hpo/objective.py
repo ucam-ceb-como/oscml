@@ -1,7 +1,7 @@
 import logging
 
-import optuna.trial
 import pytorch_lightning as pl
+from pytorch_lightning.callbacks.early_stopping import EarlyStopping
 
 import oscml.data.dataset
 import oscml.data.dataset_cep
@@ -12,7 +12,6 @@ import oscml.hpo.hpo_simplegnn
 import oscml.hpo.hpo_rf
 import oscml.hpo.hpo_svr
 import oscml.hpo.optunawrapper
-from pytorch_lightning.callbacks.early_stopping import EarlyStopping
 from oscml.utils.util_config import set_config_param
 import oscml.utils.util_sklearn
 
@@ -123,12 +122,12 @@ def objective(trial, config, args, df_train, df_val, df_test, transformer, log_d
 
     elif model_name == 'RF':
         training_params = get_training_params(trial, config['training'])
-        model, x_train, y_train, x_val, y_val = oscml.hpo.hpo_rf.create(trial, config, df_train, df_val, df_test, training_params)
+        model, x_train, y_train, x_val, y_val, x_test, y_test = oscml.hpo.hpo_rf.create(trial, config, df_train, df_val, df_test, training_params)
         trainer_type = "scikit_learn"
 
     elif model_name == 'SVR':
         training_params = get_training_params(trial, config['training'])
-        model, x_train, y_train, x_val, y_val = oscml.hpo.hpo_svr.create(trial, config, df_train, df_val, df_test, training_params)
+        model, x_train, y_train, x_val, y_val, x_test, y_test = oscml.hpo.hpo_svr.create(trial, config, df_train, df_val, df_test, training_params)
         trainer_type = "scikit_learn"
 
     # fit on training set and calculate metric on validation set
@@ -136,7 +135,7 @@ def objective(trial, config, args, df_train, df_val, df_test, transformer, log_d
         trial_number = trial.number
         metric_value = fit_or_test(model, train_dl, val_dl, test_dl, training_params, log_dir, trial, trial_number, args.trials)
     else:
-        metric_value = oscml.utils.util_sklearn.train_and_test(x_train, y_train, x_val, y_val, model,
+        metric_value = oscml.utils.util_sklearn.train_and_test(x_train, y_train, x_val, y_val, x_test, y_test, model,
                                                                   training_params['cross_validation'], training_params['criterion'])
 
     return metric_value

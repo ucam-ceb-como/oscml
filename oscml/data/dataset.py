@@ -96,13 +96,13 @@ def store(df, filepath):
     # store without the internal index of Pandas Dataframe
     df.to_csv(filepath, index=False)
 
-def split_data_frames_and_transform(df, column_smiles, column_target, train_size, test_size):
+def split_data_frames_and_transform(df, column_smiles, column_target, train_size, test_size, seed):
     
     train_plus_val_size = len(df) - test_size
     df_train, df_test = sklearn.model_selection.train_test_split(df, 
-                    train_size=train_plus_val_size, shuffle=True, random_state=0)
+                    train_size=train_plus_val_size, shuffle=True, random_state=seed)
     df_train, df_val = sklearn.model_selection.train_test_split(df_train, 
-                    train_size=train_size, shuffle=True, random_state=0)
+                    train_size=train_size, shuffle=True, random_state=seed+1)
     logging.info('train=%s, val=%s, test=%s', len(df_train), len(df_val), len(df_test))
 
     transformer = create_transformer(df_train, column_target, column_smiles)
@@ -118,7 +118,7 @@ def read_and_split(filepath, split_column='ml_phase'):
     logging.info('split data into sets of size (train / val / test)=%s / %s / %s', len(df_train), len(df_val), len(df_test))
     return df_train, df_val, df_test
 
-def get_dataframes(dataset, type_dict, train_size=-1, test_size=-1):
+def get_dataframes(dataset, type_dict, train_size=-1, test_size=-1, seed=200):
 
     src = dataset['src']
     x_column = dataset['x_column'][0]
@@ -129,7 +129,7 @@ def get_dataframes(dataset, type_dict, train_size=-1, test_size=-1):
         df = oscml.data.dataset.clean_data(df, None, x_column, y_column)
 
         df_train, df_val, df_test, transformer = oscml.data.dataset.split_data_frames_and_transform(
-                df, column_smiles=x_column, column_target=y_column, train_size=train_size, test_size=test_size)
+                df, column_smiles=x_column, column_target=y_column, train_size=train_size, test_size=test_size, seed=seed), 
     
         return (df_train, df_val, df_test, transformer)
 
