@@ -9,7 +9,7 @@
     "z-stand": "False",
     "x_column": ["smiles"],
     "y_column": ["pce"],
-	"split": [200, null, 36]
+	"split": "ml_phase"
     },
 "model":{
 	"name": "SVR",
@@ -34,7 +34,7 @@
 	"__remove_this_bit__study_name": "svr_hopv15_homo",
 	"__remove_this_bit__storage": "sqlite:///svr_hopv15_homo.db",
 	"__remove_this_bit__load_if_exists": true,
-	"__remove_this_bit__n_trials": 1,
+	"__remove_this_bit__n_trials": 50,
 	"__remove_this_bit__n_jobs": 1
 }
 }
