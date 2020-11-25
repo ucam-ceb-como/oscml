@@ -67,7 +67,7 @@ def start_hpo(args, objective, log_dir, config):
         n_trials = config['training'].get('n_trials',args.trials)
         n_jobs = config['training'].get('n_jobs',args.jobs)
 
-        study = create_study(direction=args.direction, seed=seed, storage=storage, study_name=study_name, load_if_exists=load_if_exists)
+        study = create_study(direction=direction, seed=seed, storage=storage, study_name=study_name, load_if_exists=load_if_exists)
         decorator = create_objective_decorator(objective, n_trials)
         logging.info('starting HPO')
         study.optimize(decorator, n_trials=n_trials, n_jobs=n_jobs, timeout=args.timeout,
