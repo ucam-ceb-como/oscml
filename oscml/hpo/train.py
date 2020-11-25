@@ -36,26 +36,14 @@ def start(config_dev=None):
     parser = argparse.ArgumentParser()
     parser.add_argument('--src', type=str, default='.')
     parser.add_argument('--dst', type=str, default='.')
-    #parser.add_argument('--epochs', type=int, default=1)
     parser.add_argument('--trials', type=int, default=None)
     parser.add_argument('--timeout', type=int, default=None, help='Stop study after the given number of second(s). If this argument is not set, the study is executed without time limitation.')
     parser.add_argument('--jobs', type=int, default=1)
     parser.add_argument('--config', type=str, default=None)
-    #parser.add_argument('--model', type=str, default=None, choices=['BILSTM', 'AttentiveFP', 'SimpleGNN'])
-    #parser.add_argument('--ckpt', type=str)
-    #parser.add_argument('--dataset', type=str)
-    #parser.add_argument('--datasetpath', type=str, default=None)
-    #parser.add_argument('--seed', type=int, default=200)
-    #parser.add_argument('--cv', type=int, default=None)
     parser.add_argument('--storage', type=none_or_str, default=None)
     parser.add_argument('--study_name', type=none_or_str, default=None)
     parser.add_argument('--load_if_exists', type=bool_or_str, default=False)
-    #parser.add_argument('--metric', type=str, default='val_loss')
-    # TODO default for --direction is quite error prone for HPO, can easily be forgotten
-    # should it be moved to the config file?
-    # should we provide a HPO section in the config file?
-    parser.add_argument('--direction', type=str, default='minimize', choices=['minimize', 'maximize'])
-    #parser.add_argument('--featurizer', type=str, choices=['simple', 'full'], default='full')
+    #parser.add_argument('--direction', type=str, default='minimize', choices=['minimize', 'maximize'])
     args = parser.parse_args()
 
     if args.config:
@@ -89,7 +77,7 @@ def start(config_dev=None):
     logging.info('args=%s', args)
     logging.info('config=%s', config)
 
-    df_train, df_val, df_test, transformer = get_dataframes(config['dataset'], args.seed)
+    df_train, df_val, df_test, transformer = get_dataframes(config['dataset'], seed)
 
     obj = functools.partial(oscml.hpo.objective.objective, config=config, args=args,
         df_train=df_train, df_val=df_val, df_test=df_test, transformer=transformer, log_dir=log_dir)

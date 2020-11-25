@@ -61,7 +61,7 @@ def start_hpo(args, objective, log_dir, config):
     try:
         seed = config['numerical_settings'].get('seed')
         study_name = config['training'].get('study_name',args.study_name)
-        direction = config['training'].get('direction',args.direction)
+        direction = config['training'].get('direction')
         storage = config['training'].get('storage',args.storage)
         load_if_exists = config['training'].get('load_if_exists',args.load_if_exists)
         n_trials = config['training'].get('n_trials',args.trials)

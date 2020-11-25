@@ -112,7 +112,7 @@ def objective(trial, config, args, df_train, df_val, df_test, transformer, log_d
 
     elif model_name == 'AttentiveFP':
         training_params = get_training_params(trial, config['training'])
-        model, train_dl, val_dl, test_dl = oscml.hpo.hpo_attentivefp.create(trial, config, df_train, df_val, df_test, training_params['optimiser'], log_dir)
+        model, train_dl, val_dl, test_dl = oscml.hpo.hpo_attentivefp.create(trial, config, df_train, df_val, df_test, training_params['optimiser'], transformer, log_dir)
         trainer_type = "pl_lightning"
 
     elif model_name == 'SimpleGNN':
