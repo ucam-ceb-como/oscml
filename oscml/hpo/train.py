@@ -45,7 +45,7 @@ def start(config_dev=None):
     #parser.add_argument('--ckpt', type=str)
     #parser.add_argument('--dataset', type=str)
     #parser.add_argument('--datasetpath', type=str, default=None)
-    parser.add_argument('--seed', type=int, default=200)
+    #parser.add_argument('--seed', type=int, default=200)
     #parser.add_argument('--cv', type=int, default=None)
     parser.add_argument('--storage', type=none_or_str, default=None)
     parser.add_argument('--study_name', type=none_or_str, default=None)
@@ -66,7 +66,7 @@ def start(config_dev=None):
 
     # seed everything adn choose between deterministic and non-deterministic run
     #--------------------------------------------------------------------------------
-    seed = config['numerical_settings'].get('seed',args.seed)
+    seed = config['numerical_settings'].get('seed')
     cudnn_deterministic = config['numerical_settings'].get('cudnn_deterministic',True)
     cudnn_benchmark = config['numerical_settings'].get('cudnn_benchmark',False)
 

@@ -59,7 +59,7 @@ def start_hpo(args, objective, log_dir, config):
     #optuna.logging.set_verbosity(optuna.logging.DEBUG)
 
     try:
-        seed = config['numerical_settings'].get('seed',args.seed)
+        seed = config['numerical_settings'].get('seed')
         study_name = config['training'].get('study_name',args.study_name)
         direction = config['training'].get('direction',args.direction)
         storage = config['training'].get('storage',args.storage)
