@@ -85,10 +85,14 @@ def start(config_dev=None):
         df_train = pd.concat([df_train, df_val])
         df_val = None
 
-    obj = functools.partial(oscml.hpo.objective.objective, config=config, args=args,
-        df_train=df_train, df_val=df_val, df_test=df_test, transformer=transformer, log_dir=log_dir)
+    n_previous_trials = oscml.hpo.optunawrapper.check_for_existing_study(config['training'].get('storage',args.storage), config['training'].get('study_name',args.study_name))
+    total_number_trials = args.trials + n_previous_trials - 1
 
-    return oscml.hpo.optunawrapper.start_hpo(args=args, objective=obj, log_dir=log_dir, config=config)
+    obj = functools.partial(oscml.hpo.objective.objective, config=config,
+        df_train=df_train, df_val=df_val, df_test=df_test, transformer=transformer, log_dir=log_dir, 
+        total_number_trials=total_number_trials)
+
+    return oscml.hpo.optunawrapper.start_hpo(args=args, objective=obj, log_dir=log_dir, config=config, total_number_trials=total_number_trials)
 
 
 if __name__ == '__main__':

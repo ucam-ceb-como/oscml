@@ -51,7 +51,7 @@ def callback_on_trial_finished(study, trial):
         logging.error('THE MAXIMUM NUMBER OF FAILED TRIALS HAS BEEN REACHED, AND THE STUDY WILL STOP NOW.')
         study.stop()
 
-def start_hpo(args, objective, log_dir, config):
+def start_hpo(args, objective, log_dir, config, total_number_trials):
 
     #optuna.logging.enable_default_handler()
     #optuna.logging.enable_propagation()  # Propagate logs to the root logger.
@@ -68,7 +68,7 @@ def start_hpo(args, objective, log_dir, config):
         n_jobs = config['training'].get('n_jobs',args.jobs)
 
         study = create_study(direction=direction, seed=seed, storage=storage, study_name=study_name, load_if_exists=load_if_exists)
-        decorator = create_objective_decorator(objective, n_trials)
+        decorator = create_objective_decorator(objective, total_number_trials)
         logging.info('starting HPO')
         study.optimize(decorator, n_trials=n_trials, n_jobs=n_jobs, timeout=args.timeout,
                 catch = (RuntimeError, ValueError, TypeError), callbacks=[callback_on_trial_finished],
@@ -87,6 +87,10 @@ def start_hpo(args, objective, log_dir, config):
     else:
         logging.info('finished successfully')
 
+def log_best_trial(trial):
+    logging.info('best trial number=%s', trial.number)
+    logging.info('best trial value=%s', trial.value)
+    logging.info('best trial params=%s', trial.params)
 
 def log_and_save(study, path):
 
@@ -97,7 +101,24 @@ def log_and_save(study, path):
 
     logging.info('final study statistics: number of trials=%s', get_statistics(study))
 
-    trial = study.best_trial
-    logging.info('best trial number=%s', trial.number)
-    logging.info('best trial value=%s', trial.value)
-    logging.info('best trial params=%s', trial.params)
+    log_best_trial(study.best_trial)
+
+def check_for_existing_study(storage, study_name):
+    n_previous_trials = 0
+    try:
+        if storage:
+            study_found = False
+            summary = optuna.study.get_all_study_summaries(storage=storage)
+            for existing_study in summary:
+                if existing_study.study_name == study_name:
+                    study_found = True
+                    n_previous_trials = existing_study.n_trials
+                    logging.info('found a study with name=%s and %s trials', storage, n_previous_trials)
+                    log_best_trial(existing_study.best_trial)
+                    
+        if not study_found:
+            logging.info('there is no study with name=%s so far', storage)
+
+    except:
+        logging.info('exception - there is no study with name=%s so far', storage)
+    return n_previous_trials

@@ -52,7 +52,7 @@ def fit_or_test(model, train_dl, val_dl, test_dl, training_params,
     # if the number of trials is 1 then save checkpoints for the last and best epoch
     # otherwise if HPO is running (i.e. unspecified time-contrained number of trials or finite number > 1 )
     # then save no checkpoints
-    save_checkpoints =  (n_trials is not None and n_trials == 1)
+    save_checkpoints =  (n_trials is not None and n_trials == 0)
     trainer_params = oscml.utils.util_lightning.get_standard_params_for_trainer(metric, save_checkpoints)
 
     # create Lightning metric logger that logs metric values for each trial in its own csv file
@@ -118,7 +118,7 @@ def get_model_and_data(model_name, trial, config, df_train, df_val, df_test, tra
     return None
 
 
-def objective(trial, config, args, df_train, df_val, df_test, transformer, log_dir):
+def objective(trial, config, df_train, df_val, df_test, transformer, log_dir, total_number_trials):
 
     # init parameters from config file
     model_name = config['model']['name']
@@ -154,7 +154,7 @@ def objective(trial, config, args, df_train, df_val, df_test, transformer, log_d
                                                                       df_train.iloc[train_index], df_train.iloc[val_index],
                                                                       df_test, training_params, transformer, log_dir)
                 metric_value = fit_or_test(model, train_dl, val_dl, test_dl, training_params, log_dir,
-                                           trial, trial_number, args.trials, str(cv_index))
+                                           trial, trial_number, total_number_trials, str(cv_index))
                 # train_dl, val_dl, test_dl = oscml.models.model_gnn.get_dataloaders(type_dict,
                 #                                                                    df_train.iloc[train_index],
                 #                                                                    df_train.iloc[val_index], df_test,
@@ -167,7 +167,7 @@ def objective(trial, config, args, df_train, df_val, df_test, transformer, log_d
             model, train_dl, val_dl, test_dl = get_model_and_data(model_name, trial, config, df_train, df_val, df_test,
                                                                   training_params, transformer, log_dir)
             metric_value = fit_or_test(model, train_dl, val_dl, test_dl, training_params, log_dir,
-                                       trial, trial_number, args.trials, '')
+                                       trial, trial_number, total_number_trials, '')
 
     else:
         return None
