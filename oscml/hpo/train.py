@@ -9,6 +9,7 @@ from collections import OrderedDict
 import torch
 import numpy as np
 import random
+import pandas as pd
 
 import oscml.hpo.objective
 import oscml.hpo.optunawrapper
@@ -84,6 +85,12 @@ def start(config_dev=None):
     logging.info('config=%s', config)
 
     df_train, df_val, df_test, transformer = get_dataframes(config['dataset'], args.seed)
+
+    # concatenate the train and validation dataset to one dataset when cross-validation is on
+    cv = config['training']['cross_validation']
+    if isinstance(cv, int) and cv > 1:
+        df_train = pd.concat([df_train, df_val])
+        df_val = None
 
     obj = functools.partial(oscml.hpo.objective.objective, config=config, args=args,
         df_train=df_train, df_val=df_val, df_test=df_test, transformer=transformer, log_dir=log_dir)

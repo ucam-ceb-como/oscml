@@ -38,7 +38,8 @@ def create(trial, config, df_train, df_val, df_test, training_params):
         raise ValueError("Unknown fingerprint type '"+ fp_type+"'. Only 'morgan' fingerprints supported.")
 
     if training_params['cross_validation']:
-        df_train = pd.concat([df_train, df_val])
+        # df_train = pd.concat([df_train, df_val]) this should be done in train.py already
+        assert df_val is None, "validation set should be added to training set for cross validation"
         x_train, y_train = get_fp(df_train, fp_params, x_column, y_column)
         x_val = None
         y_val = None
