@@ -1,0 +1,40 @@
+{
+"numerical_settings":{
+	"seed": 1,
+    "cudnn_deterministic": true,
+    "cudnn_benchmark": false
+},
+"dataset":{
+    "src": "./data/processed/HOPV_15_revised_2_processed_homo.csv",
+    "z-stand": "False",
+    "x_column": ["smiles"],
+    "y_column": ["pce"],
+	"split": "ml_phase"
+    },
+"model":{
+	"name": "SVR",
+	"model_specific":{
+		"kernel": "rbf_kernel_phys_and_struct",
+		"gamma_structural": {"type":"loguniform","low":0.001,"high":20.0},
+		"C":{"type":"loguniform","low":0.1,"high":20.0},
+		"epsilon":{"type":"loguniform","low":0.0001,"high":1.0}
+	},
+	"fingerprint_specific":{
+		"type":"morgan",
+		"nBits":{"type":"categorical","choices": [128, 256, 512, 1024, 2048, 4096]},
+		"radius": {"type":"categorical","choices": [2, 3, 4, 5]},
+		"useChirality": {"type":"categorical","choices":[true, false]},
+		"useBondTypes":{"type":"categorical","choices":[true, false]}
+	}
+},
+"training":{
+    "criterion": "mse",
+	"cross_validation": false,
+	"direction": "minimize",
+	"__remove_this_bit__study_name": "svr_hopv15_homo",
+	"__remove_this_bit__storage": "sqlite:///svr_hopv15_homo.db",
+	"__remove_this_bit__load_if_exists": true,
+	"__remove_this_bit__n_trials": 50,
+	"__remove_this_bit__n_jobs": 1
+}
+}

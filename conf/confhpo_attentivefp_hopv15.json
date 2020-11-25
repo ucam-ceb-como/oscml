@@ -1,0 +1,42 @@
+{
+"numerical_settings":{
+	"seed": 1,
+    "cudnn_deterministic": true,
+    "cudnn_benchmark": false
+},
+"dataset":{
+    "src": "./data/processed/HOPV_15_revised_2_processed_homo.csv",
+    "z-stand": "False",
+    "x_column": ["smiles"],
+    "y_column": ["pce"],
+	"split": "ml_phase"
+    },
+"model":{
+    "name": "AttentiveFP",
+	"model_specific":{
+		"graph_feat_size": {"type":"int","low":8,"high":256},
+		"num_layers":{"type":"int","low":1,"high":6},
+		"num_timesteps":{"type":"int","low":1,"high":4},
+		"dropout":{"type":"uniform","low":0.0,"high":0.3}
+		},
+	"type_dict": "HOPV15",
+	"featurizer": "full"
+	},
+"training":{
+	"optimiser":{
+		"name":"Adam",
+		"lr":{"type":"loguniform","low":1e-5,"high":1e-2},
+		"weight_decay":{"type":"loguniform","low":1e-5,"high":0.01}
+		},
+	"batch_size": 20,
+	"epochs": 400,
+	"patience": 20,
+	"metric": "val_loss",
+	"direction": "minimize",
+	"__remove_this_bit__study_name": "attentivefp_hopv15_homo",
+	"__remove_this_bit__storage": "sqlite:///attentivefp_hopv15_homo.db",
+	"__remove_this_bit__load_if_exists": true,
+	"__remove_this_bit__n_trials": 50,
+	"__remove_this_bit__n_jobs": 1
+    }
+}

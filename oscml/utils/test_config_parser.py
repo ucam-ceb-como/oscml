@@ -16,7 +16,6 @@ class TestConfigparser(unittest.TestCase):
         def test_objective(trial, config_params):
             processed_params = {}
             for key, value in config_params['config_parser_test'].items():
-                print(key)
                 processed_params.update({key: set_config_param(trial=trial,param_name=key,param=value, all_params=processed_params)})
 
             # param_1
@@ -86,7 +85,8 @@ class TestConfigparser(unittest.TestCase):
             for i in range(1,len_p18):
                 assert processed_params['param_18'][i-1] >= processed_params['param_18'][i]
 
-
+            assert processed_params['param_19'] == [2,2,2,2]
+            assert processed_params['param_20'] == [2,3,5,5]
             #assert (k in trial.params for k in ('param_9_1','param_9_2','param_9_3')) == True
 
             sleep(1)

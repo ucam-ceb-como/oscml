@@ -45,7 +45,7 @@ def start(config_dev=None):
     #parser.add_argument('--ckpt', type=str)
     #parser.add_argument('--dataset', type=str)
     #parser.add_argument('--datasetpath', type=str, default=None)
-    parser.add_argument('--seed', type=int, default=200)
+    #parser.add_argument('--seed', type=int, default=200)
     #parser.add_argument('--cv', type=int, default=None)
     parser.add_argument('--storage', type=none_or_str, default=None)
     parser.add_argument('--study_name', type=none_or_str, default=None)
@@ -58,13 +58,26 @@ def start(config_dev=None):
     #parser.add_argument('--featurizer', type=str, choices=['simple', 'full'], default='full')
     args = parser.parse_args()
 
-    torch.manual_seed(args.seed)
-    torch.cuda.manual_seed_all(args.seed)
+    if args.config:
+        with open(args.config) as json_config:
+            config = json.load(json_config, object_pairs_hook=OrderedDict)
+    else:
+        config = config_dev
+
+    # seed everything adn choose between deterministic and non-deterministic run
+    #--------------------------------------------------------------------------------
+    seed = config['numerical_settings'].get('seed')
+    cudnn_deterministic = config['numerical_settings'].get('cudnn_deterministic',True)
+    cudnn_benchmark = config['numerical_settings'].get('cudnn_benchmark',False)
+
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed_all(seed)
     torch.backends.cudnn.deterministic = True
     torch.backends.cudnn.benchmark = False
-    np.random.seed(args.seed)
-    random.seed(args.seed)
-    os.environ['PYTHONHASHSEED'] = str(args.seed)
+    np.random.seed(seed)
+    random.seed(seed)
+    os.environ['PYTHONHASHSEED'] = str(seed)
+    #--------------------------------------------------------------------------------
 
     # init file logging
     log_config_file = args.src + '/conf/logging.yaml'
@@ -74,13 +87,6 @@ def start(config_dev=None):
 
     logging.info('current working directory=%s', os.getcwd())
     logging.info('args=%s', args)
-
-    if args.config:
-        with open(args.config) as json_config:
-            config = json.load(json_config, object_pairs_hook=OrderedDict)
-    else:
-        config = config_dev
-
     logging.info('config=%s', config)
 
     df_train, df_val, df_test, transformer = get_dataframes(config['dataset'], args.seed)
@@ -88,7 +94,7 @@ def start(config_dev=None):
     obj = functools.partial(oscml.hpo.objective.objective, config=config, args=args,
         df_train=df_train, df_val=df_val, df_test=df_test, transformer=transformer, log_dir=log_dir)
 
-    return oscml.hpo.optunawrapper.start_hpo(args=args, objective=obj, log_dir=log_dir)
+    return oscml.hpo.optunawrapper.start_hpo(args=args, objective=obj, log_dir=log_dir, config=config)
 
 
 if __name__ == '__main__':

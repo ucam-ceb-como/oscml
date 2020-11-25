@@ -28,6 +28,13 @@ def set_config_param(trial, param_name, param, all_params):
                 # 4. param : {"optuna params and values"}
                 #    param : {"optuna params and values","starting_value":...}
                 param_suggestion = set_config_param_single(trial, param_name, param, starting_value)
+        elif 'length' in param and 'starting_value' in param:
+            if isinstance(starting_value, list):
+                param['values'] = starting_value
+            else:
+                param['values'] = [starting_value]
+            starting_value = None
+            param_suggestion = set_config_param_list(trial, param_name, param['values'], length, starting_value)
         else:
             # 5. param : {"starting_value":".."} - sinlge valued param linked with some other param
             param_suggestion = set_config_param_single(trial, param_name, param, starting_value)

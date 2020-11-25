@@ -30,8 +30,14 @@
 		"weight_decay":{"type":"loguniform","low":1e-5,"high":0.01}
 		},
 	"batch_size": 250,
-	"epochs": 10,
-	"patience": -1,
-	"metric": "val_loss"
+	"epochs": 400,
+	"patience": 20,
+	"metric": "val_loss",
+	"direction": "minimize",
+	"__remove_this_bit__study_name": "simplegnn_cep25000_stratified",
+	"__remove_this_bit__storage": "sqlite:///simplegnn_cep25000_stratified.db",
+	"__remove_this_bit__load_if_exists": true,
+	"__remove_this_bit__n_trials": 50,
+	"__remove_this_bit__n_jobs": 1
     }
 }
