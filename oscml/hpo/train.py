@@ -46,7 +46,7 @@ def start(config_dev=None):
     #parser.add_argument('--dataset', type=str)
     #parser.add_argument('--datasetpath', type=str, default=None)
     parser.add_argument('--seed', type=int, default=200)
-    parser.add_argument('--cv', type=int, default=None)
+    #parser.add_argument('--cv', type=int, default=None)
     parser.add_argument('--storage', type=none_or_str, default=None)
     parser.add_argument('--study_name', type=none_or_str, default=None)
     parser.add_argument('--load_if_exists', type=bool_or_str, default=False)

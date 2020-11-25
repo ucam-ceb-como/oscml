@@ -75,16 +75,21 @@ def train_and_test(x_train, y_train, x_val, y_val, x_test, y_test, model, cross_
     
         y_pred_train = model.predict(x_train)
         y_pred_val = model.predict(x_val)
+        y_pred_test = model.predict(x_test)
     
         if metric == 'mse':
             result_train = oscml.utils.util.calculate_metrics(y_train, y_pred_train)
             result_val = oscml.utils.util.calculate_metrics(y_val, y_pred_val)
+            result_test = oscml.utils.util.calculate_metrics(y_test, y_pred_test)
         else: # accuracy
             result_train = {'accuracy': sklearn.metrics.accuracy_score(y_train, y_pred_train)}
             result_val = {'accuracy': sklearn.metrics.accuracy_score(y_val, y_pred_val)}
+            result_test = {'accuracy': sklearn.metrics.accuracy_score(y_test, y_pred_test)}
             
         logging.info('train result=%s', result_train)
         logging.info('val result=%s', result_val)
+        logging.info('test result=%s', result_test)
+
         
         objective_value = result_val[metric]
 
