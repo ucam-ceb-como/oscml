@@ -97,4 +97,7 @@ SOME_EXAMPLES:
     #    in this case the decreasing sampling direction will try to sample values equal to or smaller than the previous value, thus
     #    param_18 = [1,s1(T)<=1,s2(T)<=s1,s3(T)<=s2]
     "param_18": {"type":"int","low":1,"high":10,"length":4,"direction":"decreasing","starting_value":[10]}
-
+    #19) list parameter of length 4, where the first value is set to 2, thus param_19 = [2,2,2,2]
+    "param_19": {"length":4,"starting_value":2}
+    #20) list parameter of length 4, where the first value is set to [2,3,5] thus param_20 = [2,3,5,5]
+    "param_20": {"length":4,"starting_value":[2,3,5]}
