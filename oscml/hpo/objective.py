@@ -75,7 +75,12 @@ def fit_or_test(model, train_dl, val_dl, test_dl, training_params,
         trainer.fit(model, train_dataloader=train_dl, val_dataloaders=val_dl)
 
         # return the value for the metric specified in the start script
-        val_error =  metrics_callback.metrics[-1][metric].item()
+        if patience > 0:
+            # return the best score while early stopping is applied
+            val_error = early_stopping_callback.best_score.item()
+        else:
+            val_error = metrics_callback.metrics[-1][metric].item()
+
         logging.info('finished fitting for trial %s with %s = %s', trial_number, metric, val_error)
 
     if test_dl:
