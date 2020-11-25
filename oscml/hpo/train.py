@@ -90,7 +90,7 @@ def start(config_dev=None):
     logging.info('args=%s', args)
     logging.info('config=%s', config)
 
-    df_train, df_val, df_test, transformer = get_dataframes(config['dataset'], args.seed)
+    df_train, df_val, df_test, transformer = get_dataframes(config['dataset'], seed)
 
     # concatenate the train and validation dataset to one dataset when cross-validation is on
     cv = config['training']['cross_validation']
