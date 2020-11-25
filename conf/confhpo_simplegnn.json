@@ -14,12 +14,12 @@
 "model":{
     "name": "SimpleGNN",
     "model_specific":{
-        "embedding_dim": 256,
-        "conv_layers":{"type":"int","low":1,"high":4},
-        "conv_dims":{"type":"int","low":10,"high":15,"direction":"constant","length":"embedding_dim"},
-        "mlp_layers":{"type":"int","low":1,"high":15},
-        "mlp_units":{"type":"int","low":5,"high":15,"length":"mlp_layers","direction":"constant"},
-        "mlp_dropouts":{"type":"uniform","low":0.1,"high":0.3,"length":"mlp_layers","direction":"constant"}
+        "embedding_dim":{"type":"categorical","choices":[8, 16, 32, 64, 128, 256]},
+        "conv_layers":{"type":"int","low":1,"high":6},
+        "conv_dims":{"length":"conv_layers","starting_value":"embedding_dim"},
+        "mlp_layers":{"type":"int","low":1,"high":4},
+        "mlp_units":{"type":"int","low":8,"high":256,"starting_value":"embedding_dim","length":"mlp_layers","direction":"decreasing"},
+        "mlp_dropouts":{"type":"uniform","low":0.0,"high":0.3,"direction":"constant","length":"mlp_layers"}
         },
 	"type_dict": "CEP25000"
     },
