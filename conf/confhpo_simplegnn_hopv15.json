@@ -34,6 +34,7 @@
 	"patience": 20,
 	"metric": "val_loss",
 	"direction": "minimize",
+    "cross_validation": 5,
 	"__remove_this_bit__study_name": "simplegnn_hopv15_homo",
 	"__remove_this_bit__storage": "sqlite:///simplegnn_hopv15_homo.db",
 	"__remove_this_bit__load_if_exists": true,
