@@ -1,14 +1,15 @@
 import argparse
 import datetime
 import functools
+import json
 import logging
 import os
-import json
+import random
 from collections import OrderedDict
 
-import torch
 import numpy as np
-import random
+import pandas as pd
+import torch
 
 import oscml.hpo.objective
 import oscml.hpo.optunawrapper
@@ -43,7 +44,6 @@ def start(config_dev=None):
     parser.add_argument('--storage', type=none_or_str, default=None)
     parser.add_argument('--study_name', type=none_or_str, default=None)
     parser.add_argument('--load_if_exists', type=bool_or_str, default=False)
-    #parser.add_argument('--direction', type=str, default='minimize', choices=['minimize', 'maximize'])
     args = parser.parse_args()
 
     if args.config:
@@ -78,6 +78,12 @@ def start(config_dev=None):
     logging.info('config=%s', config)
 
     df_train, df_val, df_test, transformer = get_dataframes(config['dataset'], seed)
+
+    # concatenate the train and validation dataset to one dataset when cross-validation is on
+    cv = config['training']['cross_validation']
+    if isinstance(cv, int) and cv > 1:
+        df_train = pd.concat([df_train, df_val])
+        df_val = None
 
     obj = functools.partial(oscml.hpo.objective.objective, config=config, args=args,
         df_train=df_train, df_val=df_val, df_test=df_test, transformer=transformer, log_dir=log_dir)

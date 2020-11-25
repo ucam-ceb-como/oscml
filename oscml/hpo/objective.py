@@ -1,5 +1,7 @@
 import logging
 
+import numpy as np
+from sklearn.model_selection import KFold
 import pytorch_lightning as pl
 from pytorch_lightning.callbacks.early_stopping import EarlyStopping
 
@@ -25,7 +27,7 @@ class MetricsCallback(pl.Callback):
         self.metrics.append(trainer.callback_metrics)
 
 def fit_or_test(model, train_dl, val_dl, test_dl, training_params,
-                log_dir, trial=None, trial_number=-1, n_trials=0):
+                log_dir, trial=None, trial_number=-1, n_trials=0, cv_index=''):
 
     epochs = training_params['epochs']
     metric = training_params['metric']
@@ -57,7 +59,7 @@ def fit_or_test(model, train_dl, val_dl, test_dl, training_params,
     # version='' means that no version-subdirectory is created
     csv_logger = pl.loggers.CSVLogger(save_dir=log_dir,
                                       name='trial_' + str(trial_number),
-                                      version='')
+                                      version=cv_index)
 
     # put all trainer params together
     trainer_params.update({
@@ -75,7 +77,12 @@ def fit_or_test(model, train_dl, val_dl, test_dl, training_params,
         trainer.fit(model, train_dataloader=train_dl, val_dataloaders=val_dl)
 
         # return the value for the metric specified in the start script
-        val_error =  metrics_callback.metrics[-1][metric].item()
+        if patience > 0:
+            # return the best score while early stopping is applied
+            val_error = early_stopping_callback.best_score.item()
+        else:
+            val_error = metrics_callback.metrics[-1][metric].item()
+
         logging.info('finished fitting for trial %s with %s = %s', trial_number, metric, val_error)
 
     if test_dl:
@@ -100,42 +107,69 @@ def get_training_params(trial, training_settings):
             training_params[key] = set_config_param(trial=trial,param_name=key,param=value, all_params=training_params)
     return training_params
 
+
+def get_model_and_data(model_name, trial, config, df_train, df_val, df_test, training_params, transformer, log_dir):
+    if model_name == 'BILSTM':
+        return oscml.hpo.hpo_bilstm.create(trial, config, df_train, df_val, df_test, training_params['optimiser'], transformer)
+    elif model_name == 'AttentiveFP':
+        return oscml.hpo.hpo_attentivefp.create(trial, config, df_train, df_val, df_test, training_params['optimiser'], transformer, log_dir)
+    elif model_name == 'SimpleGNN':
+        return oscml.hpo.hpo_simplegnn.create(trial, config, df_train, df_val, df_test, training_params['optimiser'], transformer)
+    return None
+
+
 def objective(trial, config, args, df_train, df_val, df_test, transformer, log_dir):
 
-    # init model and data loaders
+    # init parameters from config file
     model_name = config['model']['name']
+    training_params = get_training_params(trial, config['training'])
+    cv = config['training']['cross_validation']
+    seed = config['numerical_settings']['seed']
 
-    if model_name == 'BILSTM':
-        training_params = get_training_params(trial, config['training'])
-        model, train_dl, val_dl, test_dl = oscml.hpo.hpo_bilstm.create(trial, config, df_train, df_val, df_test, training_params['optimiser'], transformer)
-        trainer_type = "pl_lightning"
-
-    elif model_name == 'AttentiveFP':
-        training_params = get_training_params(trial, config['training'])
-        model, train_dl, val_dl, test_dl = oscml.hpo.hpo_attentivefp.create(trial, config, df_train, df_val, df_test, training_params['optimiser'], transformer, log_dir)
-        trainer_type = "pl_lightning"
-
-    elif model_name == 'SimpleGNN':
-        training_params = get_training_params(trial, config['training'])
-        model, train_dl, val_dl, test_dl = oscml.hpo.hpo_simplegnn.create(trial, config, df_train, df_val, df_test, training_params['optimiser'], transformer)
-        trainer_type = "pl_lightning"
-
-    elif model_name == 'RF':
-        training_params = get_training_params(trial, config['training'])
+    # deal with RF and SVR models first
+    if model_name == 'RF':
         model, x_train, y_train, x_val, y_val, x_test, y_test = oscml.hpo.hpo_rf.create(trial, config, df_train, df_val, df_test, training_params)
-        trainer_type = "scikit_learn"
-
-    elif model_name == 'SVR':
-        training_params = get_training_params(trial, config['training'])
-        model, x_train, y_train, x_val, y_val, x_test, y_test = oscml.hpo.hpo_svr.create(trial, config, df_train, df_val, df_test, training_params)
-        trainer_type = "scikit_learn"
-
-    # fit on training set and calculate metric on validation set
-    if trainer_type == "pl_lightning":
-        trial_number = trial.number
-        metric_value = fit_or_test(model, train_dl, val_dl, test_dl, training_params, log_dir, trial, trial_number, args.trials)
-    else:
         metric_value = oscml.utils.util_sklearn.train_and_test(x_train, y_train, x_val, y_val, x_test, y_test, model,
-                                                                  training_params['cross_validation'], training_params['criterion'])
+                                                               training_params['cross_validation'],
+                                                               training_params['criterion'])
+    elif model_name == 'SVR':
+        model, x_train, y_train, x_val, y_val, x_test, y_test = oscml.hpo.hpo_svr.create(trial, config, df_train, df_val, df_test, training_params)
+        metric_value = oscml.utils.util_sklearn.train_and_test(x_train, y_train, x_val, y_val, x_test, y_test, model,
+                                                               training_params['cross_validation'],
+                                                               training_params['criterion'])
+
+    # then move to BILSTM, AttentiveFP, and SimpleGNN models
+    elif model_name == 'BILSTM' or model_name == 'AttentiveFP' or model_name == 'SimpleGNN':
+        trial_number = trial.number
+        # apply cross-validation
+        if isinstance(cv, int) and cv > 1:
+            kf = KFold(n_splits=cv, random_state=seed, shuffle=True)
+            assert df_val is None, "validation set should be added to training set for cross validation"
+            kf.get_n_splits(df_train)
+            cv_index = 1
+            cv_metric = []
+            for train_index, val_index in kf.split(df_train):
+                logging.info('run %s of %s fold cross-validation', cv_index, cv)
+                model, train_dl, val_dl, test_dl = get_model_and_data(model_name, trial, config,
+                                                                      df_train.iloc[train_index], df_train.iloc[val_index],
+                                                                      df_test, training_params, transformer, log_dir)
+                metric_value = fit_or_test(model, train_dl, val_dl, test_dl, training_params, log_dir,
+                                           trial, trial_number, args.trials, str(cv_index))
+                # train_dl, val_dl, test_dl = oscml.models.model_gnn.get_dataloaders(type_dict,
+                #                                                                    df_train.iloc[train_index],
+                #                                                                    df_train.iloc[val_index], df_test,
+                #                                                                    transformer, batch_size=batch_size)
+                cv_index += 1
+                cv_metric.append(metric_value)
+            metric_value = np.array(cv_metric).mean()
+        # normal training and testing
+        else:
+            model, train_dl, val_dl, test_dl = get_model_and_data(model_name, trial, config, df_train, df_val, df_test,
+                                                                  training_params, transformer, log_dir)
+            metric_value = fit_or_test(model, train_dl, val_dl, test_dl, training_params, log_dir,
+                                       trial, trial_number, args.trials, '')
+
+    else:
+        return None
 
     return metric_value

@@ -48,7 +48,8 @@ def create(trial, config, df_train, df_val, df_test, training_params):
         raise ValueError("Unknown fingerprint type '"+ fp_type+"'. Only 'morgan' fingerprints supported.")
 
     if training_params['cross_validation']:
-        df_train = pd.concat([df_train, df_val])
+        #df_train = pd.concat([df_train, df_val]) this should be done in train.py already
+        assert df_val is None, "validation set should be added to training set for cross validation"
         x_train, y_train, scaler_svr_physical_data = oscml.models.model_kernel.preprocess_data_phys_and_struct(
             df_train, fp_params, train_size=1, column_smiles=x_column,
             columns_phys=None, column_y=y_column)

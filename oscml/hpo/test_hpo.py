@@ -43,7 +43,8 @@ def create_config(type_dict, model_name, model_specific):
             "epochs": 1,
             "patience": -1,
             "metric": 'val_loss',
-            "direction": 'minimize'
+            "direction": 'minimize',
+            "cross_validation": False
         }
 
     numerical_settings ={
@@ -253,9 +254,6 @@ class Test_HPO(unittest.TestCase):
     def test_train_rf_cep25000_one_trial_with_config_file(self):
 
         testargs = ['test',
-            #'--dataset', oscml.data.dataset_cep.CEP25000,
-            #'--metric', 'mse',
-            '--direction', 'minimize',
             '--trials', '1',
             '--config', './res/test_confhpo/confhpo_rf_cep25000.json',
         ]
@@ -265,9 +263,6 @@ class Test_HPO(unittest.TestCase):
     def test_train_svr_hopv15_one_trial_with_config_file(self):
 
         testargs = ['test',
-            #'--dataset', oscml.data.dataset_hopv15.HOPV15,
-            #'--metric', 'mse',
-            '--direction', 'minimize',
             '--trials', '1',
             '--config', './res/test_confhpo/confhpo_svr_hopv15.json',
         ]
@@ -280,17 +275,17 @@ if __name__ == '__main__':
     #unittest.main()
 
     suite = unittest.TestSuite()
-    #suite.addTest(Test_HPO('test_train_gnn_cep25000_one_trial'))
-    #suite.addTest(Test_HPO('test_train_gnn_hopv15_one_trial'))
-    #suite.addTest(Test_HPO('test_train_bilstm_cep25000_one_trial'))
-    #suite.addTest(Test_HPO('test_train_bilstm_hopv15_one_trial'))
-    #suite.addTest(Test_HPO('test_train_attentiveFP_cep25000_simple_featurizer'))
+    suite.addTest(Test_HPO('test_train_gnn_cep25000_one_trial'))
+    suite.addTest(Test_HPO('test_train_gnn_hopv15_one_trial'))
+    suite.addTest(Test_HPO('test_train_bilstm_cep25000_one_trial'))
+    suite.addTest(Test_HPO('test_train_bilstm_hopv15_one_trial'))
+    suite.addTest(Test_HPO('test_train_attentiveFP_cep25000_simple_featurizer'))
     suite.addTest(Test_HPO('test_hpo_attentiveFP_hopv15_full_featurizer'))
-    #suite.addTest(Test_HPO('test_hpo_attentiveFP_hopv15_full_featurizer_with_config_file'))
+    suite.addTest(Test_HPO('test_hpo_attentiveFP_hopv15_full_featurizer_with_config_file'))
     #suite.addTest(Test_HPO('test_load_model_from_checkpoint'))
     #suite.addTest(Test_HPO('test_gnn_cep25000_ckpt_test_only'))
     #suite.addTest(Test_HPO('test_gnn_cep25000_ckpt_resume_training'))
-    #suite.addTest(Test_HPO('test_train_rf_cep25000_one_trial_with_config_file'))
-    #suite.addTest(Test_HPO('test_train_svr_hopv15_one_trial_with_config_file'))
+    suite.addTest(Test_HPO('test_train_rf_cep25000_one_trial_with_config_file'))
+    suite.addTest(Test_HPO('test_train_svr_hopv15_one_trial_with_config_file'))
     runner = unittest.TextTestRunner()
     runner.run(suite)
