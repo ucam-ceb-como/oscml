@@ -149,7 +149,7 @@ def objective(trial, config, args, df_train, df_val, df_test, transformer, log_d
             cv_index = 1
             cv_metric = []
             for train_index, val_index in kf.split(df_train):
-                logging.info('run %s of %s fold cross-validation', cv_index)
+                logging.info('run %s of %s fold cross-validation', cv_index, cv)
                 model, train_dl, val_dl, test_dl = get_model_and_data(model_name, trial, config,
                                                                       df_train.iloc[train_index], df_train.iloc[val_index],
                                                                       df_test, training_params, transformer, log_dir)
