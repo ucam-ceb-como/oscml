@@ -31,6 +31,12 @@
 	"batch_size": 250,
 	"epochs": 10,
 	"patience": -1,
-	"metric": "val_loss"
+	"metric": "val_loss",
+	"direction": "minimize",
+	"__remove_this_bit__study_name": "attentivefp_cep25000_stratified",
+	"__remove_this_bit__storage": "sqlite:///attentivefp_cep25000_stratified.db",
+	"__remove_this_bit__load_if_exists": true,
+	"__remove_this_bit__n_trials": 1,
+	"__remove_this_bit__n_jobs": 1
     }
 }
