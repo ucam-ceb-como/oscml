@@ -51,7 +51,7 @@ def callback_on_trial_finished(study, trial):
         logging.error('THE MAXIMUM NUMBER OF FAILED TRIALS HAS BEEN REACHED, AND THE STUDY WILL STOP NOW.')
         study.stop()
 
-def start_hpo(args, objective, log_dir):
+def start_hpo(args, objective, log_dir, config):
 
     #optuna.logging.enable_default_handler()
     #optuna.logging.enable_propagation()  # Propagate logs to the root logger.
@@ -59,11 +59,18 @@ def start_hpo(args, objective, log_dir):
     #optuna.logging.set_verbosity(optuna.logging.DEBUG)
 
     try:
+        seed = config['numerical_settings'].get('seed')
+        study_name = config['training'].get('study_name',args.study_name)
+        direction = config['training'].get('direction',args.direction)
+        storage = config['training'].get('storage',args.storage)
+        load_if_exists = config['training'].get('load_if_exists',args.load_if_exists)
+        n_trials = config['training'].get('n_trials',args.trials)
+        n_jobs = config['training'].get('n_jobs',args.jobs)
 
-        study = create_study(direction=args.direction, seed=args.seed, storage=args.storage, study_name=args.study_name, load_if_exists=args.load_if_exists)
-        decorator = create_objective_decorator(objective, args.trials)
+        study = create_study(direction=direction, seed=seed, storage=storage, study_name=study_name, load_if_exists=load_if_exists)
+        decorator = create_objective_decorator(objective, n_trials)
         logging.info('starting HPO')
-        study.optimize(decorator, n_trials=args.trials, n_jobs=args.jobs, timeout=args.timeout,
+        study.optimize(decorator, n_trials=n_trials, n_jobs=n_jobs, timeout=args.timeout,
                 catch = (RuntimeError, ValueError, TypeError), callbacks=[callback_on_trial_finished],
                 gc_after_trial=True)
         logging.info('finished HPO')

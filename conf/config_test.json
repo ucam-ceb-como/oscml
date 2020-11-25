@@ -17,6 +17,8 @@
 	"param_15": {"type":"int","low":1,"high":10,"length":4,"direction":"constant"},
 	"param_16": {"type":"int","low":1,"high":10,"length":4,"direction":"constant","starting_value":[1]},
 	"param_17": {"type":"int","low":1,"high":10,"length":4,"direction":"increasing","starting_value":[1]},
-	"param_18": {"type":"int","low":1,"high":10,"length":4,"direction":"decreasing","starting_value":[10]}
+	"param_18": {"type":"int","low":1,"high":10,"length":4,"direction":"decreasing","starting_value":[10]},
+	"param_19": {"length":4,"starting_value":2},
+	"param_20": {"length":4,"starting_value":[2,3,5]}
     }
 }
