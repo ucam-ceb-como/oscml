@@ -62,10 +62,19 @@ def start_hpo(args, objective, log_dir, config, total_number_trials):
         seed = config['numerical_settings'].get('seed')
         study_name = config['training'].get('study_name',args.study_name)
         direction = config['training'].get('direction')
-        storage = config['training'].get('storage',args.storage)
+        storage_url = config['training'].get('storage',args.storage)
+        storage_timeout = config['training'].get('storage_timeout',5)
         load_if_exists = config['training'].get('load_if_exists',args.load_if_exists)
         n_trials = config['training'].get('n_trials',args.trials)
         n_jobs = config['training'].get('n_jobs',args.jobs)
+
+        if storage_url:
+            storage = optuna.storages.RDBStorage(
+            url=storage_url,
+            engine_kwargs={"connect_args": {"timeout": storage_timeout}},
+            )
+        else:
+            storage = None
 
         study = create_study(direction=direction, seed=seed, storage=storage, study_name=study_name, load_if_exists=load_if_exists)
         decorator = create_objective_decorator(objective, total_number_trials)
@@ -115,7 +124,7 @@ def check_for_existing_study(storage, study_name):
                     n_previous_trials = existing_study.n_trials
                     logging.info('found a study with name=%s and %s trials', storage, n_previous_trials)
                     log_best_trial(existing_study.best_trial)
-                    
+
         if not study_found:
             logging.info('there is no study with name=%s so far', storage)
 
