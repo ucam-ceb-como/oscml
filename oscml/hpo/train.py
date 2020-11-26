@@ -86,7 +86,11 @@ def start(config_dev=None):
         df_val = None
 
     n_previous_trials = oscml.hpo.optunawrapper.check_for_existing_study(config['training'].get('storage',args.storage), config['training'].get('study_name',args.study_name))
-    total_number_trials = args.trials + n_previous_trials - 1
+    n_trials = config['training'].get('n_trials',args.trials)
+    if n_previous_trials is not None:
+        total_number_trials = n_trials + n_previous_trials - 1
+    else:
+        total_number_trials = n_trials
 
     obj = functools.partial(oscml.hpo.objective.objective, config=config,
         df_train=df_train, df_val=df_val, df_test=df_test, transformer=transformer, log_dir=log_dir, 
