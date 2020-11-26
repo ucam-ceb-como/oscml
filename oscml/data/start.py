@@ -2,6 +2,8 @@ import argparse
 import logging
 import os
 
+import pandas as pd
+
 import oscml.utils.util
 import oscml.data.dataset_cep
 import oscml.data.dataset_hopv15
@@ -11,20 +13,20 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--src', type=str, default='.')
     parser.add_argument('--dst', type=str, default='.')
-    parser.add_argument('--task', type=int, choices=range(1,6), required=True)
+    parser.add_argument('--task', type=int, choices=range(1,7), required=True)
     args = parser.parse_args()
 
     oscml.utils.util.init_logging('.', '.')
 
     try:
-        logging.info('starting task=' + str(vars(args)))
+        logging.info('starting task=%s', vars(args))
 
         if not args.dst == '.':
             dir_name = os.path.dirname(args.dst)
             try:
                 os.makedirs(dir_name, exist_ok=True)
             except FileExistsError:
-                logging.info('destination dir already exists, dir=' + dir_name)
+                logging.info('destination dir already exists, dir=%s', dir_name)
 
         if args.task==1:
             # python ./oscml/data/start.py --task 1 --src ./data/raw/CEPDB.csv --dst ./data/processed/CEPDB_valid_SMILES.csv
@@ -49,6 +51,12 @@ if __name__ == '__main__':
             # skip all samples with PCE values <= 0.0001
             oscml.data.dataset_cep.store_CEP_cleaned_and_random(
                     args.src, args.dst, number_samples=[15000, 5000, 5000], threshold_skip=0.0001, random_state=100)
+        elif args.task==6:
+            df = pd.read_csv('./data/processed/HOPV_15_revised_2_processed_homo.csv')
+            oscml.data.dataset.add_k_fold_columns(df, 5, seed=200, column_name_prefix='ml_phase')
+            oscml.data.dataset.store(df, './data/processed/HOPV_15_revised_2_processed_homo_5fold.csv')
+
+
 
     except Exception as exc:
         logging.exception('task failed', exc_info=True)

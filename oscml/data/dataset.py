@@ -4,6 +4,7 @@ import logging
 import numpy as np
 import pandas as pd
 import sklearn
+import sklearn.model_selection
 from tqdm import tqdm
 
 import oscml.data.dataset_cep
@@ -199,3 +200,18 @@ def get_dataset_info(dataset):
         return oscml.data.dataset_hopv15.create_dataset_info_for_HOPV15()
     
     raise RuntimeError('unknown dataset=' + str(dataset))
+
+def add_k_fold_columns(df, k, seed, column_name_prefix='ml_phase'):
+    kfold = sklearn.model_selection.KFold(n_splits=k, shuffle=True, random_state=seed)
+    k=0
+    for train_index, test_index in kfold.split(df):
+        #print(len(train_index), len(test_index))
+        #print(test_index[:20])
+        column_name = column_name_prefix + '_fold_' + str(k)
+        df[column_name] = ''
+        column_index = df.columns.get_loc(column_name)
+        #print('COL IND', column_index)
+        df.iloc[train_index, column_index] = 'train'
+        df.iloc[test_index, column_index] = 'test'
+        k += 1
+ 

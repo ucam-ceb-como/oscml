@@ -116,7 +116,17 @@ class TestData(unittest.TestCase):
         mask = (df['ml_phase'] == 'train')
         assert len(df[mask]) ==15000
 
-
+    def test_add_k_fold_columns(self):
+        file = './data/processed/HOPV_15_revised_2_processed_homo.csv'
+        df = pd.read_csv(file)
+        k = 5
+        oscml.data.dataset.add_k_fold_columns(df, k, seed=200, column_name_prefix='ml_phase')
+        size = len(df)
+        mask = [False]*size
+        for i in range(k):
+            column = 'ml_phase_fold_' + str(i)
+            mask = (mask | (df[column] == 'test'))
+        assert all(mask)
 
 if __name__ == '__main__':
     unittest.main()
@@ -126,5 +136,6 @@ if __name__ == '__main__':
     #suite.addTest(TestData('test_dataset_info_for_hopv15'))
     #suite.addTest(TestData('test_dataset_transform_cep_25000'))
     #suite.addTest(TestData('test_dataset_skip_invalid_smiles'))
+    #suite.addTest(TestData('test_add_k_fold_columns'))
     #runner = unittest.TextTestRunner()
     #runner.run(suite)
