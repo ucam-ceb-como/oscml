@@ -53,7 +53,7 @@ def fit_or_test(model, train_dl, val_dl, test_dl, training_params,
     if cv_index == 'retrain' or cv_index == '':
         dirpath = log_dir + '/trial_' + str(trial_number) + '/' + cv_index + '/'
         checkpoint_callback = ModelCheckpoint(monitor=metric, dirpath=dirpath.replace('//', '/'),
-                                              filename='retrain_model',
+                                              filename=str(cv_index)+'_model',
                                               save_top_k=1, mode=direction[0:3])
         callbacks.append(checkpoint_callback)
 
@@ -99,7 +99,7 @@ def fit_or_test(model, train_dl, val_dl, test_dl, training_params,
 
     if test_dl:
         if cv_index == 'retrain' or cv_index == '':
-            ckpt_path = glob.glob(dirpath+'retrain_model' + '*.ckpt')[0].replace('\\', '/')
+            ckpt_path = glob.glob(dirpath+str(cv_index)+'_model' + '*.ckpt')[0].replace('\\', '/')
             model.load_state_dict(torch.load(ckpt_path)['state_dict'])
             model.eval()
             test_result = trainer.test(model, test_dataloaders=test_dl)[0]
