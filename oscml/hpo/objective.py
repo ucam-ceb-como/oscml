@@ -50,8 +50,9 @@ def fit_or_test(model, train_dl, val_dl, test_dl, training_params,
         early_stopping_callback = EarlyStopping(monitor=metric, min_delta=0.0, patience=patience, verbose=False, mode=direction)
         callbacks.append(early_stopping_callback)
 
-    if cv_index == 'retrain':
-        checkpoint_callback = ModelCheckpoint(monitor=metric, dirpath=log_dir+'/trial_'+str(trial_number)+'/retrain/',
+    if cv_index == 'retrain' or cv_index == '':
+        dirpath = log_dir + '/trial_' + str(trial_number) + '/' + cv_index + '/'
+        checkpoint_callback = ModelCheckpoint(monitor=metric, dirpath=dirpath.replace('//', '/'),
                                               filename='retrain_model',
                                               save_top_k=1, mode=direction[0:3])
         callbacks.append(checkpoint_callback)
@@ -97,16 +98,12 @@ def fit_or_test(model, train_dl, val_dl, test_dl, training_params,
         logging.info('[%s] finished fitting for trial %s with %s = %s', cv_index, trial_number, metric, val_error)
 
     if test_dl:
-        if cv_index == 'retrain':
-            ckpt_path = glob.glob(log_dir+'/trial_'+str(trial_number)+'/retrain/'+'retrain_model' + '*.ckpt')[0].replace('\\', '/')
+        if cv_index == 'retrain' or cv_index == '':
+            ckpt_path = glob.glob(dirpath+'retrain_model' + '*.ckpt')[0].replace('\\', '/')
             model.load_state_dict(torch.load(ckpt_path)['state_dict'])
             model.eval()
             test_result = trainer.test(model, test_dataloaders=test_dl)[0]
             logging.info('[%s] result=%s', cv_index, test_result)
-        else:
-            logging.info('[%s] testing trial %s / %s', cv_index, trial_number, n_trials)
-            test_result = trainer.test(model, test_dataloaders=test_dl)[0]
-            #logging.info('result=%s', test_result)
 
     if epochs > 0:
         return val_error
@@ -173,10 +170,6 @@ def objective(trial, config, df_train, df_val, df_test, transformer, log_dir, to
                                                                       df_test, training_params, transformer, log_dir)
                 metric_value = fit_or_test(model, train_dl, val_dl, test_dl, training_params, log_dir,
                                            trial, trial_number, total_number_trials, str(cv_index))
-                # train_dl, val_dl, test_dl = oscml.models.model_gnn.get_dataloaders(type_dict,
-                #                                                                    df_train.iloc[train_index],
-                #                                                                    df_train.iloc[val_index], df_test,
-                #                                                                    transformer, batch_size=batch_size)
                 cv_index += 1
                 cv_metric.append(metric_value)
             metric_value = np.array(cv_metric).mean()
