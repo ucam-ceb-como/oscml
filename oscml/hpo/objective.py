@@ -104,10 +104,6 @@ def fit_or_test(model, train_dl, val_dl, test_dl, training_params,
             model.eval()
             test_result = trainer.test(model, test_dataloaders=test_dl)[0]
             logging.info('[%s] result=%s', cv_index, test_result)
-        # else:
-        #     logging.info('[%s] testing trial %s / %s', cv_index, trial_number, n_trials)
-        #     test_result = trainer.test(model, test_dataloaders=test_dl)[0]
-            #logging.info('result=%s', test_result)
 
     if epochs > 0:
         return val_error
@@ -174,10 +170,6 @@ def objective(trial, config, df_train, df_val, df_test, transformer, log_dir, to
                                                                       df_test, training_params, transformer, log_dir)
                 metric_value = fit_or_test(model, train_dl, val_dl, test_dl, training_params, log_dir,
                                            trial, trial_number, total_number_trials, str(cv_index))
-                # train_dl, val_dl, test_dl = oscml.models.model_gnn.get_dataloaders(type_dict,
-                #                                                                    df_train.iloc[train_index],
-                #                                                                    df_train.iloc[val_index], df_test,
-                #                                                                    transformer, batch_size=batch_size)
                 cv_index += 1
                 cv_metric.append(metric_value)
             metric_value = np.array(cv_metric).mean()
