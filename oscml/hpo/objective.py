@@ -1,9 +1,13 @@
 import logging
 
+import glob
+import torch
 import numpy as np
 from sklearn.model_selection import KFold
+from sklearn.model_selection import ShuffleSplit
 import pytorch_lightning as pl
 from pytorch_lightning.callbacks.early_stopping import EarlyStopping
+from pytorch_lightning.callbacks import ModelCheckpoint
 
 import oscml.data.dataset
 import oscml.data.dataset_cep
@@ -31,6 +35,7 @@ def fit_or_test(model, train_dl, val_dl, test_dl, training_params,
 
     epochs = training_params['epochs']
     metric = training_params['metric']
+    direction = training_params['direction']
     patience = training_params['patience']
 
     # create callbacks for Optuna for receiving the metric values from Lightning and for
@@ -42,17 +47,23 @@ def fit_or_test(model, train_dl, val_dl, test_dl, training_params,
     #    callbacks.append(pruning_callback)
 
     if patience > 0:
-        early_stopping_callback = EarlyStopping(monitor=metric, min_delta=0.0, patience=patience, verbose=False, mode='min')
+        early_stopping_callback = EarlyStopping(monitor=metric, min_delta=0.0, patience=patience, verbose=False, mode=direction)
         callbacks.append(early_stopping_callback)
 
-    logging.info('model for trial %s=%s', trial_number, model)
+    if cv_index == 'retrain':
+        checkpoint_callback = ModelCheckpoint(monitor=metric, dirpath=log_dir+'/trial_'+str(trial_number)+'/retrain/',
+                                              filename='retrain_model',
+                                              save_top_k=1, mode=direction[0:3])
+        callbacks.append(checkpoint_callback)
+
+    logging.info('[%s] model for trial %s=%s', cv_index, trial_number, model)
 
     # create standard params for Ligthning trainer
 
     # if the number of trials is 1 then save checkpoints for the last and best epoch
     # otherwise if HPO is running (i.e. unspecified time-contrained number of trials or finite number > 1 )
     # then save no checkpoints
-    save_checkpoints =  (n_trials is not None and n_trials == 0)
+    save_checkpoints = (n_trials is not None and n_trials == 0)
     trainer_params = oscml.utils.util_lightning.get_standard_params_for_trainer(metric, save_checkpoints)
 
     # create Lightning metric logger that logs metric values for each trial in its own csv file
@@ -68,12 +79,12 @@ def fit_or_test(model, train_dl, val_dl, test_dl, training_params,
         'callbacks': callbacks
     })
 
-    logging.info('params for Lightning trainer=%s', trainer_params)
+    logging.info('[%s] params for Lightning trainer=%s', cv_index, trainer_params)
 
     trainer = pl.Trainer(**trainer_params)
 
     if epochs > 0:
-        logging.info('fitting trial %s / %s', trial_number, n_trials)
+        logging.info('[%s] fitting trial %s / %s', cv_index, trial_number, n_trials)
         trainer.fit(model, train_dataloader=train_dl, val_dataloaders=val_dl)
 
         # return the value for the metric specified in the start script
@@ -83,12 +94,19 @@ def fit_or_test(model, train_dl, val_dl, test_dl, training_params,
         else:
             val_error = metrics_callback.metrics[-1][metric].item()
 
-        logging.info('finished fitting for trial %s with %s = %s', trial_number, metric, val_error)
+        logging.info('[%s] finished fitting for trial %s with %s = %s', cv_index, trial_number, metric, val_error)
 
     if test_dl:
-        logging.info('testing trial %s / %s', trial_number, n_trials)
-        test_result = trainer.test(model, test_dataloaders=test_dl)[0]
-        #logging.info('result=%s', test_result)
+        if cv_index == 'retrain':
+            ckpt_path = glob.glob(log_dir+'/trial_'+str(trial_number)+'/retrain/'+'retrain_model' + '*.ckpt')[0].replace('\\', '/')
+            model.load_state_dict(torch.load(ckpt_path)['state_dict'])
+            model.eval()
+            test_result = trainer.test(model, test_dataloaders=test_dl)[0]
+            logging.info('[%s] result=%s', cv_index, test_result)
+        else:
+            logging.info('[%s] testing trial %s / %s', cv_index, trial_number, n_trials)
+            test_result = trainer.test(model, test_dataloaders=test_dl)[0]
+            #logging.info('result=%s', test_result)
 
     if epochs > 0:
         return val_error
@@ -162,6 +180,18 @@ def objective(trial, config, df_train, df_val, df_test, transformer, log_dir, to
                 cv_index += 1
                 cv_metric.append(metric_value)
             metric_value = np.array(cv_metric).mean()
+
+            # retrain model over the whole training and validation dataset (with random spliting of validation)
+            rs = ShuffleSplit(n_splits=1, test_size=0.20, random_state=seed+1)
+            rs.get_n_splits(df_train)
+            for retrain_index, reval_index in rs.split(df_train):
+
+                model, train_dl, val_dl, test_dl = get_model_and_data(model_name, trial, config,
+                                                                      df_train.iloc[retrain_index], df_train.iloc[reval_index],
+                                                                      df_test, training_params, transformer, log_dir)
+                fit_or_test(model, train_dl, val_dl, test_dl, training_params, log_dir,
+                            trial, trial_number, total_number_trials, 'retrain')
+
         # normal training and testing
         else:
             model, train_dl, val_dl, test_dl = get_model_and_data(model_name, trial, config, df_train, df_val, df_test,
