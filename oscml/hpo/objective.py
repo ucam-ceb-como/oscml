@@ -172,6 +172,15 @@ def objective(trial, config, df_train, df_val, df_test, transformer, log_dir, to
                 cv_index += 1
                 cv_metric.append(metric_value)
             metric_value = np.array(cv_metric).mean()
+            logging.info('[finished %s fold cross-validation] %s: %s', training_params['cross_validation'],
+                         training_params['metric'],
+                         cv_metric)
+            logging.info('[finished %s fold cross-validation] %s mean: %s', training_params['cross_validation'],
+                         training_params['metric'],
+                         metric_value)
+            logging.info('[finished %s fold cross-validation] %s variance: %s', training_params['cross_validation'],
+                         training_params['metric'],
+                         np.array(cv_metric).var())
 
             # retrain model over the whole training and validation dataset (with random spliting of validation)
             rs = ShuffleSplit(n_splits=1, test_size=0.20, random_state=seed+1)
