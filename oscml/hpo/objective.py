@@ -138,7 +138,10 @@ def objective(trial, config, df_train, df_val, df_test, transformer, log_dir, to
     model_name = config['model']['name']
     training_params = get_training_params(trial, config['training'])
     cv = config['training']['cross_validation']
+    metric = training_params['metric']
     seed = config['numerical_settings']['seed']
+    trial_number = trial.number
+    std = None
 
     # deal with RF and SVR models first
     if model_name == 'RF':
@@ -154,7 +157,6 @@ def objective(trial, config, df_train, df_val, df_test, transformer, log_dir, to
 
     # then move to BILSTM, AttentiveFP, and SimpleGNN models
     elif model_name == 'BILSTM' or model_name == 'AttentiveFP' or model_name == 'SimpleGNN':
-        trial_number = trial.number
         # apply cross-validation
         if isinstance(cv, int) and cv > 1:
             kf = KFold(n_splits=cv, random_state=seed, shuffle=True)
@@ -172,6 +174,7 @@ def objective(trial, config, df_train, df_val, df_test, transformer, log_dir, to
                 cv_index += 1
                 cv_metric.append(metric_value)
             metric_value = np.array(cv_metric).mean()
+            std = np.array(cv_metric).std()
 
             # retrain model over the whole training and validation dataset (with random spliting of validation)
             rs = ShuffleSplit(n_splits=1, test_size=0.20, random_state=seed+1)
@@ -193,5 +196,7 @@ def objective(trial, config, df_train, df_val, df_test, transformer, log_dir, to
 
     else:
         return None
+
+    logging.info('objective value for trial %s with %s = %s, std=%s', trial_number, metric, metric_value, std)
 
     return metric_value
