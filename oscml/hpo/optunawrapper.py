@@ -123,7 +123,10 @@ def check_for_existing_study(storage, study_name):
                     study_found = True
                     n_previous_trials = existing_study.n_trials
                     logging.info('found a study with name=%s and %s trials', storage, n_previous_trials)
-                    log_best_trial(existing_study.best_trial)
+                    if existing_study.best_trial:
+                        log_best_trial(existing_study.best_trial)
+                    else:
+                        logging.info('no best trial so far')
 
         if not study_found:
             logging.info('there is no study with name=%s so far', storage)
