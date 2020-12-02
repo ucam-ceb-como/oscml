@@ -6,12 +6,12 @@ channels:
   - dglteam
 dependencies:
   - python=3.7.7
-  - pytorch=1.6.0
-  - torchvision=0.7.0
+  - pytorch=1.6.0=py3.7_cuda102_cudnn7_0
+  - torchvision=0.7.0=py37_cu102
   - torchaudio=0.6.0
   - cudatoolkit=10.2
   - rdkit=2020.09.1.0
-  - dgl=0.5.2
+  - dgl-cuda10.2=0.5.2
   - pip=20.2.4
   - pip:
     - pytorch_lightning==1.0.4
@@ -23,3 +23,4 @@ dependencies:
     - seaborn==0.11.0
     - optuna==2.3.0
     - dgllife==0.2.6
+    - -e .
