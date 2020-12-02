@@ -9,6 +9,7 @@ from tqdm import tqdm
 
 import oscml.data.dataset_cep
 import oscml.data.dataset_hopv15
+import oscml.features.fingerprint
 import oscml.features.weisfeilerlehman
 import oscml.models.model_gnn
 from oscml.utils.util import smiles2mol
@@ -214,4 +215,29 @@ def add_k_fold_columns(df, k, seed, column_name_prefix='ml_phase'):
         df.iloc[train_index, column_index] = 'train'
         df.iloc[test_index, column_index] = 'test'
         k += 1
- 
+
+def add_fingerprint_columns(df, smiles_column, nBits=1048, radius=2):
+    params_fg_default = {
+		"type": "morgan",
+		"nBits": 1048,
+		"radius": 2,
+		"useChirality": True,
+		"useBondTypes": True
+		}
+    params_fg_default.update({'nBits': nBits, 'radius': radius})
+
+    df['rdkitmol'] = oscml.utils.util.smiles2mol_df(df, smiles_column)        
+    fp = oscml.features.fingerprint.get_fingerprints(df, 'rdkitmol', params_fg_default, as_numpy_array = True)
+    df = df.drop(columns=['rdkitmol'])
+
+    # convert an array of arrays (i.e. an array of fingerprints) into a matrix
+    fp = np.stack(fp, axis=0)
+    fp = fp.astype(int)
+    
+    for bit in range(nBits):
+        bit_column = fp[:,bit]
+        column_name = 'fp' + str(bit)
+        df[column_name] = bit_column
+       
+    return df
+    

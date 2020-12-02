@@ -13,7 +13,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--src', type=str, default='.')
     parser.add_argument('--dst', type=str, default='.')
-    parser.add_argument('--task', type=int, choices=range(1,7), required=True)
+    parser.add_argument('--task', type=int, choices=range(1,8), required=True)
     args = parser.parse_args()
 
     oscml.utils.util.init_logging('.', '.')
@@ -55,7 +55,13 @@ if __name__ == '__main__':
             df = pd.read_csv('./data/processed/HOPV_15_revised_2_processed_homo.csv')
             oscml.data.dataset.add_k_fold_columns(df, 5, seed=200, column_name_prefix='ml_phase')
             oscml.data.dataset.store(df, './data/processed/HOPV_15_revised_2_processed_homo_5fold.csv')
-
+        elif args.task==7:
+            # python ./oscml/data/start.py --task 7 --src ./data/processed/HOPV_15_revised_2_processed_homo.csv --dst ./data/processed/HOPV_15_fingerprints_1048.csv
+            # python ./oscml/data/start.py --task 7 --src ./data/processed/CEPDB_25000.csv --dst ./data/processed/CEPDB_25000_fingerprints_1048.csv
+            df = pd.read_csv(args.src)
+            #df = oscml.data.dataset.add_fingerprint_columns(df, 'smiles', 1048, 2)
+            df = oscml.data.dataset.add_fingerprint_columns(df, 'SMILES_str', 1048, 2)
+            oscml.data.dataset.store(df, args.dst)
 
 
     except Exception as exc:

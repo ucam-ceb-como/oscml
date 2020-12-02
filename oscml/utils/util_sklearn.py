@@ -73,6 +73,7 @@ def train_and_test(x_train, y_train, x_val, y_val, x_test, y_test, model, cross_
 
         model.fit(x_train, y_train)
     
+        """
         y_pred_train = model.predict(x_train)
         y_pred_val = model.predict(x_val)
         y_pred_test = model.predict(x_test)
@@ -89,8 +90,24 @@ def train_and_test(x_train, y_train, x_val, y_val, x_test, y_test, model, cross_
         logging.info('train result=%s', result_train)
         logging.info('val result=%s', result_val)
         logging.info('test result=%s', result_test)
+        """
 
-        
-        objective_value = result_val[metric]
+        calculate_metrics(model, x_train, y_train, metric, 'train')
+        objective_value = 0.
+        if x_val:
+            result = calculate_metrics(model, x_val, y_val, metric, 'val')
+            objective_value = result[metric]
+        if x_test:
+            result = calculate_metrics(model, x_test, y_test, metric, 'test')
 
     return objective_value
+
+def calculate_metrics(model, x, y, metric, ml_phase):
+    y_pred = model.predict(x)
+    if metric == 'mse':
+        result = oscml.utils.util.calculate_metrics(y, y_pred)
+    else: # accuracy
+        result = {'accuracy': sklearn.metrics.accuracy_score(y, y_pred)}
+        
+    logging.info('%s result=%s', ml_phase, result)
+    return result
