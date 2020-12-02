@@ -134,6 +134,9 @@ def get_model_and_data(model_name, trial, config, df_train, df_val, df_test, tra
 
 def objective(trial, config, df_train, df_val, df_test, transformer, log_dir, total_number_trials):
 
+    # release GPU memory before start each trial
+    torch.cuda.empty_cache()
+
     # init parameters from config file
     model_name = config['model']['name']
     training_params = get_training_params(trial, config['training'])
