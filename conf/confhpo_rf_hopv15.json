@@ -26,8 +26,8 @@
 		"type":"morgan",
 		"nBits":{"type":"categorical","choices": [128, 256, 512, 1024, 2048, 4096]},
 		"radius": {"type":"categorical","choices": [2, 3, 4, 5]},
-		"useChirality": {"type":"categorical","choices":[true, false]},
-		"useBondTypes":{"type":"categorical","choices":[true, false]}
+		"useChirality": true,
+		"useBondTypes": true
 		}
     },
 "training":{
@@ -36,8 +36,9 @@
 	"direction": "minimize",
 	"__remove_this_bit__study_name": "rf_hopv15_homo",
 	"__remove_this_bit__storage": "sqlite:///rf_hopv15_homo.db",
+	"__remove_this_bit__storage_timeout": 1000,
 	"__remove_this_bit__load_if_exists": true,
-	"__remove_this_bit__n_trials": 50,
-	"__remove_this_bit__n_jobs": 1
+	"__remove_this_bit__n_trials": 20,
+	"__remove_this_bit__n_jobs": 20
     }
 }

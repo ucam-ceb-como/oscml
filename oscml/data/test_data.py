@@ -10,13 +10,18 @@ import oscml.utils.util
 from oscml.utils.util import smiles2mol
 
 
-def assert_PCE_values(df_100, df):
-    for i in range(len(df_100)):
-        df_100_pce = df_100['id'].iloc[i]
-        pce = df['id'].iloc[i]
-        assert df_100_pce == pce
-
 class TestData(unittest.TestCase):
+
+    def assert_PCE_values(self, df_100, df):
+        for i in range(len(df_100)):
+            df_100_pce = df_100['id'].iloc[i]
+            pce = df['id'].iloc[i]
+            self.assertEqual(df_100_pce, pce)
+
+    def assertEqualArray(self, a, b):
+        self.assertEqual(len(a), len(b))
+        for i in range(len(a)):
+            self.assertEqual(a[i],b[i])
 
     @classmethod
     def setUpClass(cls):
@@ -47,17 +52,17 @@ class TestData(unittest.TestCase):
         smiles = '[SiH2]1C=c2c3cc([se]c3c3cc4ccccc4cc3c2=C1)-c1cncs1'
         mol = smiles2mol(smiles)
         info.update(mol, smiles)
-        assert info.max_molecule_size == 38
-        assert info.max_smiles_length == 50
-        assert len(info.mol2seq.fragment_dict) == 16
-        assert len(info.node_types) == 7
+        self.assertEqual(38, info.max_molecule_size)
+        self.assertEqual(50, info.max_smiles_length)
+        self.assertEqual(16, len(info.mol2seq.fragment_dict))
+        self.assertEqual(7, len(info.node_types))
 
         smiles = '[SiH2]1cc2cccc(-c3ccc(-c4scc5[nH]ccc45)c4nsnc34)c2c1'
         mol = smiles2mol(smiles)
         info.update(mol, smiles)
-        assert info.max_molecule_size == 39
-        assert info.max_smiles_length == 52
-        assert len(info.node_types) == 7
+        self.assertEqual(39, info.max_molecule_size)
+        self.assertEqual(52, info.max_smiles_length)
+        self.assertEqual(7, len(info.node_types))
 
     def test_dataset_info_for_cepdb_25000(self):
 
@@ -101,30 +106,57 @@ class TestData(unittest.TestCase):
         df = pd.read_csv(self.path_CEPDB)
         df_cleaned = oscml.data.dataset_cep.skip_all_small_pce_values(df.copy(), 0.0001)
         df_train, _ = oscml.data.dataset_cep.sample_without_replacement(df_cleaned, number_samples=1000, step=1.)
-        assert len(df_train) == 1000
+        self.assertEqual(1000, len(df_train))
 
         df_cleaned = oscml.data.dataset_cep.skip_all_small_pce_values(df.copy(), 0.0001)
         df_train, df_val, df_test = oscml.data.dataset_cep.sample_without_replacement(df_cleaned, number_samples=[1000, 200, 300], step=.2)
-        assert len(df_train) == 1000
-        assert len(df_val) == 200
-        assert len(df_test) == 300
+        self.assertEqual(1000, len(df_train))
+        self.assertEqual(200, len(df_val))
+        self.assertEqual(300, len(df_test))
 
     def test_store_CEP_cleaned_and_stratified(self):
         df = oscml.data.dataset_cep.store_CEP_cleaned_and_stratified(
             self.path_CEPDB, dst=None, number_samples=[15000, 5000, 5000], threshold_skip=0.0001)
-        assert len(df) == 25000
+        self.assertEqual(25000, len(df))
         mask = (df['ml_phase'] == 'train')
-        assert len(df[mask]) ==15000
+        self.assertEqual(15000, len(df[mask]))
 
+    def test_add_k_fold_columns(self):
+        file = './data/processed/HOPV_15_revised_2_processed_homo.csv'
+        df = pd.read_csv(file)
+        k = 5
+        oscml.data.dataset.add_k_fold_columns(df, k, seed=200, column_name_prefix='ml_phase')
+        size = len(df)
+        mask = [False]*size
+        for i in range(k):
+            column = 'ml_phase_fold_' + str(i)
+            mask = (mask | (df[column] == 'test'))
+        self.assertTrue(all(mask))
+
+    def test_add_fingerprint_columns(self):
+        file = './data/processed/HOPV_15_revised_2_processed_homo.csv'
+        df = pd.read_csv(file)[:4]
+
+        print(df['smiles'])
+
+        nBits = 128
+        expected_number_columns = len(df.columns) + 128
+
+        df = oscml.data.dataset.add_fingerprint_columns(df, 'smiles', nBits, 2)
+        self.assertEqualArray([0,0,0,0], df['fp0'].to_numpy())
+        self.assertEqualArray([1,0,1,1], df['fp3'].to_numpy())
+        self.assertEqual(expected_number_columns, len(df.columns))
 
 
 if __name__ == '__main__':
-    unittest.main()
+    #unittest.main()
   
-    #suite = unittest.TestSuite()
+    suite = unittest.TestSuite()
     #suite.addTest(TestData('test_dataset_info_for_cepdb_25000'))
     #suite.addTest(TestData('test_dataset_info_for_hopv15'))
     #suite.addTest(TestData('test_dataset_transform_cep_25000'))
     #suite.addTest(TestData('test_dataset_skip_invalid_smiles'))
-    #runner = unittest.TextTestRunner()
-    #runner.run(suite)
+    #suite.addTest(TestData('test_add_k_fold_columns'))
+    suite.addTest(TestData('test_add_fingerprint_columns'))
+    runner = unittest.TextTestRunner()
+    runner.run(suite)

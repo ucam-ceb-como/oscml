@@ -51,7 +51,7 @@ def callback_on_trial_finished(study, trial):
         logging.error('THE MAXIMUM NUMBER OF FAILED TRIALS HAS BEEN REACHED, AND THE STUDY WILL STOP NOW.')
         study.stop()
 
-def start_hpo(args, objective, log_dir, config):
+def start_hpo(args, objective, log_dir, config, total_number_trials):
 
     #optuna.logging.enable_default_handler()
     #optuna.logging.enable_propagation()  # Propagate logs to the root logger.
@@ -61,14 +61,23 @@ def start_hpo(args, objective, log_dir, config):
     try:
         seed = config['numerical_settings'].get('seed')
         study_name = config['training'].get('study_name',args.study_name)
-        direction = config['training'].get('direction',args.direction)
-        storage = config['training'].get('storage',args.storage)
+        direction = config['training'].get('direction')
+        storage_url = config['training'].get('storage',args.storage)
+        storage_timeout = config['training'].get('storage_timeout',5)
         load_if_exists = config['training'].get('load_if_exists',args.load_if_exists)
         n_trials = config['training'].get('n_trials',args.trials)
         n_jobs = config['training'].get('n_jobs',args.jobs)
 
+        if storage_url:
+            storage = optuna.storages.RDBStorage(
+            url=storage_url,
+            engine_kwargs={"connect_args": {"timeout": storage_timeout}},
+            )
+        else:
+            storage = None
+
         study = create_study(direction=direction, seed=seed, storage=storage, study_name=study_name, load_if_exists=load_if_exists)
-        decorator = create_objective_decorator(objective, n_trials)
+        decorator = create_objective_decorator(objective, total_number_trials)
         logging.info('starting HPO')
         study.optimize(decorator, n_trials=n_trials, n_jobs=n_jobs, timeout=args.timeout,
                 catch = (RuntimeError, ValueError, TypeError), callbacks=[callback_on_trial_finished],
@@ -87,6 +96,10 @@ def start_hpo(args, objective, log_dir, config):
     else:
         logging.info('finished successfully')
 
+def log_best_trial(trial):
+    logging.info('best trial number=%s', trial.number)
+    logging.info('best trial value=%s', trial.value)
+    logging.info('best trial params=%s', trial.params)
 
 def log_and_save(study, path):
 
@@ -97,7 +110,27 @@ def log_and_save(study, path):
 
     logging.info('final study statistics: number of trials=%s', get_statistics(study))
 
-    trial = study.best_trial
-    logging.info('best trial number=%s', trial.number)
-    logging.info('best trial value=%s', trial.value)
-    logging.info('best trial params=%s', trial.params)
+    log_best_trial(study.best_trial)
+
+def check_for_existing_study(storage, study_name):
+    n_previous_trials = 0
+    try:
+        if storage:
+            study_found = False
+            summary = optuna.study.get_all_study_summaries(storage=storage)
+            for existing_study in summary:
+                if existing_study.study_name == study_name:
+                    study_found = True
+                    n_previous_trials = existing_study.n_trials
+                    logging.info('found a study with name=%s and %s trials', storage, n_previous_trials)
+                    if existing_study.best_trial:
+                        log_best_trial(existing_study.best_trial)
+                    else:
+                        logging.info('no best trial so far')
+
+        if not study_found:
+            logging.info('there is no study with name=%s so far', storage)
+
+    except:
+        logging.info('exception - there is no study with name=%s so far', storage)
+    return n_previous_trials

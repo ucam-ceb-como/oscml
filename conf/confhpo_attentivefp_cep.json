@@ -19,7 +19,6 @@
 		"num_timesteps":{"type":"int","low":1,"high":4},
 		"dropout":{"type":"uniform","low":0.0,"high":0.3}
 		},
-	"type_dict": "CEP25000",
 	"featurizer": "full"
 	},
 "training":{
@@ -33,10 +32,12 @@
 	"patience": 20,
 	"metric": "val_loss",
 	"direction": "minimize",
+	"cross_validation": false,
 	"__remove_this_bit__study_name": "attentivefp_cep25000_stratified",
 	"__remove_this_bit__storage": "sqlite:///attentivefp_cep25000_stratified.db",
+	"__remove_this_bit__storage_timeout": 1000,
 	"__remove_this_bit__load_if_exists": true,
-	"__remove_this_bit__n_trials": 50,
-	"__remove_this_bit__n_jobs": 1
+	"__remove_this_bit__n_trials": 20,
+	"__remove_this_bit__n_jobs": 20
     }
 }

@@ -23,8 +23,8 @@ def get_standard_params_for_trainer(metric, save_checkpoints=True):
         checkpoint_callback = None
 
     # does not work at the moment on laptop with gpu
-    #gpus = 1 if torch.cuda.is_available() else 0
-    gpus = 0
+    gpus = 1 if torch.cuda.is_available() else 0
+    #gpus = 0
 
     params = {
         'log_every_n_steps': 1,

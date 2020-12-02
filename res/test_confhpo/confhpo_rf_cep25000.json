@@ -32,6 +32,7 @@
     },
 "training":{
     "criterion": "mse",
+	"direction": "minimize",
     "cross_validation": false
     }
 }

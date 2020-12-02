@@ -1,15 +1,15 @@
 import argparse
 import datetime
 import functools
+import json
 import logging
 import os
-import json
+import random
 from collections import OrderedDict
 
-import torch
 import numpy as np
-import random
 import pandas as pd
+import torch
 
 import oscml.hpo.objective
 import oscml.hpo.optunawrapper
@@ -37,26 +37,13 @@ def start(config_dev=None):
     parser = argparse.ArgumentParser()
     parser.add_argument('--src', type=str, default='.')
     parser.add_argument('--dst', type=str, default='.')
-    #parser.add_argument('--epochs', type=int, default=1)
     parser.add_argument('--trials', type=int, default=None)
     parser.add_argument('--timeout', type=int, default=None, help='Stop study after the given number of second(s). If this argument is not set, the study is executed without time limitation.')
     parser.add_argument('--jobs', type=int, default=1)
     parser.add_argument('--config', type=str, default=None)
-    #parser.add_argument('--model', type=str, default=None, choices=['BILSTM', 'AttentiveFP', 'SimpleGNN'])
-    #parser.add_argument('--ckpt', type=str)
-    #parser.add_argument('--dataset', type=str)
-    #parser.add_argument('--datasetpath', type=str, default=None)
-    #parser.add_argument('--seed', type=int, default=200)
-    #parser.add_argument('--cv', type=int, default=None)
     parser.add_argument('--storage', type=none_or_str, default=None)
     parser.add_argument('--study_name', type=none_or_str, default=None)
     parser.add_argument('--load_if_exists', type=bool_or_str, default=False)
-    #parser.add_argument('--metric', type=str, default='val_loss')
-    # TODO default for --direction is quite error prone for HPO, can easily be forgotten
-    # should it be moved to the config file?
-    # should we provide a HPO section in the config file?
-    parser.add_argument('--direction', type=str, default='minimize', choices=['minimize', 'maximize'])
-    #parser.add_argument('--featurizer', type=str, choices=['simple', 'full'], default='full')
     args = parser.parse_args()
 
     if args.config:
@@ -98,10 +85,18 @@ def start(config_dev=None):
         df_train = pd.concat([df_train, df_val])
         df_val = None
 
-    obj = functools.partial(oscml.hpo.objective.objective, config=config, args=args,
-        df_train=df_train, df_val=df_val, df_test=df_test, transformer=transformer, log_dir=log_dir)
+    n_previous_trials = oscml.hpo.optunawrapper.check_for_existing_study(config['training'].get('storage',args.storage), config['training'].get('study_name',args.study_name))
+    n_trials = config['training'].get('n_trials',args.trials)
+    if n_previous_trials is not None:
+        total_number_trials = n_trials + n_previous_trials - 1
+    else:
+        total_number_trials = n_trials
 
-    return oscml.hpo.optunawrapper.start_hpo(args=args, objective=obj, log_dir=log_dir, config=config)
+    obj = functools.partial(oscml.hpo.objective.objective, config=config,
+        df_train=df_train, df_val=df_val, df_test=df_test, transformer=transformer, log_dir=log_dir, 
+        total_number_trials=total_number_trials)
+
+    return oscml.hpo.optunawrapper.start_hpo(args=args, objective=obj, log_dir=log_dir, config=config, total_number_trials=total_number_trials)
 
 
 if __name__ == '__main__':

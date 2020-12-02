@@ -36,8 +36,9 @@
 	"cross_validation": 5,
 	"__remove_this_bit__study_name": "bilstm_hopv15_homo",
 	"__remove_this_bit__storage": "sqlite:///bilstm_hopv15_homo.db",
+	"__remove_this_bit__storage_timeout": 1000,
 	"__remove_this_bit__load_if_exists": true,
-	"__remove_this_bit__n_trials": 50,
-	"__remove_this_bit__n_jobs": 1
+	"__remove_this_bit__n_trials": 20,
+	"__remove_this_bit__n_jobs": 20
     }
 }

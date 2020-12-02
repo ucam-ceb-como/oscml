@@ -19,7 +19,6 @@
 		"num_timesteps":{"type":"int","low":1,"high":4},
 		"dropout":{"type":"uniform","low":0.0,"high":0.3}
 		},
-	"type_dict": "HOPV15",
 	"featurizer": "full"
 	},
 "training":{
@@ -31,6 +30,8 @@
 	"batch_size": 40,
 	"epochs": 1,
 	"patience": -1,
-	"metric": "val_loss"
+	"metric": "val_loss",
+	"direction": "minimize",
+	"cross_validation": false
     }
 }

@@ -42,10 +42,19 @@ def create_config(type_dict, model_name, model_specific):
             "batch_size": 250,
             "epochs": 1,
             "patience": -1,
-            "metric": 'val_loss'
+            "metric": 'val_loss',
+            "direction": 'minimize',
+            "cross_validation": False
+        }
+
+    numerical_settings ={
+	        "seed": 1,
+            "cudnn_deterministic": True,
+            "cudnn_benchmark": False
         }
 
     return {
+        "numerical_settings": numerical_settings,
         "dataset": dataset,
         "model":{
             "name": model_name,
@@ -245,9 +254,6 @@ class Test_HPO(unittest.TestCase):
     def test_train_rf_cep25000_one_trial_with_config_file(self):
 
         testargs = ['test',
-            #'--dataset', oscml.data.dataset_cep.CEP25000,
-            #'--metric', 'mse',
-            '--direction', 'minimize',
             '--trials', '1',
             '--config', './res/test_confhpo/confhpo_rf_cep25000.json',
         ]
@@ -257,9 +263,6 @@ class Test_HPO(unittest.TestCase):
     def test_train_svr_hopv15_one_trial_with_config_file(self):
 
         testargs = ['test',
-            #'--dataset', oscml.data.dataset_hopv15.HOPV15,
-            #'--metric', 'mse',
-            '--direction', 'minimize',
             '--trials', '1',
             '--config', './res/test_confhpo/confhpo_svr_hopv15.json',
         ]

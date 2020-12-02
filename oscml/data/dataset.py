@@ -4,10 +4,12 @@ import logging
 import numpy as np
 import pandas as pd
 import sklearn
+import sklearn.model_selection
 from tqdm import tqdm
 
 import oscml.data.dataset_cep
 import oscml.data.dataset_hopv15
+import oscml.features.fingerprint
 import oscml.features.weisfeilerlehman
 import oscml.models.model_gnn
 from oscml.utils.util import smiles2mol
@@ -199,3 +201,43 @@ def get_dataset_info(dataset):
         return oscml.data.dataset_hopv15.create_dataset_info_for_HOPV15()
     
     raise RuntimeError('unknown dataset=' + str(dataset))
+
+def add_k_fold_columns(df, k, seed, column_name_prefix='ml_phase'):
+    kfold = sklearn.model_selection.KFold(n_splits=k, shuffle=True, random_state=seed)
+    k=0
+    for train_index, test_index in kfold.split(df):
+        #print(len(train_index), len(test_index))
+        #print(test_index[:20])
+        column_name = column_name_prefix + '_fold_' + str(k)
+        df[column_name] = ''
+        column_index = df.columns.get_loc(column_name)
+        #print('COL IND', column_index)
+        df.iloc[train_index, column_index] = 'train'
+        df.iloc[test_index, column_index] = 'test'
+        k += 1
+
+def add_fingerprint_columns(df, smiles_column, nBits=1048, radius=2):
+    params_fg_default = {
+		"type": "morgan",
+		"nBits": 1048,
+		"radius": 2,
+		"useChirality": True,
+		"useBondTypes": True
+		}
+    params_fg_default.update({'nBits': nBits, 'radius': radius})
+
+    df['rdkitmol'] = oscml.utils.util.smiles2mol_df(df, smiles_column)        
+    fp = oscml.features.fingerprint.get_fingerprints(df, 'rdkitmol', params_fg_default, as_numpy_array = True)
+    df = df.drop(columns=['rdkitmol'])
+
+    # convert an array of arrays (i.e. an array of fingerprints) into a matrix
+    fp = np.stack(fp, axis=0)
+    fp = fp.astype(int)
+    
+    for bit in range(nBits):
+        bit_column = fp[:,bit]
+        column_name = 'fp' + str(bit)
+        df[column_name] = bit_column
+       
+    return df
+    
