@@ -57,7 +57,7 @@ def fit_or_test(model, train_dl, val_dl, test_dl, training_params,
                                               save_top_k=1, mode=direction[0:3])
         callbacks.append(checkpoint_callback)
 
-    logging.info('[%s] model for trial %s=%s', cv_index, trial_number, model)
+    logging.info('[trial %s - %s] model for trial %s=%s', trial_number, cv_index, trial_number, model)
 
     # create standard params for Ligthning trainer
 
@@ -79,12 +79,12 @@ def fit_or_test(model, train_dl, val_dl, test_dl, training_params,
         'callbacks': callbacks
     })
 
-    logging.info('[%s] params for Lightning trainer=%s', cv_index, trainer_params)
+    logging.info('[trial %s - %s] params for Lightning trainer=%s', trial_number, cv_index, trainer_params)
 
     trainer = pl.Trainer(**trainer_params)
 
     if epochs > 0:
-        logging.info('[%s] fitting trial %s / %s', cv_index, trial_number, n_trials)
+        logging.info('[trial %s - %s] fitting trial %s / %s', trial_number, cv_index, trial_number, n_trials)
         trainer.fit(model, train_dataloader=train_dl, val_dataloaders=val_dl)
 
         # return the value for the metric specified in the start script
@@ -94,7 +94,7 @@ def fit_or_test(model, train_dl, val_dl, test_dl, training_params,
         else:
             val_error = metrics_callback.metrics[-1][metric].item()
 
-        logging.info('[%s] finished fitting for trial %s with %s = %s', cv_index, trial_number, metric, val_error)
+        logging.info('[trial %s - %s] finished fitting for trial %s with %s = %s', trial_number, cv_index, trial_number, metric, val_error)
 
     if test_dl:
         if cv_index == 'retrain' or cv_index == '':
@@ -102,7 +102,7 @@ def fit_or_test(model, train_dl, val_dl, test_dl, training_params,
             model.load_state_dict(torch.load(ckpt_path)['state_dict'])
             model.eval()
             test_result = trainer.test(model, test_dataloaders=test_dl)[0]
-            logging.info('[%s] result=%s', cv_index, test_result)
+            logging.info('[trial %s - %s] result=%s', trial_number, cv_index, test_result)
 
     if epochs > 0:
         return val_error
@@ -134,11 +134,17 @@ def get_model_and_data(model_name, trial, config, df_train, df_val, df_test, tra
 
 def objective(trial, config, df_train, df_val, df_test, transformer, log_dir, total_number_trials):
 
+    # release GPU memory before start each trial
+    torch.cuda.empty_cache()
+
     # init parameters from config file
     model_name = config['model']['name']
     training_params = get_training_params(trial, config['training'])
     cv = config['training']['cross_validation']
+    metric = training_params['metric']
     seed = config['numerical_settings']['seed']
+    trial_number = trial.number
+    std = None
 
     # deal with RF and SVR models first
     if model_name == 'RF':
@@ -154,7 +160,6 @@ def objective(trial, config, df_train, df_val, df_test, transformer, log_dir, to
 
     # then move to BILSTM, AttentiveFP, and SimpleGNN models
     elif model_name == 'BILSTM' or model_name == 'AttentiveFP' or model_name == 'SimpleGNN':
-        trial_number = trial.number
         # apply cross-validation
         if isinstance(cv, int) and cv > 1:
             kf = KFold(n_splits=cv, random_state=seed, shuffle=True)
@@ -163,7 +168,7 @@ def objective(trial, config, df_train, df_val, df_test, transformer, log_dir, to
             cv_index = 1
             cv_metric = []
             for train_index, val_index in kf.split(df_train):
-                logging.info('run %s of %s fold cross-validation', cv_index, cv)
+                logging.info('[trial %s] run %s of %s fold cross-validation', trial_number, cv_index, cv)
                 model, train_dl, val_dl, test_dl = get_model_and_data(model_name, trial, config,
                                                                       df_train.iloc[train_index], df_train.iloc[val_index],
                                                                       df_test, training_params, transformer, log_dir)
@@ -172,6 +177,20 @@ def objective(trial, config, df_train, df_val, df_test, transformer, log_dir, to
                 cv_index += 1
                 cv_metric.append(metric_value)
             metric_value = np.array(cv_metric).mean()
+            std = np.array(cv_metric).std()
+
+            logging.info('[trial %s - finished %s fold cross-validation] %s: %s', trial_number,
+                         training_params['cross_validation'],
+                         training_params['metric'],
+                         cv_metric)
+            logging.info('[trial %s - finished %s fold cross-validation] %s mean: %s', trial_number,
+                         training_params['cross_validation'],
+                         training_params['metric'],
+                         metric_value)
+            logging.info('[trial %s - finished %s fold cross-validation] %s variance: %s', trial_number,
+                         training_params['cross_validation'],
+                         training_params['metric'],
+                         np.array(cv_metric).var())
 
             # retrain model over the whole training and validation dataset (with random spliting of validation)
             rs = ShuffleSplit(n_splits=1, test_size=0.20, random_state=seed+1)
@@ -193,5 +212,7 @@ def objective(trial, config, df_train, df_val, df_test, transformer, log_dir, to
 
     else:
         return None
+
+    logging.info('objective value for trial %s with %s = %s, std=%s', trial_number, metric, metric_value, std)
 
     return metric_value
