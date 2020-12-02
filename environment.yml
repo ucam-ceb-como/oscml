@@ -6,8 +6,8 @@ channels:
   - dglteam
 dependencies:
   - python=3.7.7
-  - pytorch=1.6.0=py3.7_cuda102_cudnn7_0
-  - torchvision=0.7.0=py37_cu102
+  - pytorch=1.6.0
+  - torchvision=0.7.0
   - torchaudio=0.6.0
   - cudatoolkit=10.2
   - rdkit=2020.09.1.0
