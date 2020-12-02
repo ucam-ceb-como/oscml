@@ -1,21 +1,22 @@
 import argparse
 import datetime
 import functools
+import json
 import logging
 import os
-import json
+import random
 from collections import OrderedDict
 
-import torch
 import numpy as np
-import random
+import pandas as pd
+import torch
 
 import oscml.hpo.objective
 import oscml.hpo.optunawrapper
 
 
-def get_dataframes(dataset, type_dict):
-    df_train, df_val, df_test, transformer = oscml.data.dataset.get_dataframes(dataset=dataset, type_dict=type_dict, train_size=283, test_size=30)
+def get_dataframes(dataset, seed):
+    df_train, df_val, df_test, transformer = oscml.data.dataset.get_dataframes(dataset=dataset, seed = seed)
     return df_train, df_val, df_test, transformer
 
 def none_or_str(value):
@@ -36,32 +37,35 @@ def start(config_dev=None):
     parser = argparse.ArgumentParser()
     parser.add_argument('--src', type=str, default='.')
     parser.add_argument('--dst', type=str, default='.')
-    parser.add_argument('--epochs', type=int, default=1)
     parser.add_argument('--trials', type=int, default=None)
     parser.add_argument('--timeout', type=int, default=None, help='Stop study after the given number of second(s). If this argument is not set, the study is executed without time limitation.')
     parser.add_argument('--jobs', type=int, default=1)
     parser.add_argument('--config', type=str, default=None)
-    #parser.add_argument('--model', type=str, default=None, choices=['BILSTM', 'AttentiveFP', 'SimpleGNN'])
-    #parser.add_argument('--ckpt', type=str)
-    parser.add_argument('--dataset', type=str)
-    #parser.add_argument('--datasetpath', type=str, default=None)
-    parser.add_argument('--seed', type=int, default=200)
-    parser.add_argument('--cv', type=int, default=None)
     parser.add_argument('--storage', type=none_or_str, default=None)
     parser.add_argument('--study_name', type=none_or_str, default=None)
     parser.add_argument('--load_if_exists', type=bool_or_str, default=False)
-    parser.add_argument('--metric', type=str, default='val_loss')
-    parser.add_argument('--direction', type=str, default='minimize')
-    #parser.add_argument('--featurizer', type=str, choices=['simple', 'full'], default='full')
     args = parser.parse_args()
 
-    torch.manual_seed(args.seed)
-    torch.cuda.manual_seed_all(args.seed)
+    if args.config:
+        with open(args.config) as json_config:
+            config = json.load(json_config, object_pairs_hook=OrderedDict)
+    else:
+        config = config_dev
+
+    # seed everything adn choose between deterministic and non-deterministic run
+    #--------------------------------------------------------------------------------
+    seed = config['numerical_settings'].get('seed')
+    cudnn_deterministic = config['numerical_settings'].get('cudnn_deterministic',True)
+    cudnn_benchmark = config['numerical_settings'].get('cudnn_benchmark',False)
+
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed_all(seed)
     torch.backends.cudnn.deterministic = True
     torch.backends.cudnn.benchmark = False
-    np.random.seed(args.seed)
-    random.seed(args.seed)
-    os.environ['PYTHONHASHSEED'] = str(args.seed)
+    np.random.seed(seed)
+    random.seed(seed)
+    os.environ['PYTHONHASHSEED'] = str(seed)
+    #--------------------------------------------------------------------------------
 
     # init file logging
     log_config_file = args.src + '/conf/logging.yaml'
@@ -71,28 +75,28 @@ def start(config_dev=None):
 
     logging.info('current working directory=%s', os.getcwd())
     logging.info('args=%s', args)
-
-    if args.config:
-        with open(args.config) as json_config:
-            config = json.load(json_config, object_pairs_hook=OrderedDict)
-    else:
-        config = config_dev
-
     logging.info('config=%s', config)
 
-    # TODO type_dict should only be necessary for BILSTM and SimpleGNN because they
-    # need the dictionary information, refactor reading files, splitting etc. to get
-    # rid of args.dataset
-    if 'type_dict' in config['model']:
-        type_dict = config['model']['type_dict']
+    df_train, df_val, df_test, transformer = get_dataframes(config['dataset'], seed)
+
+    # concatenate the train and validation dataset to one dataset when cross-validation is on
+    cv = config['training']['cross_validation']
+    if isinstance(cv, int) and cv > 1:
+        df_train = pd.concat([df_train, df_val])
+        df_val = None
+
+    n_previous_trials = oscml.hpo.optunawrapper.check_for_existing_study(config['training'].get('storage',args.storage), config['training'].get('study_name',args.study_name))
+    n_trials = config['training'].get('n_trials',args.trials)
+    if n_previous_trials is not None:
+        total_number_trials = n_trials + n_previous_trials - 1
     else:
-        type_dict = args.dataset
-    df_train, df_val, df_test, transformer = get_dataframes(config['dataset'], type_dict)
+        total_number_trials = n_trials
 
-    obj = functools.partial(oscml.hpo.objective.objective, config=config, args=args,
-        df_train=df_train, df_val=df_val, df_test=df_test, transformer=transformer, log_dir=log_dir)
+    obj = functools.partial(oscml.hpo.objective.objective, config=config,
+        df_train=df_train, df_val=df_val, df_test=df_test, transformer=transformer, log_dir=log_dir, 
+        total_number_trials=total_number_trials)
 
-    return oscml.hpo.optunawrapper.start_hpo(args=args, objective=obj, log_dir=log_dir)
+    return oscml.hpo.optunawrapper.start_hpo(args=args, objective=obj, log_dir=log_dir, config=config, total_number_trials=total_number_trials)
 
 
 if __name__ == '__main__':

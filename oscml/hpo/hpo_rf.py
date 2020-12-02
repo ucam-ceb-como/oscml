@@ -38,17 +38,20 @@ def create(trial, config, df_train, df_val, df_test, training_params):
         raise ValueError("Unknown fingerprint type '"+ fp_type+"'. Only 'morgan' fingerprints supported.")
 
     if training_params['cross_validation']:
-        df_train = pd.concat([df_train, df_val])
+        # df_train = pd.concat([df_train, df_val]) this should be done in train.py already
+        assert df_val is None, "validation set should be added to training set for cross validation"
         x_train, y_train = get_fp(df_train, fp_params, x_column, y_column)
         x_val = None
         y_val = None
     else:
         x_train, y_train = get_fp(df_train, fp_params, x_column, y_column)
         x_val, y_val = get_fp(df_val, fp_params, x_column, y_column)
+    
+    x_test, y_test = get_fp(df_test, fp_params, x_column, y_column)
 
-    model = sklearn.ensemble.RandomForestRegressor(**model_params, criterion=training_params['criterion'], n_jobs=1, verbose=0, random_state=0)
+    model = sklearn.ensemble.RandomForestRegressor(**model_params, criterion=training_params['criterion'], n_jobs=1, verbose=0)#, random_state=0)
 
-    return model, x_train, y_train, x_val, y_val
+    return model, x_train, y_train, x_val, y_val, x_test, y_test
 
 
 def get_Morgan_fingerprints(df, params_morgan, columns_smiles, column_y):

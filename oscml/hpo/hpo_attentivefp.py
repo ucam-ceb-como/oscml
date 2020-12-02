@@ -12,12 +12,16 @@ from oscml.utils.util_config import set_config_param
 import oscml.utils.util_lightning
 
 
-def create(trial, config, df_train, df_val, df_test, optimizer, log_dir):
+def create(trial, config, df_train, df_val, df_test, optimizer, transformer, log_dir):
 
     x_column = config['dataset']['x_column'][0]
     y_column = config['dataset']['y_column'][0]
-    featurizer_config = config['model']['featurizer'] 
+    featurizer_config = config['model']['featurizer']
+    batch_size = config['training']['batch_size']
     dgl_log_dir = log_dir + '/dgl_' + str(trial.number)
+        # no standardization of target values supported at the moment
+    target_mean = transformer.target_mean
+    target_std = transformer.target_std
 
     if featurizer_config == 'full':
         node_featurizer = dgllife.utils.AttentiveFPAtomFeaturizer()
@@ -32,19 +36,6 @@ def create(trial, config, df_train, df_val, df_test, optimizer, log_dir):
         node_feat_size = node_featurizer.feat_size('h')
         edge_feat_size = edge_featurizer.feat_size('e')
 
-
-    # define models and params
-    """
-    model_params =  {
-        'node_feat_size': node_feat_size,
-        'edge_feat_size': edge_feat_size,
-        'graph_feat_size': trial.suggest_int('graph_feat_size', 16, 256),
-        'num_layers': trial.suggest_int('num_layers', 1, 6),
-        'num_timesteps': trial.suggest_int('num_timesteps', 1, 4),
-        'dropout': trial.suggest_uniform('dropout', 0., 0.2),
-        'n_tasks': 1
-    }
-    """
 
     # set model parameters from the config file
     #--------------------------------------
@@ -62,15 +53,16 @@ def create(trial, config, df_train, df_val, df_test, optimizer, log_dir):
 
     logging.info('model params=%s', model_params)
 
-    train_dl, val_dl, test_dl = oscml.hpo.hpo_attentivefp.get_dataloaders(df_train, df_val, df_test,
-            column_smiles=x_column, column_target=y_column, batch_size=250, log_dir=dgl_log_dir,
-            node_featurizer=node_featurizer, edge_featurizer=edge_featurizer)
-
     model_predictor = dgllife.model.AttentiveFPPredictor(**model_params)
 
-    # no standardization of target values supported at the moment
-    target_mean = 0
-    target_std = 1
+    dataloader_fct = functools.partial(get_dataloader, smiles_column=x_column, y_column=y_column, transformer=transformer, 
+        batch_size=batch_size, log_dir=dgl_log_dir, node_featurizer=node_featurizer, edge_featurizer=edge_featurizer, 
+        collate_fn=collate_molgraphs)
+
+    train_dl = dataloader_fct(df=df_train, file_name="graph_train.bin", shuffle=True)
+    val_dl = dataloader_fct(df=df_val, file_name="graph_val.bin", shuffle=False)
+    test_dl = dataloader_fct(df=df_test, file_name="graph_test.bin", shuffle=False)
+
     model = oscml.utils.util_lightning.ModelWrapper(model_predictor, optimizer, target_mean, target_std)
 
     return model, train_dl, val_dl, test_dl
@@ -107,53 +99,28 @@ class EmptyBondFeaturizes(dgllife.utils.BaseBondFeaturizer):
             )}, self_loop=self_loop)
             #featurizer_funcs={}, self_loop=self_loop)
 
-
-def get_dataloaders(df_train, df_val, df_test, column_smiles, column_target, batch_size, log_dir, node_featurizer, edge_featurizer):
-
+def get_dataloader(df, file_name, shuffle, smiles_column, y_column, transformer, batch_size, log_dir, node_featurizer, edge_featurizer, collate_fn):
+    
     #TODO AE URGENT for development only
-    #df_train = df_train[:150]
-    #df_val = df_val[:50]
-    #df_test = df_test[:50]
-
+    #df = df[:150]
+    
     smiles_to_graph=functools.partial(dgllife.utils.smiles_to_bigraph, add_self_loop=True)
-    dgl_ds_train = dgllife.data.MoleculeCSVDataset(df=df_train,
+
+    transformed_y = transformer.transform(df)
+    transformed_column_name = y_column + "_transformed"
+    df[transformed_column_name] = transformed_y
+
+    dataset = dgllife.data.MoleculeCSVDataset(df=df,
                                  smiles_to_graph=smiles_to_graph,
                                  node_featurizer=node_featurizer,
                                  edge_featurizer=edge_featurizer,
-                                 smiles_column=column_smiles,
-                                 cache_file_path=log_dir + '/graph_train.bin',
-                                 task_names=[column_target],
+                                 smiles_column=smiles_column,
+                                 cache_file_path=log_dir + '/' + file_name,
+                                 task_names=[transformed_column_name],
                                  n_jobs=0)
 
-    dl_train = torch.utils.data.DataLoader(dataset=dgl_ds_train, batch_size=batch_size, shuffle=True,
-                                collate_fn=collate_molgraphs, num_workers=0)
-
-    dgl_ds_val = dgllife.data.MoleculeCSVDataset(df=df_val,
-                                 smiles_to_graph=smiles_to_graph,
-                                 node_featurizer=node_featurizer,
-                                 edge_featurizer=edge_featurizer,
-                                 smiles_column=column_smiles,
-                                 cache_file_path=log_dir + '/graph_val.bin',
-                                 task_names=[column_target],
-                                 n_jobs=0)
-
-    dl_val = torch.utils.data.DataLoader(dataset=dgl_ds_val, batch_size=batch_size, shuffle=False,
-                                collate_fn=collate_molgraphs, num_workers=0)
-
-    dgl_ds_test = dgllife.data.MoleculeCSVDataset(df=df_test,
-                                 smiles_to_graph=smiles_to_graph,
-                                 node_featurizer=node_featurizer,
-                                 edge_featurizer=edge_featurizer,
-                                 smiles_column=column_smiles,
-                                 cache_file_path=log_dir + '/graph_test.bin',
-                                 task_names=[column_target],
-                                 n_jobs=0)
-
-    dl_test = torch.utils.data.DataLoader(dataset=dgl_ds_test, batch_size=batch_size, shuffle=False,
-                                collate_fn=collate_molgraphs, num_workers=0)
-
-    return dl_train, dl_val, dl_test
-
+    dataloader = torch.utils.data.DataLoader(dataset=dataset, batch_size=batch_size, shuffle=shuffle, collate_fn=collate_fn, num_workers=0)
+    return dataloader
 
 def collate_molgraphs(data):
     # This method was copied from dlg /csv_data_configuration/utils.py and adapted

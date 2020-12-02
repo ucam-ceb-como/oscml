@@ -79,7 +79,7 @@ def smiles2mol_df(df, column):
     logging.info('generating RDKit molecules, column=' + column)
     sleep(1)
     x = []
-    for i in tqdm(range(len(df))):
+    for i in range(len(df)):
         smiles = df.iloc[i][column]
         m = smiles2mol(smiles)
         x.append(m)

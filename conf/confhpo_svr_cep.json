@@ -5,17 +5,17 @@
     "cudnn_benchmark": false
 },
 "dataset":{
-    "src": "./data/processed/HOPV_15_revised_2_processed_homo.csv",
+    "src": "./data/processed/CEPDB_25000.csv",
     "z-stand": "False",
-    "x_column": ["smiles"],
+    "x_column": ["SMILES_str"],
     "y_column": ["pce"],
-	"split": [200, null, 36]
+	"split": "ml_phase"
     },
 "model":{
 	"name": "SVR",
 	"model_specific":{
 		"kernel": "rbf_kernel_phys_and_struct",
-        "gamma_structural": {"type":"loguniform","low":0.001,"high":20.0},
+		"gamma_structural": {"type":"loguniform","low":0.001,"high":20.0},
 		"C":{"type":"loguniform","low":0.1,"high":20.0},
 		"epsilon":{"type":"loguniform","low":0.0001,"high":1.0}
 	},
@@ -23,13 +23,19 @@
 		"type":"morgan",
 		"nBits":{"type":"categorical","choices": [128, 256, 512, 1024, 2048, 4096]},
 		"radius": {"type":"categorical","choices": [2, 3, 4, 5]},
-		"useChirality": {"type":"categorical","choices":[true, false]},
-		"useBondTypes":{"type":"categorical","choices":[true, false]}
+		"useChirality": true,
+		"useBondTypes": true
 	}
 },
 "training":{
     "criterion": "mse",
+	"cross_validation": false,
 	"direction": "minimize",
-	"cross_validation": false
+	"__remove_this_bit__study_name": "svr_cep25000_stratified",
+	"__remove_this_bit__storage": "sqlite:///svr_cep25000_stratified.db",
+	"__remove_this_bit__storage_timeout": 1000,
+	"__remove_this_bit__load_if_exists": true,
+	"__remove_this_bit__n_trials": 20,
+	"__remove_this_bit__n_jobs": 20
 }
 }

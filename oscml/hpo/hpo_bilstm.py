@@ -10,10 +10,11 @@ def create(trial, config, df_train, df_val, df_test, optimizer, transformer):
     info = oscml.data.dataset.get_dataset_info(type_dict)
     number_subgraphs = info.number_subgraphs()
     max_sequence_length = config['model']['max_sequence_length']
+    batch_size = config['training']['batch_size']
 
     # dataloaders
     train_dl, val_dl, test_dl = oscml.models.model_bilstm.get_dataloaders(type_dict, df_train, df_val, df_test,
-            transformer, batch_size=250, max_sequence_length=max_sequence_length)
+            transformer, batch_size=batch_size, max_sequence_length=max_sequence_length)
 
     # set model parameters from the config file
     model_params = {}
