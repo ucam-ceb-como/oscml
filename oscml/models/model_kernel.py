@@ -96,7 +96,7 @@ def preprocess_data_phys_and_struct(df, params_fingerprint, train_size, column_s
         df_copy['fingerprint'] = oscml.features.fingerprint.get_fingerprints(df_copy, 'rdkitmol', params_fingerprint, as_numpy_array = False)
         x_struct = df_copy['fingerprint'].to_numpy()
         x_struct = x_struct.reshape(len(x_struct),1)
-        log('structural data:', type(x_struct), x_struct.shape)
+        #log('structural data:', type(x_struct), x_struct.shape)
         x = x_struct
 
     scaler_svr_physical_data = None
@@ -118,7 +118,7 @@ def preprocess_data_phys_and_struct(df, params_fingerprint, train_size, column_s
         log('combined data x:', type(x), x.shape)
 
     y = df_copy[column_y].to_numpy()
-    log('y:', type(y), y.shape)
+    #log('y:', type(y), y.shape)
 
     #x_train, x_test, y_train, y_test = sklearn.model_selection.train_test_split(x, y, train_size=train_size, shuffle=True, random_state=0)
     #log('number of samples, train=', len(x_train), ', test=', len(x_test))
@@ -169,7 +169,7 @@ class SVRWrapper(sklearn.svm.SVR):
             return updated_svr_params
 
     def fit(self, X, y, sample_weight=None):
-        log('fitting SVR with params=', self.get_params())
+        #log('fitting SVR with params=', self.get_params())
         return super().fit(X, y, sample_weight)
 
     def get_params(self, deep=False):

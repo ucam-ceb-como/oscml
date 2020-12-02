@@ -8,28 +8,23 @@ import torch
 import torch.optim
 import torch.nn
 
-from oscml.utils.util import concat, calculate_metrics
+from oscml.utils.util import calculate_metrics
 
-def get_standard_params_for_trainer_short():
-    params = {
-        'max_epochs': 1,
-        'log_every_n_steps': 1,
-        'flush_logs_every_n_steps': 10,
-        'gpus': 1 if torch.cuda.is_available() else None,
-        }
-    return params
-
-def get_standard_params_for_trainer(metric):
+def get_standard_params_for_trainer(metric, save_checkpoints=True):
  
     # https://pytorch-lightning.readthedocs.io/en/latest/generated/pytorch_lightning.callbacks.ModelCheckpoint.html
     # By default, dirpath is None and will be set at runtime to the location specified 
     # by Trainer’s default_root_dir or weights_save_path arguments, 
     # and if the Trainer uses a logger, the path will also contain logger name and version.
-    checkpoint_callback = pl.callbacks.ModelCheckpoint(monitor=metric, save_last=True, period=1, save_top_k=10)
+    if save_checkpoints:
+        # by default, save the checkpoint for the last epoch and the epoch with the best validation error
+        checkpoint_callback = pl.callbacks.ModelCheckpoint(monitor=metric, save_last=True, period=1, save_top_k=1)
+    else:
+        checkpoint_callback = None
 
     # does not work at the moment on laptop with gpu
-    #gpus = 1 if torch.cuda.is_available() else 0
-    gpus = 0
+    gpus = 1 if torch.cuda.is_available() else 0
+    #gpus = 0
 
     params = {
         'log_every_n_steps': 1,
@@ -47,7 +42,7 @@ class OscmlModule(pl.LightningModule):
         super().__init__()
 
         params = {'optimizer': optimizer, 'target_mean': target_mean, 'target_std': target_std}
-        logging.info(concat('initializing OscmlModule with', params))
+        logging.info('initializing OscmlModule with %s', params)
 
         self.optimizer = optimizer
         self.target_mean = target_mean
@@ -64,7 +59,7 @@ class OscmlModule(pl.LightningModule):
         opt_params = self.optimizer.copy()
         name = opt_params.pop('name')
         optimizer_instance = getattr(torch.optim, name)(self.parameters(), **opt_params)
-        logging.info('created optimizer=' + str(optimizer_instance))
+        logging.info('created optimizer=%s', optimizer_instance)
         return optimizer_instance
 
     def training_step(self, batch, batch_idx):
@@ -112,9 +107,16 @@ def shared_epoch_end(tensor_step_outputs, is_validation, epoch, inverse_transfor
     y_complete = np.array([])
     y_hat_complete = np.array([])
     for outputs in tensor_step_outputs:
-        y = outputs[0].detach().cpu().numpy()
+        #y = outputs[0].detach().cpu().numpy()
+        #y_complete = np.concatenate((y_complete, y))
+        #y_hat = outputs[1].detach().cpu().numpy()
+        #y_hat_complete = np.concatenate((y_hat_complete, y_hat))
+
+        y = torch.flatten(outputs[0].detach().cpu())
+        y = y.numpy()
         y_complete = np.concatenate((y_complete, y))
-        y_hat = outputs[1].detach().cpu().numpy()
+        y_hat = torch.flatten(outputs[1].detach().cpu())
+        y_hat = y_hat.numpy()
         y_hat_complete = np.concatenate((y_hat_complete, y_hat))
 
     loss = sklearn.metrics.mean_squared_error(y_complete, y_hat_complete, squared=True)
@@ -133,6 +135,26 @@ def shared_epoch_end(tensor_step_outputs, is_validation, epoch, inverse_transfor
         'time': str(datetime.datetime.now()),
     })
     result.update(metrics)
-    logging.info(concat('result=', result))
+    logging.info('result=%s', result)
 
     return (result, y_complete, y_hat_complete)
+
+class ModelWrapper(OscmlModule):
+
+    def __init__(self, model, optimizer, target_mean=0, target_std=1):
+
+        super().__init__(optimizer, target_mean, target_std)
+        logging.info('initializing %s', locals())
+
+        self.model = model
+        # commented out save_hyperparameters() because performance descreased completely 
+        # (because there were some problem when serializing the wrapped model to YAML)
+        #self.save_hyperparameters()
+
+    def forward(self, *args, **kwargs):
+
+        args = args[0]
+        #print(type(args))
+        #print(args)
+
+        return self.model(*args, **kwargs)

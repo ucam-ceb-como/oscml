@@ -1,29 +1,22 @@
 import collections
-import datetime
 import logging
-from time import sleep
 
 import dgl
 import networkx 
 import numpy as np
-import pandas as pd
 import pytorch_lightning as pl
 import rdkit
 import rdkit.Chem
 import rdkit.Chem.AllChem
 import rdkit.Chem.rdmolops
-import sklearn
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-import torch.optim as optim
 import torch.utils.data
-from tqdm import tqdm
 
 import oscml.utils.params
 from oscml.utils.params import cfg
 import oscml.utils.util
-from oscml.utils.util import log, concat
 from oscml.utils.util import smiles2mol
 import oscml.utils.util_pytorch
 import oscml.utils.util_lightning
@@ -40,7 +33,7 @@ class Mol2seq_simple():
         self.oov = oov
         # node index starts with 0, thus -1
         self.max_index = len(self.node2index) - 1
-        logging.info(concat('initialized Mol2seq_simple with fix=', fix, ', oov=', oov, ', max_index=', self.max_index))
+        logging.info('initialized Mol2seq_simple with fix=%s, oov=%s, max_index=%s', fix, oov, self.max_index)
     
     def apply_OOV(self, index):
         return (index if index <= self.max_index else -1)
@@ -129,7 +122,7 @@ def get_dataloaders_internal(train, val, test, batch_size, mol2seq, transformer)
     
     batch_func = (lambda dl : len(dl) if dl else 0)
     batch_numbers = list(map(batch_func, [train_dl, val_dl, test_dl]))
-    logging.info(concat('batch numbers - train val test=', batch_numbers))
+    logging.info('batch numbers - train val test=%s', batch_numbers)
  
     return train_dl, val_dl, test_dl
 
@@ -140,26 +133,7 @@ def get_dataloaders(dataset, df_train, df_val, df_test, transformer, batch_size)
     mol2seq = oscml.models.model_gnn.Mol2seq_simple(node2index, fix=True, oov=True)
     return get_dataloaders_internal(df_train, df_val, df_test, batch_size, mol2seq, transformer)
 
-    """
-    if dataset == oscml.data.dataset_hopv15.HOPV15:
-
-        info = oscml.data.dataset.get_dataset_info(dataset)
-        node2index = info.node_types
-        mol2seq = oscml.models.model_gnn.Mol2seq_simple(node2index, fix=True, oov=True)
-        return get_dataloaders_internal(df_train, df_val, df_test, batch_size, mol2seq, transformer)
-
-    elif dataset == oscml.data.dataset_cep.CEP25000:
-
-        info = oscml.data.dataset.get_dataset_info(dataset)
-        node2index = info.node_types
-        mol2seq = oscml.models.model_gnn.Mol2seq_simple(node2index, fix=True, oov=True)
-        return get_dataloaders_internal(df_train, df_val, df_test, batch_size, mol2seq, transformer)
-
-    else:
-        raise RuntimeError('unknown dataset=' + str(dataset))
-    """
-
-class GNNSimpleLayer(pl.LightningModule):
+class SimpleGNNLayer(pl.LightningModule):
     
     def __init__(self, input_dim, output_dim, activation_fct):
         super().__init__()
@@ -177,19 +151,18 @@ class GNNSimpleLayer(pl.LightningModule):
             h = self.linear(h)
             return self.activation_fct(h)
 
-class GNNSimple(oscml.utils.util_lightning.OscmlModule):
+class SimpleGNN(oscml.utils.util_lightning.OscmlModule):
 
     def __init__(self, node_type_number, embedding_dim, conv_dims, mlp_units, padding_index, target_mean, target_std, optimizer, mlp_dropouts=None):
 
         super().__init__(optimizer, target_mean, target_std)
-        logging.info('initializing ' + str(locals()))
+        logging.info('initializing %s', locals())
 
         self.save_hyperparameters()
 
         if padding_index is not None:
             self.padding_index = padding_index
-            logging.info(concat('padding index for embedding was set to ', self.padding_index, 
-                '. Thus unknown atom types can be handled'))
+            logging.info('padding index for embedding was set to %s . Thus unknown atom types can be handled.', self.padding_index)
             # consider the padding index for subsequential transfer learning with unknown atom types:
             # we add +1 to node_type_number because
             # padding_idx = 0 in a sequences is mapped to zero vector
@@ -202,7 +175,7 @@ class GNNSimple(oscml.utils.util_lightning.OscmlModule):
         self.conv_modules = nn.ModuleList()
         input_dim = embedding_dim
         for i in range(len(conv_dims)):
-            layer = GNNSimpleLayer(input_dim, conv_dims[i], F.relu)
+            layer = SimpleGNNLayer(input_dim, conv_dims[i], F.relu)
             input_dim = conv_dims[i]
             self.conv_modules.append(layer)
         
