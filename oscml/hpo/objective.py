@@ -156,6 +156,7 @@ def objective(trial, config, df_train, df_val, df_test, transformer, log_dir, to
     cv = config['training']['cross_validation']
     metric = training_params['metric']
     seed = config['numerical_settings']['seed']
+    split = config['dataset']['split']
     trial_number = trial.number
     std = None
 
@@ -206,8 +207,8 @@ def objective(trial, config, df_train, df_val, df_test, transformer, log_dir, to
                              training_params['metric'],
                              np.array(cv_metric).var())
             else:
-                df_val = df_train[df_train['ml_phase'] == 'val']
-                df_train = df_train[df_train['ml_phase'] == 'train']
+                df_val = df_train[df_train[split] == 'val']
+                df_train = df_train[df_train[split] == 'train']
                 model, train_dl, val_dl, test_dl, = get_model_and_data(model_name, trial, config, df_train, df_val,
                                                                        df_test, training_params, transformer, log_dir)
                 metric_value = fit_or_test(model, train_dl, val_dl, test_dl, training_params, log_dir,
