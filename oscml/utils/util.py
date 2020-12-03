@@ -1,4 +1,3 @@
-import datetime
 import logging
 import logging.config
 import os
@@ -10,7 +9,6 @@ import yaml
 import numpy as np
 import rdkit.Chem
 import sklearn.metrics
-from torch.utils.tensorboard import SummaryWriter
 from tqdm import tqdm
 
 import oscml.utils.params
@@ -112,11 +110,3 @@ def calculate_metrics(y_true_np, y_pred_np):
     R2 = sklearn.metrics.r2_score(y_true_np, y_pred_np)
     r_Pearson = np.corrcoef(y_true_np, y_pred_np)
     return {'mse':mse, 'rmse': rmse, 'R2':R2, 'r':r_Pearson[0,1], 'mae': mae, 'count': len(y_true_np)}
-
-def create_tensorboard_logger(postfix=''):
-    log_dir = cfg[oscml.utils.params.TENSOR_BOARD_MAIN_LOG_DIR] + '/' + datetime.datetime.now().strftime('%y%m%d_%H%M')
-    log_dir_val = log_dir + '_val_' + postfix
-    val_tb = SummaryWriter(log_dir=log_dir_val, flush_secs=10)
-    log_dir_train = log_dir + '_train_' + postfix
-    train_tb = SummaryWriter(log_dir=log_dir_train, flush_secs=10)
-    return (train_tb, val_tb)

@@ -18,7 +18,6 @@ import oscml.utils.params
 import oscml.utils.util
 import oscml.utils.util_sklearn
 
-from oscml.utils.params import cfg
 from oscml.utils.util import log
 from oscml.utils.util import smiles2mol
 

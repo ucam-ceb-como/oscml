@@ -11,15 +11,12 @@ import rdkit.Chem.AllChem
 import sklearn
 import sklearn.svm
 import sklearn.ensemble
-from tqdm import tqdm
 
 import oscml.features.fingerprint
 import oscml.utils.params
 import oscml.utils.util
 
-from oscml.utils.params import cfg
 from oscml.utils.util import log
-from oscml.utils.util import smiles2mol
 
 def get_matrix_fingerprint_tanimoto(X, Y=None):
     if Y is None:
