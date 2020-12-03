@@ -3,6 +3,7 @@ import logging
 import glob
 import torch
 import numpy as np
+import pandas as pd
 from sklearn.model_selection import KFold
 from sklearn.model_selection import ShuffleSplit
 import pytorch_lightning as pl
@@ -110,16 +111,18 @@ def fit_or_test(model, train_dl, val_dl, test_dl, training_params,
         ckpt_path = glob.glob(dirpath+'best_trial_retrain_model' + '*.ckpt')[0].replace('\\', '/')
         model.load_state_dict(torch.load(ckpt_path)['state_dict'])
         model.eval()
+        train_result = trainer.test(model, test_dataloaders=train_dl)[0]
+        val_result = trainer.test(model, test_dataloaders=val_dl)[0]
         test_result = trainer.test(model, test_dataloaders=test_dl)[0]
-        logging.info('%s best trial retrain model performance on test set result=%s', log_head, test_result)
-        #
-        # print("----------------------------------------------------------------------------------------------------")
-        # print(trainer.test(model, test_dataloaders=test_dl))
-        # print("----------------------------------------------------------------------------------------------------")
-
+        train_result['phase'] = 'training set'
+        val_result['phase'] = 'validation set'
+        test_result['phase'] = 'test set'
+        results = pd.DataFrame([train_result, val_result, test_result])
+        results.to_csv(dirpath+'best_trial_retrain_model_result.csv')
+        
     if epochs > 0:
         return val_error
-    return test_result
+    return None
 
 
 def get_training_params(trial, training_settings):
