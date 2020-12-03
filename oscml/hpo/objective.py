@@ -31,8 +31,10 @@ class MetricsCallback(pl.Callback):
         self.metrics.append(trainer.callback_metrics)
 
 def fit_or_test(model, train_dl, val_dl, test_dl, training_params,
-                log_dir, trial=None, trial_number=-1, n_trials=0, cv_index=''):
-
+                log_dir, trial=None, trial_number=-1, n_trials=0, cv_index='', best_trial_retrain=False):
+    # TODO update logging information
+    # TODO remove unused codes
+    # TODO investigate the discrepancy between best_trial and retrain, related to transformer?
     epochs = training_params['epochs']
     metric = training_params['metric']
     direction = training_params['direction']
@@ -50,10 +52,18 @@ def fit_or_test(model, train_dl, val_dl, test_dl, training_params,
         early_stopping_callback = EarlyStopping(monitor=metric, min_delta=0.0, patience=patience, verbose=False, mode=direction)
         callbacks.append(early_stopping_callback)
 
-    if cv_index == 'retrain' or cv_index == '':
-        dirpath = log_dir + '/trial_' + str(trial_number) + '/' + cv_index + '/'
+    # if cv_index == 'retrain' or cv_index == '':
+    #     dirpath = log_dir + '/trial_' + str(trial_number) + '/' + cv_index + '/'
+    #     checkpoint_callback = ModelCheckpoint(monitor=metric, dirpath=dirpath.replace('//', '/'),
+    #                                           filename=str(cv_index)+'_model',
+    #                                           save_top_k=1, mode=direction[0:3])
+    #     callbacks.append(checkpoint_callback)
+
+    # only save model checkpoint in the retraining phase, which is only set true for the best trial
+    if best_trial_retrain:
+        dirpath = log_dir + '/trial_' + str(trial_number) + '/'
         checkpoint_callback = ModelCheckpoint(monitor=metric, dirpath=dirpath.replace('//', '/'),
-                                              filename=str(cv_index)+'_model',
+                                              filename='best_trial_retrain_model',
                                               save_top_k=1, mode=direction[0:3])
         callbacks.append(checkpoint_callback)
 
@@ -96,13 +106,13 @@ def fit_or_test(model, train_dl, val_dl, test_dl, training_params,
 
         logging.info('[trial %s - %s] finished fitting for trial %s with %s = %s', trial_number, cv_index, trial_number, metric, val_error)
 
-    if test_dl:
-        if cv_index == 'retrain' or cv_index == '':
-            ckpt_path = glob.glob(dirpath+str(cv_index)+'_model' + '*.ckpt')[0].replace('\\', '/')
-            model.load_state_dict(torch.load(ckpt_path)['state_dict'])
-            model.eval()
-            test_result = trainer.test(model, test_dataloaders=test_dl)[0]
-            logging.info('[trial %s - %s] result=%s', trial_number, cv_index, test_result)
+    if best_trial_retrain:
+        # if cv_index == 'retrain' or cv_index == '':
+        ckpt_path = glob.glob(dirpath+'best_trial_retrain_model' + '*.ckpt')[0].replace('\\', '/')
+        model.load_state_dict(torch.load(ckpt_path)['state_dict'])
+        model.eval()
+        test_result = trainer.test(model, test_dataloaders=test_dl)[0]
+        logging.info('[trial %s - %s] result=%s', trial_number, cv_index, test_result)
 
     if epochs > 0:
         return val_error
@@ -132,8 +142,8 @@ def get_model_and_data(model_name, trial, config, df_train, df_val, df_test, tra
     return None
 
 
-def objective(trial, config, df_train, df_val, df_test, transformer, log_dir, total_number_trials):
-
+def objective(trial, config, df_train, df_val, df_test, transformer, log_dir, total_number_trials, best_trial_retrain=False):
+    # TODO how does retraining work for RF and SVR?
     # release GPU memory before start each trial
     torch.cuda.empty_cache()
 
@@ -145,6 +155,15 @@ def objective(trial, config, df_train, df_val, df_test, transformer, log_dir, to
     seed = config['numerical_settings']['seed']
     trial_number = trial.number
     std = None
+
+    if best_trial_retrain:
+        print("----------------------------------------------------------------------------------------------------")
+        print('best')
+        print(trial)
+        print("----------------------------------------------------------------------------------------------------")
+
+
+
 
     # deal with RF and SVR models first
     if model_name == 'RF':
@@ -162,53 +181,69 @@ def objective(trial, config, df_train, df_val, df_test, transformer, log_dir, to
     elif model_name == 'BILSTM' or model_name == 'AttentiveFP' or model_name == 'SimpleGNN':
         # apply cross-validation
         if isinstance(cv, int) and cv > 1:
-            kf = KFold(n_splits=cv, random_state=seed, shuffle=True)
-            assert df_val is None, "validation set should be added to training set for cross validation"
-            kf.get_n_splits(df_train)
-            cv_index = 1
-            cv_metric = []
-            for train_index, val_index in kf.split(df_train):
-                logging.info('[trial %s] run %s of %s fold cross-validation', trial_number, cv_index, cv)
-                model, train_dl, val_dl, test_dl = get_model_and_data(model_name, trial, config,
-                                                                      df_train.iloc[train_index], df_train.iloc[val_index],
-                                                                      df_test, training_params, transformer, log_dir)
+            if not best_trial_retrain:
+                kf = KFold(n_splits=cv, random_state=seed, shuffle=True)
+                assert df_val is None, "validation set should be added to training set for cross validation"
+                kf.get_n_splits(df_train)
+                cv_index = 1
+                cv_metric = []
+                for train_index, val_index in kf.split(df_train):
+                    logging.info('[trial %s] run %s of %s fold cross-validation', trial_number, cv_index, cv)
+                    model, train_dl, val_dl, test_dl = get_model_and_data(model_name, trial, config,
+                                                                          df_train.iloc[train_index], df_train.iloc[val_index],
+                                                                          df_test, training_params, transformer, log_dir)
+                    metric_value = fit_or_test(model, train_dl, val_dl, test_dl, training_params, log_dir,
+                                               trial, trial_number, total_number_trials, str(cv_index))
+                    cv_index += 1
+                    cv_metric.append(metric_value)
+                metric_value = np.array(cv_metric).mean()
+                std = np.array(cv_metric).std()
+
+                logging.info('[trial %s - finished %s fold cross-validation] %s: %s', trial_number,
+                             training_params['cross_validation'],
+                             training_params['metric'],
+                             cv_metric)
+                logging.info('[trial %s - finished %s fold cross-validation] %s mean: %s', trial_number,
+                             training_params['cross_validation'],
+                             training_params['metric'],
+                             metric_value)
+                logging.info('[trial %s - finished %s fold cross-validation] %s variance: %s', trial_number,
+                             training_params['cross_validation'],
+                             training_params['metric'],
+                             np.array(cv_metric).var())
+            else:
+                df_val = df_train[df_train['ml_phase'] == 'val']
+                df_train = df_train[df_train['ml_phase'] == 'train']
+                model, train_dl, val_dl, test_dl, = get_model_and_data(model_name, trial, config, df_train, df_val,
+                                                                       df_test, training_params, transformer, log_dir)
                 metric_value = fit_or_test(model, train_dl, val_dl, test_dl, training_params, log_dir,
-                                           trial, trial_number, total_number_trials, str(cv_index))
-                cv_index += 1
-                cv_metric.append(metric_value)
-            metric_value = np.array(cv_metric).mean()
-            std = np.array(cv_metric).std()
+                                           trial, trial_number, total_number_trials, '', best_trial_retrain)
 
-            logging.info('[trial %s - finished %s fold cross-validation] %s: %s', trial_number,
-                         training_params['cross_validation'],
-                         training_params['metric'],
-                         cv_metric)
-            logging.info('[trial %s - finished %s fold cross-validation] %s mean: %s', trial_number,
-                         training_params['cross_validation'],
-                         training_params['metric'],
-                         metric_value)
-            logging.info('[trial %s - finished %s fold cross-validation] %s variance: %s', trial_number,
-                         training_params['cross_validation'],
-                         training_params['metric'],
-                         np.array(cv_metric).var())
-
-            # retrain model over the whole training and validation dataset (with random spliting of validation)
-            rs = ShuffleSplit(n_splits=1, test_size=0.20, random_state=seed+1)
-            rs.get_n_splits(df_train)
-            for retrain_index, reval_index in rs.split(df_train):
-
-                model, train_dl, val_dl, test_dl = get_model_and_data(model_name, trial, config,
-                                                                      df_train.iloc[retrain_index], df_train.iloc[reval_index],
-                                                                      df_test, training_params, transformer, log_dir)
-                fit_or_test(model, train_dl, val_dl, test_dl, training_params, log_dir,
-                            trial, trial_number, total_number_trials, 'retrain')
+            # # retrain model over the whole training and validation dataset (with random spliting of validation)
+            # rs = ShuffleSplit(n_splits=1, test_size=0.20, random_state=seed+1)
+            # rs.get_n_splits(df_train)
+            # for retrain_index, reval_index in rs.split(df_train):
+            #
+            #     model, train_dl, val_dl, test_dl = get_model_and_data(model_name, trial, config,
+            #                                                           df_train.iloc[retrain_index], df_train.iloc[reval_index],
+            #                                                           df_test, training_params, transformer, log_dir)
+            #     fit_or_test(model, train_dl, val_dl, test_dl, training_params, log_dir,
+            #                 trial, trial_number, total_number_trials, 'retrain')
 
         # normal training and testing
         else:
+            # if best_trial_retrain:
+            #     df_train.to_csv(log_dir + '_trial_{}_df_train.csv'.format(trial_number))
+            #     df_val.to_csv(log_dir + '_trial_{}_df_val.csv'.format(trial_number))
+            #     df_test.to_csv(log_dir + '_trial_{}_df_test.csv'.format(trial_number))
+            # else:
+            #     df_train.to_csv(log_dir.replace('/best_trial_retrain','') + '/trial_{}_df_train.csv'.format(trial_number))
+            #     df_val.to_csv(log_dir.replace('/best_trial_retrain','') + '/trial_{}_df_val.csv'.format(trial_number))
+            #     df_test.to_csv(log_dir.replace('/best_trial_retrain','') + '/trial_{}_df_test.csv'.format(trial_number))
             model, train_dl, val_dl, test_dl = get_model_and_data(model_name, trial, config, df_train, df_val, df_test,
                                                                   training_params, transformer, log_dir)
             metric_value = fit_or_test(model, train_dl, val_dl, test_dl, training_params, log_dir,
-                                       trial, trial_number, total_number_trials, '')
+                                       trial, trial_number, total_number_trials, '', best_trial_retrain)
 
     else:
         return None
