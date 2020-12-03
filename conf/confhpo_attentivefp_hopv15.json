@@ -30,6 +30,7 @@
 	"batch_size": 20,
 	"epochs": 400,
 	"patience": 20,
+	"min_delta": 0.0,
 	"metric": "val_loss",
 	"direction": "minimize",
 	"cross_validation": 5,
