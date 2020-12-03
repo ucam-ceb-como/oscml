@@ -32,13 +32,20 @@ class MetricsCallback(pl.Callback):
 
 def fit_or_test(model, train_dl, val_dl, test_dl, training_params,
                 log_dir, trial=None, trial_number=-1, n_trials=0, cv_index='', best_trial_retrain=False):
-    # TODO update logging information
-    # TODO remove unused codes
-    # TODO investigate the discrepancy between best_trial and retrain, related to transformer?
+    # TODO save one final results file
+    # TODO investigate the discrepancy between best_trial and retrain, related to transformer? continued training?
     epochs = training_params['epochs']
     metric = training_params['metric']
     direction = training_params['direction']
     patience = training_params['patience']
+
+    if best_trial_retrain:
+        log_head = '[Best trial retrain - Trial ' + str(trial_number) + ']'
+    else:
+        if cv_index == '':
+            log_head = '[Trial ' + str(trial_number) + ']'
+        else:
+            log_head = '[Trial '+ str(trial_number) + ' - fold ' + str(cv_index) + ']'
 
     # create callbacks for Optuna for receiving the metric values from Lightning and for
     # pruning trials
@@ -52,13 +59,6 @@ def fit_or_test(model, train_dl, val_dl, test_dl, training_params,
         early_stopping_callback = EarlyStopping(monitor=metric, min_delta=0.0, patience=patience, verbose=False, mode=direction)
         callbacks.append(early_stopping_callback)
 
-    # if cv_index == 'retrain' or cv_index == '':
-    #     dirpath = log_dir + '/trial_' + str(trial_number) + '/' + cv_index + '/'
-    #     checkpoint_callback = ModelCheckpoint(monitor=metric, dirpath=dirpath.replace('//', '/'),
-    #                                           filename=str(cv_index)+'_model',
-    #                                           save_top_k=1, mode=direction[0:3])
-    #     callbacks.append(checkpoint_callback)
-
     # only save model checkpoint in the retraining phase, which is only set true for the best trial
     if best_trial_retrain:
         dirpath = log_dir + '/trial_' + str(trial_number) + '/'
@@ -67,7 +67,7 @@ def fit_or_test(model, train_dl, val_dl, test_dl, training_params,
                                               save_top_k=1, mode=direction[0:3])
         callbacks.append(checkpoint_callback)
 
-    logging.info('[trial %s - %s] model for trial %s=%s', trial_number, cv_index, trial_number, model)
+    logging.info('%s model for trial %s=%s', log_head, trial_number, model)
 
     # create standard params for Ligthning trainer
 
@@ -89,12 +89,12 @@ def fit_or_test(model, train_dl, val_dl, test_dl, training_params,
         'callbacks': callbacks
     })
 
-    logging.info('[trial %s - %s] params for Lightning trainer=%s', trial_number, cv_index, trainer_params)
+    logging.info('%s params for Lightning trainer=%s', log_head, trainer_params)
 
     trainer = pl.Trainer(**trainer_params)
 
     if epochs > 0:
-        logging.info('[trial %s - %s] fitting trial %s / %s', trial_number, cv_index, trial_number, n_trials)
+        logging.info('%s fitting trial %s / %s', log_head, trial_number, n_trials)
         trainer.fit(model, train_dataloader=train_dl, val_dataloaders=val_dl)
 
         # return the value for the metric specified in the start script
@@ -104,15 +104,18 @@ def fit_or_test(model, train_dl, val_dl, test_dl, training_params,
         else:
             val_error = metrics_callback.metrics[-1][metric].item()
 
-        logging.info('[trial %s - %s] finished fitting for trial %s with %s = %s', trial_number, cv_index, trial_number, metric, val_error)
+        logging.info('%s finished fitting for trial %s with %s = %s', log_head, trial_number, metric, val_error)
 
     if best_trial_retrain:
-        # if cv_index == 'retrain' or cv_index == '':
         ckpt_path = glob.glob(dirpath+'best_trial_retrain_model' + '*.ckpt')[0].replace('\\', '/')
         model.load_state_dict(torch.load(ckpt_path)['state_dict'])
         model.eval()
         test_result = trainer.test(model, test_dataloaders=test_dl)[0]
-        logging.info('[trial %s - %s] result=%s', trial_number, cv_index, test_result)
+        logging.info('%s best trial retrain model performance on test set result=%s', log_head, test_result)
+        #
+        # print("----------------------------------------------------------------------------------------------------")
+        # print(trainer.test(model, test_dataloaders=test_dl))
+        # print("----------------------------------------------------------------------------------------------------")
 
     if epochs > 0:
         return val_error
@@ -155,15 +158,6 @@ def objective(trial, config, df_train, df_val, df_test, transformer, log_dir, to
     seed = config['numerical_settings']['seed']
     trial_number = trial.number
     std = None
-
-    if best_trial_retrain:
-        print("----------------------------------------------------------------------------------------------------")
-        print('best')
-        print(trial)
-        print("----------------------------------------------------------------------------------------------------")
-
-
-
 
     # deal with RF and SVR models first
     if model_name == 'RF':
@@ -219,27 +213,8 @@ def objective(trial, config, df_train, df_val, df_test, transformer, log_dir, to
                 metric_value = fit_or_test(model, train_dl, val_dl, test_dl, training_params, log_dir,
                                            trial, trial_number, total_number_trials, '', best_trial_retrain)
 
-            # # retrain model over the whole training and validation dataset (with random spliting of validation)
-            # rs = ShuffleSplit(n_splits=1, test_size=0.20, random_state=seed+1)
-            # rs.get_n_splits(df_train)
-            # for retrain_index, reval_index in rs.split(df_train):
-            #
-            #     model, train_dl, val_dl, test_dl = get_model_and_data(model_name, trial, config,
-            #                                                           df_train.iloc[retrain_index], df_train.iloc[reval_index],
-            #                                                           df_test, training_params, transformer, log_dir)
-            #     fit_or_test(model, train_dl, val_dl, test_dl, training_params, log_dir,
-            #                 trial, trial_number, total_number_trials, 'retrain')
-
         # normal training and testing
         else:
-            # if best_trial_retrain:
-            #     df_train.to_csv(log_dir + '_trial_{}_df_train.csv'.format(trial_number))
-            #     df_val.to_csv(log_dir + '_trial_{}_df_val.csv'.format(trial_number))
-            #     df_test.to_csv(log_dir + '_trial_{}_df_test.csv'.format(trial_number))
-            # else:
-            #     df_train.to_csv(log_dir.replace('/best_trial_retrain','') + '/trial_{}_df_train.csv'.format(trial_number))
-            #     df_val.to_csv(log_dir.replace('/best_trial_retrain','') + '/trial_{}_df_val.csv'.format(trial_number))
-            #     df_test.to_csv(log_dir.replace('/best_trial_retrain','') + '/trial_{}_df_test.csv'.format(trial_number))
             model, train_dl, val_dl, test_dl = get_model_and_data(model_name, trial, config, df_train, df_val, df_test,
                                                                   training_params, transformer, log_dir)
             metric_value = fit_or_test(model, train_dl, val_dl, test_dl, training_params, log_dir,

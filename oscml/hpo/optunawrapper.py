@@ -87,11 +87,6 @@ def start_hpo(args, objective, log_dir, config, total_number_trials):
         log_and_save(study, path)
         best_value = study.best_trial.value
 
-        #study.best_trial.set_user_attr('best', True)
-        # print("----------------------------------------------------------------------------------------------------")
-        # print(study.best_trial.user_attrs)
-        # print("----------------------------------------------------------------------------------------------------")
-        # if retrain:
         log_dir_best_trial_retrain = log_dir + '/best_trial_retrain'
         objective(study.best_trial, log_dir=log_dir_best_trial_retrain, best_trial_retrain=True)
 
