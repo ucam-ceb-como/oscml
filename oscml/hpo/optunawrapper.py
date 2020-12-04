@@ -70,10 +70,10 @@ def start_hpo(args, objective, log_dir, config, total_number_trials):
         n_trials = config['training'].get('n_trials',args.trials)
         n_jobs = config['training'].get('n_jobs',args.jobs)
 
-        contour_plot = config['post_processing'].get(args.contour_plot, 'contour_plot')
-        best_trial_retraining = config['post_processing'].get(args.best_trial_retraining, 'best_trial_retraining')
-        z_transform_inverse_prediction = config['post_processing'].get(args.z_transform_inverse_prediction, 'z_transform_inverse_prediction')
-        regression_plot = config['post_processing'].get(args.regression_plot, 'regression_plot')
+        contour_plot = config['post_processing'].get('contour_plot')
+        best_trial_retraining = config['post_processing'].get('best_trial_retraining')
+        z_transform_inverse_prediction = config['post_processing'].get('z_transform_inverse_prediction')
+        regression_plot = config['post_processing'].get('regression_plot')
 
         if storage_url:
             storage = optuna.storages.RDBStorage(
