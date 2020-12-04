@@ -28,6 +28,10 @@ handlers:
 #    handlers: [console, rotating_file_handler]
 #  test:
 #    handlers: [rotating_file_handler]
+loggers:
+  lightning:
+    level: INFO
+    handlers: [console]
 root:
   level: INFO
   handlers: [console, file_handler]

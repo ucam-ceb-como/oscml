@@ -57,7 +57,6 @@ class Mol2seq():
             descriptor_BFS = [descriptor[i] for i in atoms_BFS_order]
         return descriptor_BFS
 
-
 class DatasetForBiLstmWithTransformer(torch.utils.data.Dataset):
     
     def __init__(self, df, max_sequence_length, m2seq_fct, padding_index, smiles_fct, target_fct):
@@ -76,21 +75,28 @@ class DatasetForBiLstmWithTransformer(torch.utils.data.Dataset):
             self.target_fct = lambda data: data[target_fct]
         else:
             self.target_fct = target_fct
+
+        self.smiles2seq = dict()
     
     def __getitem__(self, index):
         row = self.df.iloc[index]
         smiles = self.smiles_fct(row)
-        m = smiles2mol(smiles)
-        x = self.m2seq_fct(m)
-        # increase all indexes by +1
-        x = np.array(x) + 1
-        # fill up the sequence with padding index 0
-        diff = self.max_sequence_length-len(x)
-        if diff > 0:
-            x = np.append(x, self.padding_sequence[:diff])
-        if diff < 0:
-            raise RuntimeError(concat('A sequence with length greater the maximum sequence length was generated.',
-                    ', length=', len(x), ', maximum sequence length=', self.max_sequence_length, ', row index=', str(index)))
+
+        x = self.smiles2seq.get(smiles)
+
+        if x is None:
+            m = smiles2mol(smiles)
+            x = self.m2seq_fct(m)
+            # increase all indexes by +1
+            x = np.array(x) + 1
+            # fill up the sequence with padding index 0
+            diff = self.max_sequence_length-len(x)
+            if diff > 0:
+                x = np.append(x, self.padding_sequence[:diff])
+                self.smiles2seq[smiles] = x
+            if diff < 0:
+                raise RuntimeError(concat('A sequence with length greater the maximum sequence length was generated.',
+                        ', length=', len(x), ', maximum sequence length=', self.max_sequence_length, ', row index=', str(index)))
 
         device = cfg[oscml.utils.params.PYTORCH_DEVICE]
         x = torch.as_tensor(x, dtype = torch.long, device = device)
