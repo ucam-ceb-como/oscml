@@ -1,3 +1,5 @@
+import argparse
+
 import numpy as np
 import pandas as pd
 import seaborn as sns
@@ -63,3 +65,30 @@ def prediction_plot(figure_dir, train_pred, val_pred, test_pred):
 
     plot(figure_dir + "train_val_reg.svg", df_train_val)
     plot(figure_dir + "test_reg.svg", df_test_pred)
+
+
+def enter():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--contour', type=str, default=False)
+    parser.add_argument('--regression', type=str, default=False)
+    parser.add_argument('--figure_dir', type=str, default='.')
+    parser.add_argument('--df1', type=str, default='.')
+    parser.add_argument('--df2', type=str, default='.')
+    parser.add_argument('--df3', type=str, default='.')
+    args = parser.parse_args()
+
+    if args.contour:
+        contour_plot(args.figure_dir, args.df1)
+        # example:
+        # python ./oscml/visualization/util_sns_plot.py --contour True --figure_dir ./logs/hpo_20201204_135305/ --df1 ./logs/hpo_20201204_135305/hpo_result.csv
+    if args.regression:
+        prediction_plot(args.figure_dir, args.df1, args.df2, args.df3)
+        # example:
+        # python ./oscml/visualization/util_sns_plot.py --regression True
+        # --figure_dir ./logs/hpo_20201204_135305/best_trial_retrain/trial_18/
+        # --df1 ./logs/hpo_20201204_135305/best_trial_retrain/trial_18/predictions_training_set.csv
+        # --df1 ./logs/hpo_20201204_135305/best_trial_retrain/trial_18/predictions_validation_set.csv
+        # --df1 ./logs/hpo_20201204_135305/best_trial_retrain/trial_18/predictions_test_set.csv
+
+if __name__ == '__main__':
+    enter()
