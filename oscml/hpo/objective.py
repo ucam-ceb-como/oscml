@@ -31,8 +31,15 @@ class MetricsCallback(pl.Callback):
     def on_validation_end(self, trainer, pl_module):
         self.metrics.append(trainer.callback_metrics)
 
+
+def inverse_transform(transformer, y):
+    y_inverse = y * transformer.target_std + transformer.target_mean
+    return y_inverse
+
+
 def fit_or_test(model, train_dl, val_dl, test_dl, training_params,
-                log_dir, trial=None, trial_number=-1, n_trials=0, cv_index='', best_trial_retrain=False):
+                log_dir, trial=None, trial_number=-1, n_trials=0, cv_index='', best_trial_retrain=False,
+                transformer=None, inverse=False):
     # TODO investigate the discrepancy between best_trial and retrain, related to transformer? continued training?
     epochs = training_params['epochs']
     metric = training_params['metric']
@@ -120,8 +127,12 @@ def fit_or_test(model, train_dl, val_dl, test_dl, training_params,
             results_metric.append(test_result)
 
             predictions = list(model.test_predictions)
-            pred_df = pd.DataFrame(predictions[0], columns=['Measured PCE'])
-            pred_df['Predicted PCE'] = predictions[1]
+            if not inverse:
+                pred_df = pd.DataFrame(predictions[0], columns=['Measured PCE'])
+                pred_df['Predicted PCE'] = predictions[1]
+            else:
+                pred_df = pd.DataFrame(list(inverse_transform(transformer, np.array(predictions[0]))), columns=['Measured PCE'])
+                pred_df['Predicted PCE'] = list(inverse_transform(transformer, np.array(predictions[1])))
             pred_df.to_csv(dirpath+'predictions_{}.csv'.format(index_.replace(' ', '_')))
 
         pd.DataFrame(results_metric).to_csv(dirpath+'best_trial_retrain_model_result.csv')
@@ -221,14 +232,14 @@ def objective(trial, config, df_train, df_val, df_test, transformer, log_dir, to
                 model, train_dl, val_dl, test_dl, = get_model_and_data(model_name, trial, config, df_train, df_val,
                                                                        df_test, training_params, transformer, log_dir)
                 metric_value = fit_or_test(model, train_dl, val_dl, test_dl, training_params, log_dir,
-                                           trial, trial_number, total_number_trials, '', best_trial_retrain)
+                                           trial, trial_number, total_number_trials, '', best_trial_retrain, transformer)
 
         # normal training and testing
         else:
             model, train_dl, val_dl, test_dl = get_model_and_data(model_name, trial, config, df_train, df_val, df_test,
                                                                   training_params, transformer, log_dir)
             metric_value = fit_or_test(model, train_dl, val_dl, test_dl, training_params, log_dir,
-                                       trial, trial_number, total_number_trials, '', best_trial_retrain)
+                                       trial, trial_number, total_number_trials, '', best_trial_retrain, transformer)
 
     else:
         return None
