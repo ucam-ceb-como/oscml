@@ -40,7 +40,7 @@ def inverse_transform(transformer, y):
 
 def fit_or_test(model, train_dl, val_dl, test_dl, training_params,
                 log_dir, trial=None, trial_number=-1, n_trials=0, cv_index='', best_trial_retrain=False,
-                transformer=None, inverse=False):
+                transformer=None, inverse=False, regression_plot=False):
     # TODO investigate the discrepancy between best_trial and retrain, related to transformer? continued training?
     epochs = training_params['epochs']
     metric = training_params['metric']
@@ -139,9 +139,10 @@ def fit_or_test(model, train_dl, val_dl, test_dl, training_params,
 
         pd.DataFrame(results_metric).to_csv(dirpath+'best_trial_retrain_model_result.csv')
 
-        oscml.visualization.util_sns_plot.prediction_plot(dirpath, dirpath + 'predictions_training_set.csv',
-                                                          dirpath + 'predictions_validation_set.csv',
-                                                          dirpath + 'predictions_test_set.csv')
+        if regression_plot:
+            oscml.visualization.util_sns_plot.prediction_plot(dirpath, dirpath + 'predictions_training_set.csv',
+                                                              dirpath + 'predictions_validation_set.csv',
+                                                              dirpath + 'predictions_test_set.csv')
 
     if epochs > 0:
         return val_error
@@ -171,7 +172,8 @@ def get_model_and_data(model_name, trial, config, df_train, df_val, df_test, tra
     return None
 
 
-def objective(trial, config, df_train, df_val, df_test, transformer, log_dir, total_number_trials, best_trial_retrain=False):
+def objective(trial, config, df_train, df_val, df_test, transformer, log_dir, total_number_trials,
+              best_trial_retrain=False, z_transform_inverse_prediction=False, regression_plot=False):
     # TODO how does retraining work for RF and SVR?
     # release GPU memory before start each trial
     torch.cuda.empty_cache()
@@ -237,15 +239,23 @@ def objective(trial, config, df_train, df_val, df_test, transformer, log_dir, to
                 df_train = df_train[df_train[split] == 'train']
                 model, train_dl, val_dl, test_dl, = get_model_and_data(model_name, trial, config, df_train, df_val,
                                                                        df_test, training_params, transformer, log_dir)
-                metric_value = fit_or_test(model, train_dl, val_dl, test_dl, training_params, log_dir,
-                                           trial, trial_number, total_number_trials, '', best_trial_retrain, transformer)
+                metric_value = fit_or_test(model=model, train_dl=train_dl, val_dl=val_dl, test_dl=test_dl,
+                                           training_params=training_params, log_dir=log_dir,
+                                           trial=trial, trial_number=trial_number, n_trials=total_number_trials,
+                                           cv_index='', best_trial_retrain=best_trial_retrain,
+                                           transformer=transformer, inverse=z_transform_inverse_prediction,
+                                           regression_plot=regression_plot)
 
         # normal training and testing
         else:
             model, train_dl, val_dl, test_dl = get_model_and_data(model_name, trial, config, df_train, df_val, df_test,
                                                                   training_params, transformer, log_dir)
-            metric_value = fit_or_test(model, train_dl, val_dl, test_dl, training_params, log_dir,
-                                       trial, trial_number, total_number_trials, '', best_trial_retrain, transformer)
+            metric_value = fit_or_test(model=model, train_dl=train_dl, val_dl=val_dl, test_dl=test_dl,
+                                       training_params=training_params, log_dir=log_dir,
+                                       trial=trial, trial_number=trial_number, n_trials=total_number_trials,
+                                       cv_index='', best_trial_retrain=best_trial_retrain,
+                                       transformer=transformer, inverse=z_transform_inverse_prediction,
+                                       regression_plot=regression_plot)
 
     else:
         return None

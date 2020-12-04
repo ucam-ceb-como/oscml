@@ -70,6 +70,11 @@ def start_hpo(args, objective, log_dir, config, total_number_trials):
         n_trials = config['training'].get('n_trials',args.trials)
         n_jobs = config['training'].get('n_jobs',args.jobs)
 
+        contour_plot = config['post_processing'].get('contour_plot')
+        best_trial_retraining = config['post_processing'].get('best_trial_retraining')
+        z_transform_inverse_prediction = config['post_processing'].get('z_transform_inverse_prediction')
+        regression_plot = config['post_processing'].get('regression_plot')
+
         if storage_url:
             storage = optuna.storages.RDBStorage(
             url=storage_url,
@@ -89,10 +94,15 @@ def start_hpo(args, objective, log_dir, config, total_number_trials):
         log_and_save(study, path)
         best_value = study.best_trial.value
 
-        oscml.visualization.util_sns_plot.contour_plot(log_dir, path)
+        if contour_plot:
+            oscml.visualization.util_sns_plot.contour_plot(log_dir, path)
 
-        log_dir_best_trial_retrain = log_dir + '/best_trial_retrain'
-        objective(study.best_trial, log_dir=log_dir_best_trial_retrain, best_trial_retrain=True)
+        if best_trial_retraining:
+            log_dir_best_trial_retrain = log_dir + '/best_trial_retrain'
+            objective(study.best_trial, log_dir=log_dir_best_trial_retrain,
+                      best_trial_retrain=True,
+                      z_transform_inverse_prediction=z_transform_inverse_prediction,
+                      regression_plot=regression_plot)
 
         return best_value
 
