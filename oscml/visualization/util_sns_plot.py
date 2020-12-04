@@ -1,6 +1,7 @@
 import argparse
 
 import torch
+import numpy as np
 import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt
@@ -8,11 +9,10 @@ import matplotlib.pyplot as plt
 
 def contour_plot(hpo_result):
     df_hpo_result = pd.read_csv(hpo_result, index_col=[0])
-    print(df_hpo_result)
-    for col in df_hpo_result:
-        if col in ['number', 'datatime_start', 'datatime_complete', 'duration', 'state']:
-            df_hpo_result = df_hpo_result.drop(columns=col)
-    print(df_hpo_result)
+    # TODO finish the plot for final prediction results
+
+    df_hpo_result = df_hpo_result.drop(columns=['number', 'datetime_start', 'datetime_complete', 'duration', 'state'])
+    df_hpo_result = df_hpo_result.replace(np.nan, 0)
 
     sns_pair_plot = sns.pairplot(df_hpo_result)
     sns_pair_plot.savefig('test_pair_plot.svg')
@@ -24,7 +24,8 @@ def contour_plot(hpo_result):
 
 
 if __name__ == '__main__':
-    contour_plot('./best_trial_98_svr_hpo_result_trials_part2.csv')
+    #contour_plot('./best_trial_98_svr_hpo_result_trials_part2.csv')
+    contour_plot('./logs/hpo_20201203_232802/hpo_result.csv')
 
 # def init_plot():
 #     sns.set(font_scale=1)
