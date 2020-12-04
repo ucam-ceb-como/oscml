@@ -42,5 +42,11 @@
 	"__remove_this_bit__load_if_exists": true,
 	"__remove_this_bit__n_trials": 20,
 	"__remove_this_bit__n_jobs": 20
+    },
+"post_processing":{
+    "contour_plot": true,
+    "best_trial_retraining": true,
+    "z_transform_inverse_prediction": true,
+    "regression_plot": true
     }
 }
