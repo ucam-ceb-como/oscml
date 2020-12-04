@@ -41,27 +41,6 @@ function recreate_conda_env {
     echo
 }
 
-function install_ZhouLiML_package {
-    echo "3. Installing the OSCML project as a python package..."
-    echo "-------------------------------------------------------------"
-    echo
-    source activate $CONDA_ENV_NAME
-
-    if [ $? -eq 0 ]; then
-        pip install -e .
-        if [ $? -ne 0 ]; then
-			echo "ERROR: Could not install the OSCML project. Please check the pip log."
-			exit -1
-        fi
-    else
-        echo "Couldnt activate conda environment. Aborting installation."
-        read -n 1 -s -r -p "Press any key to continue"
-        exit -1
-    fi
-    echo
-    echo
-}
-
 function redownload_data_from_server {
 	mkdir -p $DATA_LOCAL
 	echo -n "Please provide your Vienna user-name: "
@@ -94,10 +73,6 @@ if [ "$1" == "-e" ]
 then
     check_conda
     recreate_conda_env
-elif [ "$1" == "-i" ]
-then
-    check_conda
-    install_ZhouLiML_package
 elif [ "$1" == "-d" ]
 then
     get_data_from_server
@@ -105,7 +80,6 @@ elif [ "$1" == "-a" ]
 then
     check_conda
     recreate_conda_env
-    install_ZhouLiML_package
     get_data_from_server
 else
     echo "==============================================================================================================="
@@ -116,7 +90,6 @@ else
     echo "  -a  : performs all the steps below"
     echo "  -e  : re-creates conda environment for this project; it will remove the current '"$CONDA_ENV_NAME"'"
     echo "        environment, if exists, and create it again installing all necessary packages"
-    echo "  -i  : installs the oscml project as a python package"
     echo "  -d  : downloads project data from Vienna, (will ask for your Vienna login details)"
 fi
 echo

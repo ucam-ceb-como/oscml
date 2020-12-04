@@ -46,6 +46,7 @@ def fit_or_test(model, train_dl, val_dl, test_dl, training_params,
     metric = training_params['metric']
     direction = training_params['direction']
     patience = training_params['patience']
+    min_delta = training_params['min_delta']
 
     if best_trial_retrain:
         log_head = '[Best trial retrain - Trial ' + str(trial_number) + ']'
@@ -64,7 +65,7 @@ def fit_or_test(model, train_dl, val_dl, test_dl, training_params,
     #    callbacks.append(pruning_callback)
 
     if patience > 0:
-        early_stopping_callback = EarlyStopping(monitor=metric, min_delta=0.0, patience=patience, verbose=False, mode=direction)
+        early_stopping_callback = EarlyStopping(monitor=metric, min_delta=min_delta, patience=patience, verbose=False, mode=direction)
         callbacks.append(early_stopping_callback)
 
     # only save model checkpoint in the retraining phase, which is only set true for the best trial
