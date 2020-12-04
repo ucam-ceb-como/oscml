@@ -5,7 +5,7 @@ from scipy import stats
 import matplotlib.pyplot as plt
 
 
-def contour_plot(hpo_result):
+def contour_plot(figure_dir, hpo_result):
     df_hpo_result = pd.read_csv(hpo_result, index_col=[0])
     # TODO finish the plot for final prediction results
 
@@ -13,12 +13,12 @@ def contour_plot(hpo_result):
     df_hpo_result = df_hpo_result.replace(np.nan, 0)
 
     sns_pair_plot = sns.pairplot(df_hpo_result)
-    sns_pair_plot.savefig('test_pair_plot.svg')
+    sns_pair_plot.savefig(figure_dir + '/hpo_params_pair_plot.svg')
 
     sns_pair_grid = sns.PairGrid(df_hpo_result)
     sns_pair_grid.map_diag(sns.kdeplot)
     sns_pair_grid.map_offdiag(sns.kdeplot, n_levels=6)
-    sns_pair_grid.savefig('test_pair_grid.svg')
+    sns_pair_grid.savefig(figure_dir + '/hpo_params_pair_grid.svg')
 
 
 def init_plot():
@@ -61,5 +61,5 @@ def prediction_plot(figure_dir, train_pred, val_pred, test_pred):
     df_train_val = df_train_pred.append(df_val_pred, ignore_index=True, sort=False)
     df_test_pred = pd.read_csv(test_pred, index_col=[0])
 
-    plot(figure_dir + "/train_val_reg.svg", df_train_val)
-    plot(figure_dir + "/test_reg.svg", df_test_pred)
+    plot(figure_dir + "train_val_reg.svg", df_train_val)
+    plot(figure_dir + "test_reg.svg", df_test_pred)

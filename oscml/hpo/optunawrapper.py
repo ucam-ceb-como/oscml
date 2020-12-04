@@ -4,6 +4,8 @@ import os
 import optuna
 import optuna.samplers
 
+import oscml.visualization.util_sns_plot
+
 
 os.environ["SLURM_JOB_NAME"]="bash"
 
@@ -86,6 +88,8 @@ def start_hpo(args, objective, log_dir, config, total_number_trials):
         path = log_dir + '/hpo_result.csv'
         log_and_save(study, path)
         best_value = study.best_trial.value
+
+        oscml.visualization.util_sns_plot.contour_plot(log_dir, path)
 
         log_dir_best_trial_retrain = log_dir + '/best_trial_retrain'
         objective(study.best_trial, log_dir=log_dir_best_trial_retrain, best_trial_retrain=True)

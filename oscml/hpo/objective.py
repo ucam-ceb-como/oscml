@@ -21,6 +21,7 @@ import oscml.hpo.hpo_svr
 import oscml.hpo.optunawrapper
 from oscml.utils.util_config import set_config_param
 import oscml.utils.util_sklearn
+import oscml.visualization.util_sns_plot
 
 class MetricsCallback(pl.Callback):
 
@@ -136,6 +137,10 @@ def fit_or_test(model, train_dl, val_dl, test_dl, training_params,
             pred_df.to_csv(dirpath+'predictions_{}.csv'.format(index_.replace(' ', '_')))
 
         pd.DataFrame(results_metric).to_csv(dirpath+'best_trial_retrain_model_result.csv')
+
+        oscml.visualization.util_sns_plot.prediction_plot(dirpath, dirpath + 'predictions_training_set.csv',
+                                                          dirpath + 'predictions_validation_set.csv',
+                                                          dirpath + 'predictions_test_set.csv')
 
     if epochs > 0:
         return val_error
