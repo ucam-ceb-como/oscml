@@ -54,49 +54,6 @@ class Mol2seq_simple():
             seq.append(index)
         return seq
 
-"""
-def create_dgl_graph(smiles, mol2seq_fct):
-    m = smiles2mol(smiles)
-    adj = rdkit.Chem.rdmolops.GetAdjacencyMatrix(m)
-    g_nx = networkx.convert_matrix.from_numpy_matrix(adj)
-    #g = dgl.DGLGraph(g_nx)
-    g = dgl.from_networkx(g_nx)
-
-    seq = mol2seq_fct(m)
-    tensor = torch.as_tensor(seq, dtype=torch.long)
-    g.ndata['type'] = tensor
-
-    return g
-
-class DatasetForGnnWithTransformerOLD(torch.utils.data.Dataset):
-
-    def __init__(self, df, mol2seq_fct, smiles_fct, target_fct):
-        super().__init__()
-
-        self.df = df
-        self.mol2seq_fct = mol2seq_fct
-
-        if isinstance(smiles_fct, str):
-            self.smiles_fct = lambda data: data[smiles_fct]
-        else:
-            self.smiles_fct = smiles_fct
-        if isinstance(target_fct, str):
-            self.target_fct = lambda data: data[target_fct]
-        else:
-            self.target_fct = target_fct
-
-    def __getitem__(self, index):
-        row = self.df.iloc[index]
-        smiles = self.smiles_fct(row)
-        g = create_dgl_graph(smiles, self.mol2seq_fct)
-        y = self.target_fct(row)
-        y = torch.as_tensor(np.array(y, dtype=np.float32))
-        return [g, y]
-
-    def __len__(self):
-        return len(self.df)
-"""
-
 class DatasetForGnnWithTransformer(torch.utils.data.Dataset):
 
     def __init__(self, df, mol2seq_fct, smiles_fct, target_fct):

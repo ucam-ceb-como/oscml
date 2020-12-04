@@ -57,53 +57,6 @@ class Mol2seq():
             descriptor_BFS = [descriptor[i] for i in atoms_BFS_order]
         return descriptor_BFS
 
-"""
-class DatasetForBiLstmWithTransformer_OLD(torch.utils.data.Dataset):
-    
-    def __init__(self, df, max_sequence_length, m2seq_fct, padding_index, smiles_fct, target_fct):
-        super().__init__()
-        self.df = df
-        self.max_sequence_length = max_sequence_length
-        self.m2seq_fct = m2seq_fct
-        # TODO: use torch.nn.utils.rnn.pack_padded_sequence instead
-        self.padding_sequence = [padding_index]*self.max_sequence_length
-
-        if isinstance(smiles_fct, str):
-            self.smiles_fct = lambda data: data[smiles_fct]
-        else:
-            self.smiles_fct = smiles_fct
-        if isinstance(target_fct, str):
-            self.target_fct = lambda data: data[target_fct]
-        else:
-            self.target_fct = target_fct
-    
-    def __getitem__(self, index):
-        row = self.df.iloc[index]
-        smiles = self.smiles_fct(row)
-        m = smiles2mol(smiles)
-        x = self.m2seq_fct(m)
-        # increase all indexes by +1
-        x = np.array(x) + 1
-        # fill up the sequence with padding index 0
-        diff = self.max_sequence_length-len(x)
-        if diff > 0:
-            x = np.append(x, self.padding_sequence[:diff])
-        if diff < 0:
-            raise RuntimeError(concat('A sequence with length greater the maximum sequence length was generated.',
-                    ', length=', len(x), ', maximum sequence length=', self.max_sequence_length, ', row index=', str(index)))
-
-        device = cfg[oscml.utils.params.PYTORCH_DEVICE]
-        x = torch.as_tensor(x, dtype = torch.long, device = device)
-
-        y = self.target_fct(row)
-        y = torch.as_tensor(np.array(y, dtype=np.float32), device = device)
-
-        return [x, y]
-    
-    def __len__(self):
-        return len(self.df)
-"""
-
 class DatasetForBiLstmWithTransformer(torch.utils.data.Dataset):
     
     def __init__(self, df, max_sequence_length, m2seq_fct, padding_index, smiles_fct, target_fct):
