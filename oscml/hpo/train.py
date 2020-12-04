@@ -44,6 +44,10 @@ def start(config_dev=None):
     parser.add_argument('--storage', type=none_or_str, default=None)
     parser.add_argument('--study_name', type=none_or_str, default=None)
     parser.add_argument('--load_if_exists', type=bool_or_str, default=False)
+    parser.add_argument('--contour_plot', type=bool_or_str, default=True)
+    parser.add_argument('--best_trial_retraining', type=bool_or_str, default=True)
+    parser.add_argument('--z_transform_inverse_prediction', type=bool_or_str, default=True)
+    parser.add_argument('--regression_plot', type=bool_or_str, default=True)
     args = parser.parse_args()
 
     if args.config:
