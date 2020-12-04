@@ -77,7 +77,8 @@ def fit_or_test(model, train_dl, val_dl, test_dl, training_params,
     trainer_params.update({
         'max_epochs': epochs,
         'logger': csv_logger,
-        'callbacks': callbacks
+        'callbacks': callbacks,
+        'profiler': 'simple'
     })
 
     logging.info('[trial %s - %s] params for Lightning trainer=%s', trial_number, cv_index, trainer_params)

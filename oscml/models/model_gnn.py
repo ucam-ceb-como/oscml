@@ -50,9 +50,11 @@ class Mol2seq_simple():
                     index = -1
                 else:
                     raise keyerror
+
             seq.append(index)
         return seq
 
+"""
 def create_dgl_graph(smiles, mol2seq_fct):
     m = smiles2mol(smiles)
     adj = rdkit.Chem.rdmolops.GetAdjacencyMatrix(m)
@@ -66,10 +68,11 @@ def create_dgl_graph(smiles, mol2seq_fct):
 
     return g
 
-class DatasetForGnnWithTransformer(torch.utils.data.Dataset):
+class DatasetForGnnWithTransformerOLD(torch.utils.data.Dataset):
 
     def __init__(self, df, mol2seq_fct, smiles_fct, target_fct):
         super().__init__()
+
         self.df = df
         self.mol2seq_fct = mol2seq_fct
 
@@ -86,6 +89,67 @@ class DatasetForGnnWithTransformer(torch.utils.data.Dataset):
         row = self.df.iloc[index]
         smiles = self.smiles_fct(row)
         g = create_dgl_graph(smiles, self.mol2seq_fct)
+        y = self.target_fct(row)
+        y = torch.as_tensor(np.array(y, dtype=np.float32))
+        return [g, y]
+
+    def __len__(self):
+        return len(self.df)
+"""
+
+class DatasetForGnnWithTransformer(torch.utils.data.Dataset):
+
+    def __init__(self, df, mol2seq_fct, smiles_fct, target_fct):
+        super().__init__()
+
+        self.df = df
+        self.mol2seq_fct = mol2seq_fct
+
+        if isinstance(smiles_fct, str):
+            self.smiles_fct = lambda data: data[smiles_fct]
+        else:
+            self.smiles_fct = smiles_fct
+        if isinstance(target_fct, str):
+            self.target_fct = lambda data: data[target_fct]
+        else:
+            self.target_fct = target_fct
+
+        self.smiles2seq = dict()
+
+    def __getitem__(self, index):
+
+        row = self.df.iloc[index]
+        smiles = self.smiles_fct(row)
+
+        value = self.smiles2seq.get(smiles)
+        """
+        if value:
+            m = value[0]
+            seq = value[1]
+        else:
+            m = smiles2mol(smiles)
+            seq = self.mol2seq_fct(m)
+            self.smiles2seq[smiles] = (m, seq)
+        """
+        if value:
+            seq = value[0]
+            g = value[1]
+        else:
+            m = smiles2mol(smiles)
+            seq = self.mol2seq_fct(m)
+            adj = rdkit.Chem.rdmolops.GetAdjacencyMatrix(m)
+            g_nx = networkx.convert_matrix.from_numpy_matrix(adj)
+            g = dgl.from_networkx(g_nx)
+            self.smiles2seq[smiles] = (seq, g)
+
+        #adj = rdkit.Chem.rdmolops.GetAdjacencyMatrix(m)
+        # from 3 to 6 seconds
+        #g_nx = networkx.convert_matrix.from_numpy_matrix(adj)
+        # 28 second, second run 25
+        #g = dgl.from_networkx(g_nx)
+        tensor = torch.as_tensor(seq, dtype=torch.long)
+        g.ndata['type'] = tensor
+
         y = self.target_fct(row)
         y = torch.as_tensor(np.array(y, dtype=np.float32))
         return [g, y]
