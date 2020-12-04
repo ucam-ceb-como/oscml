@@ -33,7 +33,6 @@ class MetricsCallback(pl.Callback):
 
 def fit_or_test(model, train_dl, val_dl, test_dl, training_params,
                 log_dir, trial=None, trial_number=-1, n_trials=0, cv_index='', best_trial_retrain=False):
-    # TODO save one final results file
     # TODO investigate the discrepancy between best_trial and retrain, related to transformer? continued training?
     epochs = training_params['epochs']
     metric = training_params['metric']
@@ -111,15 +110,22 @@ def fit_or_test(model, train_dl, val_dl, test_dl, training_params,
         ckpt_path = glob.glob(dirpath+'best_trial_retrain_model' + '*.ckpt')[0].replace('\\', '/')
         model.load_state_dict(torch.load(ckpt_path)['state_dict'])
         model.eval()
-        train_result = trainer.test(model, test_dataloaders=train_dl)[0]
-        val_result = trainer.test(model, test_dataloaders=val_dl)[0]
-        test_result = trainer.test(model, test_dataloaders=test_dl)[0]
-        train_result['phase'] = 'training set'
-        val_result['phase'] = 'validation set'
-        test_result['phase'] = 'test set'
-        results = pd.DataFrame([train_result, val_result, test_result])
-        results.to_csv(dirpath+'best_trial_retrain_model_result.csv')
-        
+
+        index_dl = ['training set', 'validation set', 'test set']
+        dataset_dl = [train_dl, val_dl, test_dl]
+        results_metric = []
+        for index_, dataset_ in zip(index_dl, dataset_dl):
+            test_result = trainer.test(model, test_dataloaders=dataset_)[0]
+            test_result['phase'] = index_
+            results_metric.append(test_result)
+
+            predictions = list(model.test_predictions)
+            pred_df = pd.DataFrame(predictions[0], columns=['Measured PCE'])
+            pred_df['Predicted PCE'] = predictions[1]
+            pred_df.to_csv(dirpath+'predictions_{}.csv'.format(index_.replace(' ', '_')))
+
+        pd.DataFrame(results_metric).to_csv(dirpath+'best_trial_retrain_model_result.csv')
+
     if epochs > 0:
         return val_error
     return None
