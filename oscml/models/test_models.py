@@ -159,11 +159,11 @@ class TestModels(unittest.TestCase):
             pass
 
 if __name__ == '__main__':
-    #unittest.main()
+    unittest.main()
 
-    suite = unittest.TestSuite()
+    #suite = unittest.TestSuite()
     #suite.addTest(TestModels('test_bilstm_dataloader_for_hopv15'))
     #suite.addTest(TestModels('test_bilstm_dataloader_for_cep25000'))
-    suite.addTest(TestModels('test_profile_gnn_dataloader_for_cep25000'))
-    runner = unittest.TextTestRunner()
-    runner.run(suite)
+    #suite.addTest(TestModels('test_profile_gnn_dataloader_for_cep25000'))
+    #runner = unittest.TextTestRunner()
+    #runner.run(suite)

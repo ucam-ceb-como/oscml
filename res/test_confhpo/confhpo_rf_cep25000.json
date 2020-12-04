@@ -32,7 +32,14 @@
     },
 "training":{
     "criterion": "mse",
+	"metric": "mse",
 	"direction": "minimize",
     "cross_validation": false
-    }
+    },
+"post_processing":{
+    "contour_plot": false,
+    "best_trial_retraining": false,
+    "z_transform_inverse_prediction": false,
+    "regression_plot": false
+}
 }

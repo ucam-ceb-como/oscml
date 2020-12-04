@@ -35,6 +35,7 @@
 	"min_delta": 0.0,
 	"metric": "val_loss",
 	"direction": "minimize",
+	"cross_validation": false,
 	"__remove_this_bit__study_name": "simplegnn_cep25000_stratified",
     "__remove_this_bit__storage": "sqlite:///simplegnn_cep25000_stratified.db",
     "__remove_this_bit__storage_timeout": 1000,
