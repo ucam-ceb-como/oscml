@@ -30,8 +30,15 @@
 	"batch_size": 40,
 	"epochs": 1,
 	"patience": -1,
+	"min_delta": 0.0,
 	"metric": "val_loss",
 	"direction": "minimize",
 	"cross_validation": false
-    }
+    },
+"post_processing":{
+    "contour_plot": false,
+    "best_trial_retraining": false,
+    "z_transform_inverse_prediction": false,
+    "regression_plot": false
+}
 }

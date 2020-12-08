@@ -94,10 +94,10 @@ def train_and_test(x_train, y_train, x_val, y_val, x_test, y_test, model, cross_
 
         calculate_metrics(model, x_train, y_train, metric, 'train')
         objective_value = 0.
-        if x_val:
+        if x_val is not None:
             result = calculate_metrics(model, x_val, y_val, metric, 'val')
             objective_value = result[metric]
-        if x_test:
+        if x_test is not None:
             result = calculate_metrics(model, x_test, y_test, metric, 'test')
 
     return objective_value

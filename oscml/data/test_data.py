@@ -149,14 +149,14 @@ class TestData(unittest.TestCase):
 
 
 if __name__ == '__main__':
-    #unittest.main()
+    unittest.main()
   
-    suite = unittest.TestSuite()
+    #suite = unittest.TestSuite()
     #suite.addTest(TestData('test_dataset_info_for_cepdb_25000'))
     #suite.addTest(TestData('test_dataset_info_for_hopv15'))
     #suite.addTest(TestData('test_dataset_transform_cep_25000'))
     #suite.addTest(TestData('test_dataset_skip_invalid_smiles'))
     #suite.addTest(TestData('test_add_k_fold_columns'))
-    suite.addTest(TestData('test_add_fingerprint_columns'))
-    runner = unittest.TextTestRunner()
-    runner.run(suite)
+    #suite.addTest(TestData('test_add_fingerprint_columns'))
+    #runner = unittest.TextTestRunner()
+    #runner.run(suite)

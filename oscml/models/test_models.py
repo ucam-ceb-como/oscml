@@ -2,6 +2,7 @@ import logging
 import unittest
 
 import torch
+from tqdm import tqdm
 
 import oscml.data.dataset
 import oscml.data.dataset_cep
@@ -132,11 +133,37 @@ class TestModels(unittest.TestCase):
     def test_bilstm_dataloader_for_cep25000(self):
         self.internal_test_bilstm_dataloader(type_dict=oscml.data.dataset_cep.CEP25000, src='./data/processed/CEPDB_25000.csv', x_column='SMILES_str')
 
+    def test_profile_gnn_dataloader_for_cep25000(self):
+
+        dataset_config = {
+            "src": "./data/processed/CEPDB_25000.csv",
+            "z-stand": "False",
+            "x_column": ["SMILES_str"],
+            "y_column": ["pce"],
+            'split': "ml_phase"
+        }
+
+        df_train, df_val, df_test, transformer = oscml.data.dataset.get_dataframes(dataset=dataset_config)
+
+        #df_train = df_train[:2500]
+
+        train_dl, _, _ = oscml.models.model_gnn.get_dataloaders(oscml.data.dataset_cep.CEP25000, df_train, df_val, df_test, 
+            transformer, batch_size=250)
+
+        for batch in tqdm(train_dl):
+            pass
+
+        logging.info('finished iteration 1')
+
+        for batch in tqdm(train_dl):
+            pass
+
 if __name__ == '__main__':
     unittest.main()
 
     #suite = unittest.TestSuite()
     #suite.addTest(TestModels('test_bilstm_dataloader_for_hopv15'))
-    # suite.addTest(TestModels('test_bilstm_dataloader_for_cep25000'))
+    #suite.addTest(TestModels('test_bilstm_dataloader_for_cep25000'))
+    #suite.addTest(TestModels('test_profile_gnn_dataloader_for_cep25000'))
     #runner = unittest.TextTestRunner()
     #runner.run(suite)

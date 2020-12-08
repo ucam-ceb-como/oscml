@@ -1,7 +1,6 @@
 import torch
 
 INCLUDE_HYDROGENS = 'INCLUDE_HYDROGENS'
-TENSOR_BOARD_MAIN_LOG_DIR = 'TENSOR_BOARD_MAIN_LOG_DIR'
 PYTORCH_DEVICE = 'PYTORCH_DEVICE'
 
 class Singleton(type):
@@ -32,7 +31,6 @@ class Params(metaclass=Singleton):
         
         self.cfg = {
             INCLUDE_HYDROGENS: True,
-            TENSOR_BOARD_MAIN_LOG_DIR: '../tensorboard',
             PYTORCH_DEVICE: my_device,
         }
         

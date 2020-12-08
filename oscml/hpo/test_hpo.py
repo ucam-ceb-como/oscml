@@ -42,6 +42,7 @@ def create_config(type_dict, model_name, model_specific):
             "batch_size": 250,
             "epochs": 1,
             "patience": -1,
+            "min_delta": 1, 
             "metric": 'val_loss',
             "direction": 'minimize',
             "cross_validation": False
@@ -53,6 +54,13 @@ def create_config(type_dict, model_name, model_specific):
             "cudnn_benchmark": False
         }
 
+    post_processing ={
+        "contour_plot": False,
+        "best_trial_retraining": False,
+        "z_transform_inverse_prediction": True,
+        "regression_plot": False
+    }
+
     return {
         "numerical_settings": numerical_settings,
         "dataset": dataset,
@@ -60,7 +68,8 @@ def create_config(type_dict, model_name, model_specific):
             "name": model_name,
             "model_specific": model_specific,            
         },
-        "training": training
+        "training": training,
+        "post_processing": post_processing
     } 
 
 def create_config_attentivefp(type_dict, featurizer):
