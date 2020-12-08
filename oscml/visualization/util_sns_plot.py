@@ -43,6 +43,11 @@ def plot(file_path, df):
     g = sns.jointplot(x="Measured PCE", y="Predicted PCE", data=df,
                       kind='reg', scatter_kws={'alpha': 0.5, 's': 20}, height=5)
 
+    g.ax_marg_x.set_xlim(min([df['Measured PCE'].min(), df['Predicted PCE'].min()]),
+                         max([df['Measured PCE'].max(), df['Predicted PCE'].max()]))
+    g.ax_marg_y.set_ylim(min([df['Measured PCE'].min(), df['Predicted PCE'].min()]),
+                         max([df['Measured PCE'].max(), df['Predicted PCE'].max()]))
+
     g.ax_joint.set_xlabel('Measured PCE (%)')
     g.ax_joint.set_ylabel('Predicted PCE (%)')
 
