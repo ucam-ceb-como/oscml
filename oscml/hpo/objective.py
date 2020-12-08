@@ -236,16 +236,20 @@ def objective(trial, config, df_train, df_val, df_test, transformer, log_dir, to
                              training_params['metric'],
                              np.array(cv_metric).var())
             else:
-                df_val = df_train[df_train[split] == 'val']
-                df_train = df_train[df_train[split] == 'train']
-                model, train_dl, val_dl, test_dl, = get_model_and_data(model_name, trial, config, df_train, df_val,
-                                                                       df_test, training_params, transformer, log_dir)
-                metric_value = fit_or_test(model=model, train_dl=train_dl, val_dl=val_dl, test_dl=test_dl,
-                                           training_params=training_params, log_dir=log_dir,
-                                           trial=trial, trial_number=trial_number, n_trials=total_number_trials,
-                                           cv_index='', best_trial_retrain=best_trial_retrain,
-                                           transformer=transformer, inverse=z_transform_inverse_prediction,
-                                           regression_plot=regression_plot)
+                rs = ShuffleSplit(n_splits=1, test_size=1 / cv, random_state=seed + 1)
+                rs.get_n_splits(df_train)
+                for train_index, val_index in rs.split(df_train):
+                    model, train_dl, val_dl, test_dl, = get_model_and_data(model_name, trial, config,
+                                                                           df_train.iloc[train_index],
+                                                                           df_train.iloc[val_index],
+                                                                           df_test, training_params, transformer,
+                                                                           log_dir)
+                    metric_value = fit_or_test(model=model, train_dl=train_dl, val_dl=val_dl, test_dl=test_dl,
+                                               training_params=training_params, log_dir=log_dir,
+                                               trial=trial, trial_number=trial_number, n_trials=total_number_trials,
+                                               cv_index='', best_trial_retrain=best_trial_retrain,
+                                               transformer=transformer, inverse=z_transform_inverse_prediction,
+                                               regression_plot=regression_plot)
 
         # normal training and testing
         else:
