@@ -33,9 +33,9 @@ class MetricsCallback(pl.Callback):
         self.metrics.append(trainer.callback_metrics)
 
 
-def inverse_transform(transformer, y):
-    y_inverse = y * transformer.target_std + transformer.target_mean
-    return y_inverse
+def standard_score_transform(transformer, y):
+    y_transform = (y - transformer.target_mean) / transformer.target_std
+    return y_transform
 
 
 def fit_or_test(model, train_dl, val_dl, test_dl, training_params,
@@ -131,11 +131,11 @@ def fit_or_test(model, train_dl, val_dl, test_dl, training_params,
 
             predictions = list(model.test_predictions)
             if not inverse:
+                pred_df = pd.DataFrame(list(standard_score_transform(transformer, np.array(predictions[0]))), columns=['Measured PCE'])
+                pred_df['Predicted PCE'] = list(standard_score_transform(transformer, np.array(predictions[1])))
+            else:
                 pred_df = pd.DataFrame(predictions[0], columns=['Measured PCE'])
                 pred_df['Predicted PCE'] = predictions[1]
-            else:
-                pred_df = pd.DataFrame(list(inverse_transform(transformer, np.array(predictions[0]))), columns=['Measured PCE'])
-                pred_df['Predicted PCE'] = list(inverse_transform(transformer, np.array(predictions[1])))
             pred_df.to_csv(dirpath+'predictions_{}.csv'.format(index_.replace(' ', '_')))
 
         pd.DataFrame(results_metric).to_csv(dirpath+'best_trial_retrain_model_result.csv')
