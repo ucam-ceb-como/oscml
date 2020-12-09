@@ -194,12 +194,12 @@ def objective(trial, config, df_train, df_val, df_test, transformer, log_dir, to
         model, x_train, y_train, x_val, y_val, x_test, y_test = oscml.hpo.hpo_rf.create(trial, config, df_train, df_val, df_test, training_params)
         metric_value = oscml.utils.util_sklearn.train_and_test(x_train, y_train, x_val, y_val, x_test, y_test, model,
                                                                training_params['cross_validation'],
-                                                               training_params['criterion'])
+                                                               training_params['metric'])
     elif model_name == 'SVR':
         model, x_train, y_train, x_val, y_val, x_test, y_test = oscml.hpo.hpo_svr.create(trial, config, df_train, df_val, df_test, training_params)
         metric_value = oscml.utils.util_sklearn.train_and_test(x_train, y_train, x_val, y_val, x_test, y_test, model,
                                                                training_params['cross_validation'],
-                                                               training_params['criterion'])
+                                                               training_params['metric'])
 
     # then move to BILSTM, AttentiveFP, and SimpleGNN models
     elif model_name == 'BILSTM' or model_name == 'AttentiveFP' or model_name == 'SimpleGNN':
