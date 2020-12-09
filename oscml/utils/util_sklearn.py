@@ -37,10 +37,18 @@ def get_length(z):
 
 def train_and_test(x_train, y_train, x_val, y_val, x_test, y_test, model, cross_validation, metric, log_dir,
                    seed=None, trial_number=None, best_trial_retrain=False, transformer=None, inverse=False, regression_plot=False):
-       
-    logging.info('fitting for %s', model)
-    logging.info('sample size = %s %s %s %s %s %s', len(x_train), len(y_train), get_length(x_val), get_length(y_val), get_length(x_test), get_length(y_test))
-    logging.info('cross_validation = %s', cross_validation)
+
+    if best_trial_retrain:
+        log_head = '[Best trial retrain - Trial ' + str(trial_number) + ']'
+    else:
+        if not cross_validation:
+            log_head = '[Trial ' + str(trial_number) + ']'
+        else:
+            log_head = '[Trial '+ str(trial_number) + ' - ' + str(cross_validation) + ' fold cross-validation]'
+
+    logging.info('%s fitting for %s', log_head, model)
+    logging.info('%s sample size = %s %s %s %s %s %s', log_head, len(x_train), len(y_train), get_length(x_val), get_length(y_val), get_length(x_test), get_length(y_test))
+    logging.info('%s cross_validation = %s', log_head, cross_validation)
 
     if best_trial_retrain:
         dirpath = log_dir + '/trial_' + str(trial_number) + '/'
@@ -56,7 +64,7 @@ def train_and_test(x_train, y_train, x_val, y_val, x_test, y_test, model, cross_
                 scores = all_scores[phase + '_score']
                 mean = scores.mean()
                 std = scores.std()
-                logging.info('%s: mean %s, std=%s, scores=%s', phase, mean, std, scores)
+                logging.info('%s %s: mean %s, std=%s, scores=%s', log_head, phase, mean, std, scores)
 
             objective_value = - mean # from test scores
 
@@ -65,9 +73,9 @@ def train_and_test(x_train, y_train, x_val, y_val, x_test, y_test, model, cross_
 
             regressors = all_scores['estimator']
             mse_mean_train, result_train = calculate_mean_prediction(regressors, x_train, y_train)
-            logging.info('mean mse train=%s, ensemble train result=%s', mse_mean_train, result_train)
+            logging.info('%s mean mse train=%s, ensemble train result=%s', log_head, mse_mean_train, result_train)
             mse_mean_test, result_test = calculate_mean_prediction(regressors, x_test, y_test)
-            logging.info('mean mse test=%s, ensemble test result=%s', mse_mean_test, result_test)
+            logging.info('%s mean mse test=%s, ensemble test result=%s', log_head, mse_mean_test, result_test)
 
             # check the objective value
             """
@@ -86,10 +94,8 @@ def train_and_test(x_train, y_train, x_val, y_val, x_test, y_test, model, cross_
                 result = model_retraining(model, metric, x_train[train_index], y_train[train_index],
                                           x_train[val_index], y_train[val_index],
                                           x_test, y_test,
-                                          dirpath, transformer, inverse, regression_plot)
+                                          dirpath, transformer, inverse, regression_plot, log_head)
                 objective_value = result[metric]
-            # TODO add codes for model retraining for cross_validation, get data split, train, evaluate, save to csv, regression plots
-            # TODO improve logging information
     else:
         if not best_trial_retrain:
             model.fit(x_train, y_train)
@@ -113,24 +119,23 @@ def train_and_test(x_train, y_train, x_val, y_val, x_test, y_test, model, cross_
             logging.info('test result=%s', result_test)
             """
 
-            calculate_metrics(model, x_train, y_train, metric, 'train')
+            calculate_metrics(model, x_train, y_train, metric, 'train', log_head)
             objective_value = 0.
             if x_val is not None:
-                result = calculate_metrics(model, x_val, y_val, metric, 'val')
+                result = calculate_metrics(model, x_val, y_val, metric, 'val', log_head)
                 objective_value = result[metric]
             if x_test is not None:
-                result = calculate_metrics(model, x_test, y_test, metric, 'test')
+                result = calculate_metrics(model, x_test, y_test, metric, 'test', log_head)
 
         else:
-            # TODO add codes for model.fit, calculate metrics, inverse, save to csv, call regression plots
             result = model_retraining(model, metric, x_train, y_train, x_val, y_val, x_test, y_test,
-                                      dirpath, transformer, inverse, regression_plot)
+                                      dirpath, transformer, inverse, regression_plot, log_head)
             objective_value = result[metric]
 
 
     return objective_value
 
-def calculate_metrics(model, x, y, metric, ml_phase):
+def calculate_metrics(model, x, y, metric, ml_phase, log_head):
     y_pred = model.predict(x)
     if metric == 'mse':
         result = oscml.utils.util.calculate_metrics(y, y_pred)
@@ -141,18 +146,18 @@ def calculate_metrics(model, x, y, metric, ml_phase):
     else: # accuracy
         result = {'accuracy': sklearn.metrics.accuracy_score(y, y_pred)}
         
-    logging.info('%s result=%s', ml_phase, result)
+    logging.info('%s %s result=%s', log_head, ml_phase, result)
     return result
 
 
 def log_and_plot(model, x_train, y_train, x_val, y_val, x_test, y_test, dirpath, transformer=None,
-                 inverse=False, regression_plot=False):
+                 inverse=False, regression_plot=False, log_head=None):
     index_ml = ['training set', 'validation set', 'test set']
     x_ml = [x_train, x_val, x_test]
     y_ml = [y_train, y_val, y_test]
     results_metric = []
     for index_, x_, y_ in zip(index_ml, x_ml, y_ml):
-        test_results, y_pred = calculate_metrics(model, x_, y_, 'all', index_)
+        test_results, y_pred = calculate_metrics(model, x_, y_, 'all', index_, log_head)
         results_metric.append(test_results)
 
         if not inverse:
@@ -173,11 +178,11 @@ def log_and_plot(model, x_train, y_train, x_val, y_val, x_test, y_test, dirpath,
 
 
 def model_retraining(model, metric, x_train, y_train, x_val, y_val, x_test, y_test, dirpath, transformer=None, inverse=False,
-                     regression_plot=False):
+                     regression_plot=False, log_head=None):
     model.fit(x_train, y_train)
     log_and_plot(model, x_train, y_train, x_val, y_val, x_test, y_test, dirpath, transformer=transformer,
-                 inverse=inverse, regression_plot=regression_plot)
-    return calculate_metrics(model, x_val, y_val, metric, 'val')
+                 inverse=inverse, regression_plot=regression_plot, log_head=log_head)
+    return calculate_metrics(model, x_val, y_val, metric, 'val', log_head)
 
 
 def standard_score_transform(transformer, y):

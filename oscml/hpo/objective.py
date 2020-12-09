@@ -41,7 +41,6 @@ def standard_score_transform(transformer, y):
 def fit_or_test(model, train_dl, val_dl, test_dl, training_params,
                 log_dir, trial=None, trial_number=-1, n_trials=0, cv_index='', best_trial_retrain=False,
                 transformer=None, inverse=False, regression_plot=False):
-    # TODO investigate the discrepancy between best_trial and retrain, related to transformer? continued training?
     epochs = training_params['epochs']
     metric = training_params['metric']
     direction = training_params['direction']
@@ -175,7 +174,6 @@ def get_model_and_data(model_name, trial, config, df_train, df_val, df_test, tra
 
 def objective(trial, config, df_train, df_val, df_test, transformer, log_dir, total_number_trials,
               best_trial_retrain=False, z_transform_inverse_prediction=False, regression_plot=False):
-    # TODO how does retraining work for RF and SVR?
     # release GPU memory before start each trial
     torch.cuda.empty_cache()
 
