@@ -41,7 +41,6 @@ def standard_score_transform(transformer, y):
 def fit_or_test(model, train_dl, val_dl, test_dl, training_params,
                 log_dir, trial=None, trial_number=-1, n_trials=0, cv_index='', best_trial_retrain=False,
                 transformer=None, inverse=False, regression_plot=False):
-    # TODO investigate the discrepancy between best_trial and retrain, related to transformer? continued training?
     epochs = training_params['epochs']
     metric = training_params['metric']
     direction = training_params['direction']
@@ -175,7 +174,6 @@ def get_model_and_data(model_name, trial, config, df_train, df_val, df_test, tra
 
 def objective(trial, config, df_train, df_val, df_test, transformer, log_dir, total_number_trials,
               best_trial_retrain=False, z_transform_inverse_prediction=False, regression_plot=False):
-    # TODO how does retraining work for RF and SVR?
     # release GPU memory before start each trial
     torch.cuda.empty_cache()
 
@@ -194,12 +192,24 @@ def objective(trial, config, df_train, df_val, df_test, transformer, log_dir, to
         model, x_train, y_train, x_val, y_val, x_test, y_test = oscml.hpo.hpo_rf.create(trial, config, df_train, df_val, df_test, training_params)
         metric_value = oscml.utils.util_sklearn.train_and_test(x_train, y_train, x_val, y_val, x_test, y_test, model,
                                                                training_params['cross_validation'],
-                                                               training_params['criterion'])
+                                                               training_params['metric'], log_dir,
+                                                               seed=seed,
+                                                               trial_number=trial_number,
+                                                               best_trial_retrain=best_trial_retrain,
+                                                               transformer=transformer,
+                                                               inverse=z_transform_inverse_prediction,
+                                                               regression_plot=regression_plot)
     elif model_name == 'SVR':
         model, x_train, y_train, x_val, y_val, x_test, y_test = oscml.hpo.hpo_svr.create(trial, config, df_train, df_val, df_test, training_params)
         metric_value = oscml.utils.util_sklearn.train_and_test(x_train, y_train, x_val, y_val, x_test, y_test, model,
                                                                training_params['cross_validation'],
-                                                               training_params['criterion'])
+                                                               training_params['metric'], log_dir,
+                                                               seed=seed,
+                                                               trial_number=trial_number,
+                                                               best_trial_retrain=best_trial_retrain,
+                                                               transformer=transformer,
+                                                               inverse=z_transform_inverse_prediction,
+                                                               regression_plot=regression_plot)
 
     # then move to BILSTM, AttentiveFP, and SimpleGNN models
     elif model_name == 'BILSTM' or model_name == 'AttentiveFP' or model_name == 'SimpleGNN':

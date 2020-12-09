@@ -31,7 +31,7 @@
 		}
     },
 "training":{
-    "criterion": "mse",
+    "metric": "mse",
     "cross_validation": false,
 	"direction": "minimize",
 	"__remove_this_bit__study_name": "rf_cep25000_stratified",

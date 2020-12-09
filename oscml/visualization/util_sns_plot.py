@@ -9,7 +9,6 @@ import matplotlib.pyplot as plt
 
 def contour_plot(figure_dir, hpo_result):
     df_hpo_result = pd.read_csv(hpo_result, index_col=[0])
-    # TODO finish the plot for final prediction results
 
     df_hpo_result = df_hpo_result.drop(columns=['number', 'datetime_start', 'datetime_complete', 'duration', 'state'])
     df_hpo_result = df_hpo_result.replace(np.nan, 0)
