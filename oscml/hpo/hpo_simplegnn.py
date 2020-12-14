@@ -3,8 +3,9 @@ import logging
 import oscml.data.dataset
 import oscml.models.model_gnn
 from oscml.utils.util_config import set_config_param
+import oscml.utils.util_transfer_learning
 
-def create(trial, config, df_train, df_val, df_test, optimizer, transformer):
+def create(trial, config, df_train, df_val, df_test, optimizer, transformer, freeze=False):
 
     type_dict = config['model']['type_dict']
     batch_size = config['training']['batch_size']
@@ -37,6 +38,9 @@ def create(trial, config, df_train, df_val, df_test, optimizer, transformer):
 
     model_params.pop('mlp_layers',None) # this is not needed for the model creation
     model_params.pop('conv_layers',None) # this is not needed for the model creation
-    model = oscml.models.model_gnn.SimpleGNN(**model_params, optimizer=optimizer)
+    if freeze:
+        model = oscml.utils.util_transfer_learning.SimpleGNNTransfer(**model_params, optimizer=optimizer)
+    else:
+        model = oscml.models.model_gnn.SimpleGNN(**model_params, optimizer=optimizer)
 
     return model, train_dl, val_dl, test_dl

@@ -10,12 +10,17 @@ import torch.utils.data
 
 from oscml.utils.util_config import set_config_param
 import oscml.utils.util_lightning
+import oscml.utils.util_transfer_learning
 
 
-def create(trial, config, df_train, df_val, df_test, optimizer, transformer, log_dir):
+def create(trial, config, df_train, df_val, df_test, optimizer, transformer, log_dir, freeze=False, fine_tune=False):
 
-    x_column = config['dataset']['x_column'][0]
-    y_column = config['dataset']['y_column'][0]
+    if freeze or fine_tune:
+        x_column = config['transfer_learning']['dataset']['x_column'][0]
+        y_column = config['transfer_learning']['dataset']['y_column'][0]
+    else:
+        x_column = config['dataset']['x_column'][0]
+        y_column = config['dataset']['y_column'][0]
     featurizer_config = config['model']['featurizer']
     batch_size = config['training']['batch_size']
     dgl_log_dir = log_dir + '/dgl_' + str(trial.number)
@@ -53,10 +58,14 @@ def create(trial, config, df_train, df_val, df_test, optimizer, transformer, log
 
     logging.info('model params=%s', model_params)
 
-    model_predictor = dgllife.model.AttentiveFPPredictor(**model_params)
+    if freeze:
+        model_predictor = oscml.utils.util_transfer_learning.AttentiveFPTransfer(**model_params)
+    else:
+        model_predictor = dgllife.model.AttentiveFPPredictor(**model_params)
 
-    dataloader_fct = functools.partial(get_dataloader, smiles_column=x_column, y_column=y_column, transformer=transformer, 
-        batch_size=batch_size, log_dir=dgl_log_dir, node_featurizer=node_featurizer, edge_featurizer=edge_featurizer, 
+
+    dataloader_fct = functools.partial(get_dataloader, smiles_column=x_column, y_column=y_column, transformer=transformer,
+        batch_size=batch_size, log_dir=dgl_log_dir, node_featurizer=node_featurizer, edge_featurizer=edge_featurizer,
         collate_fn=collate_molgraphs)
 
     train_dl = dataloader_fct(df=df_train, file_name="graph_train.bin", shuffle=True)
