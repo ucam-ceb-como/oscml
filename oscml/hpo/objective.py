@@ -40,7 +40,8 @@ def standard_score_transform(transformer, y):
 
 def fit_or_test(model, train_dl, val_dl, test_dl, training_params,
                 log_dir, trial=None, trial_number=-1, n_trials=0, cv_index='', best_trial_retrain=False,
-                transformer=None, inverse=False, regression_plot=False):
+                transformer=None, inverse=False, regression_plot=False,
+                transfer_learning=None):
     epochs = training_params['epochs']
     metric = training_params['metric']
     direction = training_params['direction']
@@ -49,6 +50,8 @@ def fit_or_test(model, train_dl, val_dl, test_dl, training_params,
 
     if best_trial_retrain:
         log_head = '[Best trial retrain - Trial ' + str(trial_number) + ']'
+    elif transfer_learning is not None:
+        log_head = '[Transfer learning - Trial ' + str(trial_number) + ']'
     else:
         if cv_index == '':
             log_head = '[Trial ' + str(trial_number) + ']'
@@ -72,6 +75,13 @@ def fit_or_test(model, train_dl, val_dl, test_dl, training_params,
         dirpath = log_dir + '/trial_' + str(trial_number) + '/'
         checkpoint_callback = ModelCheckpoint(monitor=metric, dirpath=dirpath.replace('//', '/'),
                                               filename='best_trial_retrain_model',
+                                              save_top_k=1, mode=direction[0:3])
+        callbacks.append(checkpoint_callback)
+
+    if transfer_learning is not None:
+        dirpath = log_dir + '/trial_' + str(trial_number) + '/'
+        checkpoint_callback = ModelCheckpoint(monitor=metric, dirpath=dirpath.replace('//', '/'),
+                                              filename='transfer_learning_model',
                                               save_top_k=1, mode=direction[0:3])
         callbacks.append(checkpoint_callback)
 
@@ -102,11 +112,41 @@ def fit_or_test(model, train_dl, val_dl, test_dl, training_params,
 
     trainer = pl.Trainer(**trainer_params)
 
-    if epochs > 0:
-        logging.info('%s fitting trial %s / %s', log_head, trial_number, n_trials)
+    if transfer_learning is None:
+        if epochs > 0:
+            logging.info('%s fitting trial %s / %s', log_head, trial_number, n_trials)
+            trainer.fit(model, train_dataloader=train_dl, val_dataloaders=val_dl)
+
+            # return the value for the metric specified in the start script
+            if patience > 0:
+                # return the best score while early stopping is applied
+                val_error = early_stopping_callback.best_score.item()
+            else:
+                val_error = metrics_callback.metrics[-1][metric].item()
+
+            logging.info('%s finished fitting for trial %s with %s = %s', log_head, trial_number, metric, val_error)
+    else:
+        ckpt_path = transfer_learning['ckpt_path']
+        model.load_state_dict(torch.load(ckpt_path, map_location=torch.device('cpu'))['state_dict'])
+        model.eval()
+
+        # index_dl = ['training set', 'validation set', 'test set']
+        # dataset_dl = [train_dl, val_dl, test_dl]
+        # results_metric = []
+        # for index_, dataset_ in zip(index_dl, dataset_dl):
+        #     test_result = trainer.test(model, test_dataloaders=dataset_)[0]
+        #     test_result['phase'] = index_
+        #     results_metric.append(test_result)
+        #
+        #     predictions = list(model.test_predictions)
+        #     pred_df = pd.DataFrame(predictions[0], columns=['Measured PCE'])
+        #     pred_df['Predicted PCE'] = predictions[1]
+        #     pred_df.to_csv(dirpath + 'before_transfer_predictions_{}.csv'.format(index_.replace(' ', '_')))
+        #
+        # pd.DataFrame(results_metric).to_csv(dirpath + 'before_transfer_learning_model_result.csv')
+
         trainer.fit(model, train_dataloader=train_dl, val_dataloaders=val_dl)
 
-        # return the value for the metric specified in the start script
         if patience > 0:
             # return the best score while early stopping is applied
             val_error = early_stopping_callback.best_score.item()
@@ -114,6 +154,25 @@ def fit_or_test(model, train_dl, val_dl, test_dl, training_params,
             val_error = metrics_callback.metrics[-1][metric].item()
 
         logging.info('%s finished fitting for trial %s with %s = %s', log_head, trial_number, metric, val_error)
+
+        ckpt_path = glob.glob(dirpath + 'transfer_learning_model' + '*.ckpt')[0].replace('\\', '/')
+        model.load_state_dict(torch.load(ckpt_path)['state_dict'])
+        model.eval()
+
+        index_dl = ['training set', 'validation set', 'test set']
+        dataset_dl = [train_dl, val_dl, test_dl]
+        results_metric = []
+        for index_, dataset_ in zip(index_dl, dataset_dl):
+            test_result = trainer.test(model, test_dataloaders=dataset_)[0]
+            test_result['phase'] = index_
+            results_metric.append(test_result)
+
+            predictions = list(model.test_predictions)
+            pred_df = pd.DataFrame(predictions[0], columns=['Measured PCE'])
+            pred_df['Predicted PCE'] = predictions[1]
+            pred_df.to_csv(dirpath + 'predictions_{}.csv'.format(index_.replace(' ', '_')))
+
+        pd.DataFrame(results_metric).to_csv(dirpath + 'transfer_learning_model_result.csv')
 
     if best_trial_retrain:
         ckpt_path = glob.glob(dirpath+'best_trial_retrain_model' + '*.ckpt')[0].replace('\\', '/')
@@ -162,18 +221,19 @@ def get_training_params(trial, training_settings):
     return training_params
 
 
-def get_model_and_data(model_name, trial, config, df_train, df_val, df_test, training_params, transformer, log_dir):
+def get_model_and_data(model_name, trial, config, df_train, df_val, df_test, training_params, transformer, log_dir, freeze=False, fine_tune=False):
     if model_name == 'BILSTM':
-        return oscml.hpo.hpo_bilstm.create(trial, config, df_train, df_val, df_test, training_params['optimiser'], transformer)
+        return oscml.hpo.hpo_bilstm.create(trial, config, df_train, df_val, df_test, training_params['optimiser'], transformer, freeze=freeze)
     elif model_name == 'AttentiveFP':
-        return oscml.hpo.hpo_attentivefp.create(trial, config, df_train, df_val, df_test, training_params['optimiser'], transformer, log_dir)
+        return oscml.hpo.hpo_attentivefp.create(trial, config, df_train, df_val, df_test, training_params['optimiser'], transformer, log_dir, freeze=freeze, fine_tune=fine_tune)
     elif model_name == 'SimpleGNN':
-        return oscml.hpo.hpo_simplegnn.create(trial, config, df_train, df_val, df_test, training_params['optimiser'], transformer)
+        return oscml.hpo.hpo_simplegnn.create(trial, config, df_train, df_val, df_test, training_params['optimiser'], transformer, freeze=freeze)
     return None
 
 
 def objective(trial, config, df_train, df_val, df_test, transformer, log_dir, total_number_trials,
-              best_trial_retrain=False, z_transform_inverse_prediction=False, regression_plot=False):
+              best_trial_retrain=False, z_transform_inverse_prediction=False, regression_plot=False,
+              transfer=None):
     # release GPU memory before start each trial
     torch.cuda.empty_cache()
 
@@ -183,7 +243,7 @@ def objective(trial, config, df_train, df_val, df_test, transformer, log_dir, to
     cv = config['training']['cross_validation']
     metric = training_params['metric']
     seed = config['numerical_settings']['seed']
-    split = config['dataset']['split']
+    # split = config['dataset']['split']
     trial_number = trial.number
     std = None
 
@@ -213,8 +273,32 @@ def objective(trial, config, df_train, df_val, df_test, transformer, log_dir, to
 
     # then move to BILSTM, AttentiveFP, and SimpleGNN models
     elif model_name == 'BILSTM' or model_name == 'AttentiveFP' or model_name == 'SimpleGNN':
+        if transfer is not None:
+            if len(df_val) > 0:
+                model, train_dl, val_dl, test_dl = get_model_and_data(model_name, trial, config,
+                                                                      df_train, df_val, df_test,
+                                                                      training_params, transformer, log_dir,
+                                                                      freeze=transfer['freeze_and_train'],
+                                                                      fine_tune=transfer['fine_tune'])
+            else:
+                rs = ShuffleSplit(n_splits=1, test_size=0.2, random_state=seed + 1)
+                rs.get_n_splits(df_train)
+                for train_index, val_index in rs.split(df_train):
+                    model, train_dl, val_dl, test_dl = get_model_and_data(model_name, trial, config,
+                                                                          df_train.iloc[train_index],
+                                                                          df_train.iloc[val_index], df_test,
+                                                                          training_params, transformer, log_dir,
+                                                                          freeze=transfer['freeze_and_train'],
+                                                                          fine_tune=transfer['fine_tune'])
+
+            metric_value = fit_or_test(model=model, train_dl=train_dl, val_dl=val_dl, test_dl=test_dl,
+                                       training_params=training_params, log_dir=log_dir,
+                                       trial=trial, trial_number=trial_number, n_trials=total_number_trials,
+                                       cv_index='',
+                                       transformer=transformer, transfer_learning=transfer)
+
         # apply cross-validation
-        if isinstance(cv, int) and cv > 1:
+        elif isinstance(cv, int) and cv > 1:
             if not best_trial_retrain:
                 kf = KFold(n_splits=cv, random_state=seed, shuffle=True)
                 assert df_val is None, "validation set should be added to training set for cross validation"
@@ -278,3 +362,4 @@ def objective(trial, config, df_train, df_val, df_test, transformer, log_dir, to
     logging.info('objective value for trial %s with %s = %s, std=%s', trial_number, metric, metric_value, std)
 
     return metric_value
+
