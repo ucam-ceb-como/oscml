@@ -4,6 +4,7 @@ import os
 import optuna
 import optuna.samplers
 
+import oscml.hpo.train
 import oscml.visualization.util_sns_plot
 
 
@@ -74,6 +75,7 @@ def start_hpo(args, objective, log_dir, config, total_number_trials):
         best_trial_retraining = config['post_processing'].get('best_trial_retraining')
         z_transform_inverse_prediction = config['post_processing'].get('z_transform_inverse_prediction')
         regression_plot = config['post_processing'].get('regression_plot')
+        transfer = config['post_processing'].get('transfer')
 
         if storage_url:
             storage = optuna.storages.RDBStorage(
@@ -103,6 +105,13 @@ def start_hpo(args, objective, log_dir, config, total_number_trials):
                       best_trial_retrain=True,
                       z_transform_inverse_prediction=z_transform_inverse_prediction,
                       regression_plot=regression_plot)
+
+        if transfer:
+            log_dir_transfer_learning = log_dir + '/transfer_learning'
+            df_train_trans, df_val_trans, df_test_trans, transformer_trans = oscml.hpo.train.get_dataframes(config['transfer_learning'].get('dataset'), seed)
+            objective(study.best_trial, df_train=df_train_trans, df_val=df_val_trans,
+                      df_test=df_test_trans, transformer=transformer_trans,
+                      log_dir=log_dir_transfer_learning, transfer=config['transfer_learning'])
 
         return best_value
 
