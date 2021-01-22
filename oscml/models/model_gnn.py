@@ -60,6 +60,8 @@ class DatasetForGnnWithTransformer(torch.utils.data.Dataset):
         super().__init__()
 
         self.df = df
+        # sequence of atom types to sequence of atom types indices
+        # C, Caromatic, H, C -> 0,1,2,0
         self.mol2seq_fct = mol2seq_fct
 
         if isinstance(smiles_fct, str):
@@ -71,6 +73,7 @@ class DatasetForGnnWithTransformer(torch.utils.data.Dataset):
         else:
             self.target_fct = target_fct
 
+        # this is to speed up the processing
         self.smiles2seq = dict()
 
     def __getitem__(self, index):
@@ -92,11 +95,20 @@ class DatasetForGnnWithTransformer(torch.utils.data.Dataset):
             seq = value[0]
             g = value[1]
         else:
+            # smiles string -> molecular graph
             m = smiles2mol(smiles)
+            # molecular graph -> sequence of indices of atom types
             seq = self.mol2seq_fct(m)
+            #    1 2 3   - this is to get the connectivity
+            # 1  0 1 0   - rows must have the same ordering of atoms!
+            # 2  1 0 0
+            # 3 ...
             adj = rdkit.Chem.rdmolops.GetAdjacencyMatrix(m)
+            # so this an intermediate step, from adj -> g_nx
             g_nx = networkx.convert_matrix.from_numpy_matrix(adj)
+            # g_nx -> g
             g = dgl.from_networkx(g_nx)
+            # cache this info to speed training
             self.smiles2seq[smiles] = (seq, g)
 
         #adj = rdkit.Chem.rdmolops.GetAdjacencyMatrix(m)
@@ -104,7 +116,9 @@ class DatasetForGnnWithTransformer(torch.utils.data.Dataset):
         #g_nx = networkx.convert_matrix.from_numpy_matrix(adj)
         # 28 second, second run 25
         #g = dgl.from_networkx(g_nx)
+        # 0,1,2... numpy array into tensor
         tensor = torch.as_tensor(seq, dtype=torch.long)
+        # define 'type' var in the graph
         g.ndata['type'] = tensor
 
         y = self.target_fct(row)
@@ -115,6 +129,9 @@ class DatasetForGnnWithTransformer(torch.utils.data.Dataset):
         return len(self.df)
 
 def collate_fn(data):
+    # collate function to transform output from the dataloader
+    # this is custom batching of graphs from dgl
+    # takes batch of graphs and then create one big dgl graph to be more efficient
     graphs, y = map(list, zip(*data))
     g_batch = dgl.batch(graphs)
     y_batch = torch.as_tensor(y)
@@ -152,29 +169,44 @@ def get_dataloaders(dataset, df_train, df_val, df_test, transformer, batch_size)
     return get_dataloaders_internal(df_train, df_val, df_test, batch_size, mol2seq, transformer)
 
 class SimpleGNNLayer(pl.LightningModule):
-    
+
     def __init__(self, input_dim, output_dim, activation_fct):
         super().__init__()
+        # weights matrix A^(1,2,...)
         self.linear = nn.Linear(input_dim, output_dim)
         self.activation_fct = activation_fct
+        # copy all h vectors of your nodes and declare them as m
+        # we take h's of the neighbour modes and re-label them as m to not confuse
+        # them with the h of the center node
         self.msg = dgl.function.copy_src(src='h', out='m')
+        # then aggregate all m vectors into the center h vector
         self.reduce = dgl.function.sum(msg='m', out='h')
-    
+
     def forward(self, g, h_input_features):
         with g.local_scope():
-            g.ndata['h'] = h_input_features
+            # attach to each node h vectors (list operation! do not use loop because it is expensive)
+            g.ndata['h'] = h_input_features # it is a matrix, each row is a node vector to be assigned
             g.update_all(self.msg, self.reduce)
-            h = g.ndata['h']
-            h = self.linear(h)
-            return self.activation_fct(h)
+            h = g.ndata['h']   # adding initial h0 ?
+            h = self.linear(h) # A weights matrix for each layer
+            return self.activation_fct(h) # relu
 
 class SimpleGNN(oscml.utils.util_lightning.OscmlModule):
-
+# main class for the SimpleGNN
     def __init__(self, node_type_number, embedding_dim, conv_dims, mlp_units, padding_index, target_mean, target_std, optimizer, mlp_dropouts=None):
-
+        # inputs:
+        # node_type_number - 8 atom types (atom types + they aromaticity, equiv to WL wit r=0)
+        # embedding_dim    - the same as in BiLSTM ( but you need node_type_number)
+        # conv_dims        - defines the dimension of the vectors in layers for collating info about the direct neighbour nodes (A matrix)
+        #                    e.g  for conv_dims = [16 8 4] then nr of layers = 3 (~its like r=3 in WL)
+        #                    if embedding_dim = 128 then we map 128 -> 16, A^1 (16,8), A^2 (8,4)
+        # mlp_units        - list defining the nr of units in each fully connected layer
+        # padding_index    - for out of vocabulary case
+        # target_mean/std  - used for set transformation, to transform back PCE data and get the errors
         super().__init__(optimizer, target_mean, target_std)
         logging.info('initializing %s', locals())
 
+        # we do not need this anymore, it is for resuming training
         self.save_hyperparameters()
 
         if padding_index is not None:
@@ -188,37 +220,57 @@ class SimpleGNN(oscml.utils.util_lightning.OscmlModule):
             self.padding_index = None
             logging.info('No padding index for embedding was set. No transfer learning for unknown atom types will be possible')
             self.embedding = nn.Embedding(node_type_number, embedding_dim)
-        
+
         self.conv_modules = nn.ModuleList()
+        #so conv_dims comes from config file
         input_dim = embedding_dim
         for i in range(len(conv_dims)):
             layer = SimpleGNNLayer(input_dim, conv_dims[i], F.relu)
             input_dim = conv_dims[i]
             self.conv_modules.append(layer)
 
+        # input_dim after the above loop will be set to the last conv_dims dimension
         mlp_units_with_input_dim = [input_dim]
         mlp_units_with_input_dim.extend(mlp_units)
         self.mlp = oscml.utils.util_pytorch.create_mlp(mlp_units_with_input_dim, mlp_dropouts)
-        self.one = torch.Tensor([1]).long()     
+        self.one = torch.Tensor([1]).long()
 
     def forward(self, graphs):
         if isinstance(graphs, list):
+            # each molecule is represented via graph
+            # we want to pass and process multiple molecules to speed things up
+            # so we can pass N nr of graphs for all molecules in a batch
+            # then dgl creates one large graph out of it to parallelize calculations
+            # this avoids loops (the graphs are still disjoint from each other)
+            # not really used in the code, just for unit testing
             g_batch = dgl.batch(graphs)
         else:
+            # super graph for the batch
+            # batching is already done in the 'collate_fn'
             g_batch = graphs
 
+        # g_batch.ndata['type'] defined in the dataloader
+        # the atoms types are starting from index=0
+        # but the index 0 is already reserved for out of vocabulary
+        # sequence is important here to assign correct h^0 vectors to the correct graph nodes
         seq_types = g_batch.ndata['type']
+        # seq_types = [0,1,2,1,0...
+        #              1,0,1,2      ]
         if self.padding_index is not None:
+            # minus_one should be called plus_one
             minus_one = self.one.to(self.device).expand(seq_types.size())
             seq_types = seq_types + minus_one
 
-        h = self.embedding(seq_types)  
+        # h = [ 0  - out of voc vector
+        #       1  - for atom type 0 vector
+        #       ....]
+        h = self.embedding(seq_types)
         for layer in self.conv_modules:
             h = layer(g_batch, h)
-        g_batch.ndata['h'] = h
+        g_batch.ndata['h'] = h # this is h^L, and the order is always respected
 
         mean = dgl.mean_nodes(g_batch, 'h')
         o = self.mlp(mean)
         # transform from size [batch_number, 1] to [batch_number]
-        o = o.view(len(o))   
+        o = o.view(len(o))
         return o
