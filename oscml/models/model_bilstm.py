@@ -24,7 +24,9 @@ import oscml.features.weisfeilerlehman
 class Mol2seq():
 
     def __init__(self, radius, oov, wf=None):
-
+        # radius - WL radius
+        # oov - out of vocabulary flag
+        # wf - lookup dictionaries
         self.radius = radius
         self.oov = oov
         self.wf = wf
@@ -45,9 +47,19 @@ class Mol2seq():
         logging.info('initialized Mol2Seq with radius=%s, oov=%s, max_index=%s', radius, oov, self.max_index)
 
     def apply_OOV(self, index):
+        # oov fragment index will be set to -1 so that when the +1 padding is applied
+        # this index will be set to 0 (-1+1)
+        # be careful to not change the  padding index, if you do, you need to also change the
+        # hardcoded "-1"
         return (index if index <= self.max_index else -1)
 
     def __call__(self, m):
+        # inputs:
+        # m - rdkit mol structure of a species
+        #
+        # this transforms m into a fragments sequence in BFS order (not padded yet)
+
+        # molecule fragmentation via WL algorithm
         atoms, i_jbond_dict = oscml.features.weisfeilerlehman.get_atoms_and_bonds(m, self.atom_dict, self.bond_dict)
         descriptor = oscml.features.weisfeilerlehman.extract_fragments(self.radius, atoms, i_jbond_dict, self.fragment_dict, self.edge_dict)
         atoms_BFS_order = oscml.features.weisfeilerlehman.get_atoms_BFS(m)
@@ -60,11 +72,19 @@ class Mol2seq():
 class DatasetForBiLstmWithTransformer(torch.utils.data.Dataset):
 
     def __init__(self, df, max_sequence_length, m2seq_fct, padding_index, smiles_fct, target_fct):
+        #
+        # df - dataset pandas dataframe
+        # max_sequence_length - max sequence length from the config file - it sets the attention layer size
+        # m2seq_fct - is a call method of Mol2seq class with default parameters set for the requested dataset type (CEPDB/HOPV15)
+        # padding_index - hardcoded padding index (0)
+        # smiles_fct - column header / identifier / function for getting smiles string out of pandas dataframe
+        # target_fct - column header / identifier / function for getting pce out of pandas dataframe
         super().__init__()
         self.df = df
         self.max_sequence_length = max_sequence_length
         self.m2seq_fct = m2seq_fct
         # TODO: use torch.nn.utils.rnn.pack_padded_sequence instead
+        # padding_sequence gives [0, 0, ... up to max_sequence_length]
         self.padding_sequence = [padding_index]*self.max_sequence_length
 
         if isinstance(smiles_fct, str):
@@ -79,15 +99,21 @@ class DatasetForBiLstmWithTransformer(torch.utils.data.Dataset):
         self.smiles2seq = dict()
 
     def __getitem__(self, index):
+        #
+        # index - row index in the dataframe
         row = self.df.iloc[index]
         smiles = self.smiles_fct(row)
 
+        # converve memory,e.g. if a given smiles (molecule) has been already transformed, just
+        # look it up and use it, if not then proceed to the next step
         x = self.smiles2seq.get(smiles)
 
         if x is None:
+            # smiles to rdkit mol object
             m = smiles2mol(smiles)
+            # m to fragments sequence vector in BFS (not padded yet) but it may include oov indices as "-1"
             x = self.m2seq_fct(m)
-            # increase all indexes by +1
+            # increase all indexes by +1 - this this would shift any oov indices to "0"
             x = np.array(x) + 1
             # fill up the sequence with padding index 0
             diff = self.max_sequence_length-len(x)
@@ -98,9 +124,11 @@ class DatasetForBiLstmWithTransformer(torch.utils.data.Dataset):
                 raise RuntimeError(concat('A sequence with length greater the maximum sequence length was generated.',
                         ', length=', len(x), ', maximum sequence length=', self.max_sequence_length, ', row index=', str(index)))
 
+        # gpu / cpu training
         device = cfg[oscml.utils.params.PYTORCH_DEVICE]
         x = torch.as_tensor(x, dtype = torch.long, device = device)
 
+        # get the (transformed) pce
         y = self.target_fct(row)
         y = torch.as_tensor(np.array(y, dtype=np.float32), device = device)
 
@@ -135,6 +163,8 @@ def get_dataloaders_internal(train, val, test, batch_size, mol2seq, max_sequence
 
 def get_dataloaders(dataset, df_train, df_val, df_test, transformer, batch_size, max_sequence_length):
 
+    # the info objects contains atoms, edges and fragments dictionaries for the requested dataset type (CEPDB or HOPV15)
+    # it also contains mol2seq function with those dictionaries set as defaults
     info = oscml.data.dataset.get_dataset_info(dataset)
     mol2seq = info.mol2seq
     return get_dataloaders_internal(df_train, df_val, df_test, batch_size, mol2seq, max_sequence_length,
