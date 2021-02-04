@@ -195,9 +195,7 @@ class Attention(pl.LightningModule):
         # tanh from eq. (11)
         self.tanh = nn.Tanh()
         # dot product from eq. (12)
-
-        initialized_u_sub_tensor = torch.nn.init.normal_(torch.Tensor(sub_fragment_context_vector_dim))
-        self.u_sub = nn.parameter.Parameter(initialized_u_sub_tensor)
+        self.u_sub_linear = nn.Linear(sub_fragment_context_vector_dim, 1, bias=False)
         # softmax from eq. (12) over the dim t ('time') of the sequence
         # the sum expression of eq. (12) is not correct, it should be
         #     sum_i exp(u_i^T * u_s)
@@ -208,7 +206,6 @@ class Attention(pl.LightningModule):
 
         # example: h with batch size 2, max sequence length 3 and vector dim 256
         # h.size() = [2, 3, 256]
-        #print('MY ATT INPUT H', h.size(), h)
 
         # just for ease, we assume vector_dim = sub_fragment_context_vector_dim,
         # i.e. the matrix W_sub has quadratic shape [256, 256] and b_sub has shape [256]
@@ -220,7 +217,7 @@ class Attention(pl.LightningModule):
         #
         # batch size = 2 then we process 2 molecules at the same time
         # 3 - is max_sequence_length
-        # 256 - is the concantenated hiden state of bilstm
+        # 256 - is the concatenated hidden state of bilstm
         #
         #                 1 -- 256
         # [1 - A, 1 , [ev1 (of size 256)]
@@ -233,38 +230,15 @@ class Attention(pl.LightningModule):
         #         .
         #         3 , [ev3] ]
         #
-        #print('MY ATT TANH', x.size(), x)
 
-        # u_sub.size() = [256]
-        #print('MY AT U_SUB', self.u_sub.size(), self.u_sub)
-
-        # dot product u_t * u_sub from equation (12):
-        # function torch.dot is not capable for broadcasting and batch-processing
-        # thus we have break the dot product into two separate operations:
-        # a) element-wise multiplication with broadcasting --> size = [2, 3, 256]
-        # b) sum along the last dimension --> size = [2,3]
-        #
-        # e.g for an embedding dim of 10
-        # self.u_sub = [v (size 256)]
-        x = torch.sum(self.u_sub * x, dim=2)
-        #
-        # [1 - A, 1, sc1 (scalar value after summation)
-        #         .
-        #         .
-        #         3, sc3 ,
-        #
-        # 2 - B, 1, sc1 ,
-        #         .
-        #         .
-        #        3, sc3 ]
-        #print('MY ATT DOT ', x.size(), x)
+        # next linear layer has one output neuron and no bias vector
+        # and thus is equivalent to dot produxt <x, u_sub> 
+        # (where u_sub is the sub-fragment context vector, i.e. the trainable weights in the linear layer)
+        x = self.u_sub_linear(x)
+        # x.size() = [2, 3, 1]
 
         # softmax respects batch-processing --> alpha.size() = [2,3]
         # i.e. alpha contains two attention vectors with probability weights for t=0,1,2 as elements
-        # example output:
-        #      MY ATT ALPHA torch.Size([2, 3]) tensor([[0.3276, 0.3442, 0.3282],
-        #      [0.3297, 0.3471, 0.3231]], grad_fn=<SoftmaxBackward>)
-        alpha = self.softmax(x)
         # [1 - A, 1, alpha1 (scalar value after summation)
         #         .
         #         .
@@ -274,21 +248,11 @@ class Attention(pl.LightningModule):
         #         .
         #         .
         #        3, alpha3 ]
-        #print('MY ATT ALPHA', alpha.size(), alpha)
+        alpha = self.softmax(x)
 
-        # unsqueeze(dim=2) means: add an "empty" dim at the end --> [2,3,1]
-        # [1 - A, 1, alpha1, (scalar value after summation to a vector with a single element)
-        #         .
-        #         .
-        #         3, alpha3 ,
-        #
-        # 2 - B, 1, alpha1 ,
-        #         .
-        #         .
-        #        3, alpha3 ]
-        # elementwise multiplication with the orinal h from the input --> [2, 3, 256]
-        m = alpha.unsqueeze(dim=2) * h
-        #print('MY ATT M', m.size(), m)
+        # parallel multiplication of scalar alpha_t and vector h_t for all t=1..max_sequence_length 
+        m = alpha * h
+        # m.size() = [2, 3, 256]
 
         # sum along sequence index t, i.e. along the dim=1 --> [2,256]
         msum = torch.sum(m, dim=1)
@@ -296,7 +260,6 @@ class Attention(pl.LightningModule):
         #
         # 2 - B, [ev_summed]
         #                       ]
-        #print('MY ATT MSUM', msum.size(), msum)
 
         return msum
 
@@ -325,7 +288,8 @@ class BiLstmForPce(util_lightning.OscmlModule):
         # padding_idx = 0 in a sequences is mapped to zero vector
         # the extra 0-index vector is used for out of vocabulary fragment or for padded entries
         self.embedding = nn.Embedding(number_of_subgraphs+1, embedding_dim, padding_idx=padding_index)
-        self.bilstm = nn.LSTM(input_size=embedding_dim, hidden_size=lstm_hidden_dim, bidirectional=True)
+        self.bilstm = nn.LSTM(input_size=embedding_dim, hidden_size=lstm_hidden_dim, bidirectional=True, 
+                        batch_first=True)
         # factor 2 because the LSTM is birectional
         lstm_output_dim = 2 * lstm_hidden_dim
         self.attention = Attention(lstm_output_dim, lstm_output_dim)

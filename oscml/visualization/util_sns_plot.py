@@ -2,6 +2,7 @@ import argparse
 
 import numpy as np
 import pandas as pd
+from os import path
 import seaborn as sns
 from scipy import stats
 import matplotlib.pyplot as plt
@@ -63,11 +64,14 @@ def prediction_plot(figure_dir, train_pred, val_pred, test_pred):
     init_plot()
     # df_results_metric = pd.read_csv(results_metric, index_col=[0])
     df_train_pred = pd.read_csv(train_pred, index_col=[0])
-    df_val_pred = pd.read_csv(val_pred, index_col=[0])
-    df_train_val = df_train_pred.append(df_val_pred, ignore_index=True, sort=False)
-    df_test_pred = pd.read_csv(test_pred, index_col=[0])
+    if path.exists(val_pred):
+        df_val_pred = pd.read_csv(val_pred, index_col=[0])
+        df_train_val = df_train_pred.append(df_val_pred, ignore_index=True, sort=False)
+        plot(figure_dir + "train_val_reg.svg", df_train_val)
+    else:
+        plot(figure_dir + "train_reg.svg", df_train_pred)
 
-    plot(figure_dir + "train_val_reg.svg", df_train_val)
+    df_test_pred = pd.read_csv(test_pred, index_col=[0])
     plot(figure_dir + "test_reg.svg", df_test_pred)
 
 

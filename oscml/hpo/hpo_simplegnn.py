@@ -22,6 +22,12 @@ def create(trial, config, df_train, df_val, df_test, optimizer, transformer, fre
     for key, value in config['model']['model_specific'].items():
         model_params.update({key: set_config_param(trial=trial,param_name=key,param=value, all_params=model_params)})
 
+    # constant state vector size throughout the graph convolutional layers
+    embedding_dim = model_params['embedding_dim']
+    conv_layers = model_params['conv_layers']
+    conv_dims = [embedding_dim]*conv_layers
+    model_params['conv_dims'] = conv_dims
+
     # add output dimension to the mlp_units
     model_params['mlp_units'] = model_params.get('mlp_units', []) + [1]
 

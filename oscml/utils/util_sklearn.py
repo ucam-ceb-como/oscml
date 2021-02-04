@@ -88,14 +88,9 @@ def train_and_test(x_train, y_train, x_val, y_val, x_test, y_test, model, cross_
             logging.info('mean score sum on entire train set=' + str(mean_score))
             """
         else:
-            rs = ShuffleSplit(n_splits=1, test_size=1 / cross_validation, random_state=seed + 1)
-            rs.get_n_splits(x_train)
-            for train_index, val_index in rs.split(x_train):
-                result = model_retraining(model, metric, x_train[train_index], y_train[train_index],
-                                          x_train[val_index], y_train[val_index],
-                                          x_test, y_test,
+            result = model_retraining(model, metric, x_train, y_train, x_test, y_test,
                                           dirpath, transformer, inverse, regression_plot, log_head)
-                objective_value = result[metric]
+            objective_value = result[metric]
     else:
         if not best_trial_retrain:
             model.fit(x_train, y_train)
@@ -128,7 +123,14 @@ def train_and_test(x_train, y_train, x_val, y_val, x_test, y_test, model, cross_
                 result = calculate_metrics(model, x_test, y_test, metric, 'test', log_head)
 
         else:
-            result = model_retraining(model, metric, x_train, y_train, x_val, y_val, x_test, y_test,
+            if isinstance(x_train, list):
+                x_train = x_train + x_val
+                y_train = y_train + y_val
+            elif isinstance(x_train, np.ndarray):
+                x_train = np.concatenate((x_train, x_val), axis=0)
+                y_train = np.concatenate((y_train, y_val), axis=0)
+
+            result = model_retraining(model, metric, x_train, y_train, x_test, y_test,
                                       dirpath, transformer, inverse, regression_plot, log_head)
             objective_value = result[metric]
 
@@ -150,11 +152,11 @@ def calculate_metrics(model, x, y, metric, ml_phase, log_head):
     return result
 
 
-def log_and_plot(model, x_train, y_train, x_val, y_val, x_test, y_test, dirpath, transformer=None,
+def log_and_plot(model, x_train, y_train, x_test, y_test, dirpath, transformer=None,
                  inverse=False, regression_plot=False, log_head=None):
-    index_ml = ['training set', 'validation set', 'test set']
-    x_ml = [x_train, x_val, x_test]
-    y_ml = [y_train, y_val, y_test]
+    index_ml = ['training set', 'test set']
+    x_ml = [x_train, x_test]
+    y_ml = [y_train, y_test]
     results_metric = []
     for index_, x_, y_ in zip(index_ml, x_ml, y_ml):
         test_results, y_pred = calculate_metrics(model, x_, y_, 'all', index_, log_head)
@@ -177,12 +179,12 @@ def log_and_plot(model, x_train, y_train, x_val, y_val, x_test, y_test, dirpath,
                                                           dirpath + 'predictions_test_set.csv')
 
 
-def model_retraining(model, metric, x_train, y_train, x_val, y_val, x_test, y_test, dirpath, transformer=None, inverse=False,
+def model_retraining(model, metric, x_train, y_train, x_test, y_test, dirpath, transformer=None, inverse=False,
                      regression_plot=False, log_head=None):
     model.fit(x_train, y_train)
-    log_and_plot(model, x_train, y_train, x_val, y_val, x_test, y_test, dirpath, transformer=transformer,
+    log_and_plot(model, x_train, y_train, x_test, y_test, dirpath, transformer=transformer,
                  inverse=inverse, regression_plot=regression_plot, log_head=log_head)
-    return calculate_metrics(model, x_val, y_val, metric, 'val', log_head)
+    return calculate_metrics(model, x_train, y_train, metric, 'val', log_head)
 
 
 def standard_score_transform(transformer, y):

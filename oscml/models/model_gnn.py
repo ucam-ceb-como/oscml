@@ -180,7 +180,7 @@ class SimpleGNNLayer(pl.LightningModule):
         # them with the h of the center node
         self.msg = dgl.function.copy_src(src='h', out='m')
         # then aggregate all m vectors into the center h vector
-        self.reduce = dgl.function.sum(msg='m', out='h')
+        self.reduce = dgl.function.mean(msg='m', out='h')
 
     def forward(self, g, h_input_features):
         with g.local_scope():
@@ -189,6 +189,7 @@ class SimpleGNNLayer(pl.LightningModule):
             g.update_all(self.msg, self.reduce)
             h = g.ndata['h']   # adding initial h0 ?
             h = self.linear(h) # A weights matrix for each layer
+            h = h + h_input_features
             return self.activation_fct(h) # relu
 
 class SimpleGNN(oscml.utils.util_lightning.OscmlModule):
