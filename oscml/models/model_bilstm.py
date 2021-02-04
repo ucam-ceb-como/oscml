@@ -166,6 +166,7 @@ def get_dataloaders(dataset, df_train, df_val, df_test, transformer, batch_size,
     # the info objects contains atoms, edges and fragments dictionaries for the requested dataset type (CEPDB or HOPV15)
     # it also contains mol2seq function with those dictionaries set as defaults
     info = oscml.data.dataset.get_dataset_info(dataset)
+    # mol2seq => oscml.models.model_bilstm.Mol2seq(radius=1, oov=True, wf=d['wf_r1'])
     mol2seq = info.mol2seq
     return get_dataloaders_internal(df_train, df_val, df_test, batch_size, mol2seq, max_sequence_length,
                 smiles_fct = transformer.transform_x,
