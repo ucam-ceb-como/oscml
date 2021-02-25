@@ -85,6 +85,10 @@ def start_hpo(args, objective, log_dir, config, total_number_trials):
         else:
             storage = None
 
+        if n_trials==0 and storage is None:
+            logging.error('Storage must be specified if the number of hpo trials is set to zero.')
+            return
+
         study = create_study(direction=direction, seed=seed, storage=storage, study_name=study_name, load_if_exists=load_if_exists)
         decorator = create_objective_decorator(objective, total_number_trials)
         logging.info('starting HPO')
