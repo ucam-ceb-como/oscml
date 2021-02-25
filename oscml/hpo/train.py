@@ -38,7 +38,7 @@ def start(config_dev=None):
     parser = argparse.ArgumentParser()
     parser.add_argument('--src', type=str, default='.')
     parser.add_argument('--dst', type=str, default='.')
-    parser.add_argument('--trials', type=int, default=None)
+    parser.add_argument('--trials', type=int, default=1)
     parser.add_argument('--timeout', type=int, default=None, help='Stop study after the given number of second(s). If this argument is not set, the study is executed without time limitation.')
     parser.add_argument('--jobs', type=int, default=1)
     parser.add_argument('--config', type=str, default=None)
@@ -88,7 +88,7 @@ def start(config_dev=None):
 
     n_previous_trials = oscml.hpo.optunawrapper.check_for_existing_study(config['training'].get('storage',args.storage), config['training'].get('study_name',args.study_name))
     n_trials = config['training'].get('n_trials',args.trials)
-    if n_previous_trials is not None:
+    if n_previous_trials > 0:
         total_number_trials = n_trials + n_previous_trials - 1
     else:
         total_number_trials = n_trials
