@@ -87,3 +87,7 @@ It has been found that the VS CODE and Anaconda integration is not always smooth
 # Authors #
 
 Andreas Eibeck, Daniel Nurkowski, Angiras Menon, Jiaru Bai
+
+## Useful links ##
+
+* [Preprint 268](https://como.ceb.cam.ac.uk/preprints/268/)
