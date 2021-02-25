@@ -51,9 +51,26 @@ After successful installation, please do not forget to activate the newly create
 After successful installation, the package can be used via the following command:
 ```console
     oscml_run --config CONFIG_FILE_NAME OPTIONS
+
+    OPTIONS:
+    --trials          default= 1        - number of hpo trials to use
+    --jobs            default= 1        - number of hpo trials to be run in parallel
+    --storage         default= None     - name and type of the db storage (only sqlite type supported at the moment)
+    --study_name      default= None     - hpo study name
+    --load_if_exists  default= False    - if study exists in the defined storage, load it and continue hpo run
+    --timeout         default= None     - timeout on accessing the hpo storage
 ```
 
-where the `CONFIG_FILE_NAME` is the name of the config file that specifies the job that should be run and `OPTIONS` indicate any additional command line options that can be used to control the job (if any). More information about the config file syntax and allowed command line options can be found in the code and in the sample config files provided as part of this repository.
+where the `CONFIG_FILE_NAME` is the name of the config file that specifies the job that should be run and `OPTIONS` indicate any additional command line options that can be used to control the job (if any). `Note` that all additional command line options can be also defined in the config file and if that is the case, the config file options take precedence over the command line options. More information about the config file syntax and command line options can be found in the code and in the sample config files provided as part of this repository.
+
+
+# Testing #
+
+All the unit tests for this project are collated in the `tests` folder and can be run via the following command:
+```console
+    python .\tests\run_oscml_tests.py
+```
+`Note` that the tests might take a while to complete.
 
 # Important note for the VS CODE users #
 
