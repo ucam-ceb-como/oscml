@@ -16,13 +16,20 @@ class TestModels(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        oscml.utils.util.init_logging('.', './tmp')
+        print()
+        print()
+        print('###################################')
+        print('#           Models Tests          #')
+        print('###################################')
+        print()
+        print()
+        oscml.utils.util.init_logging('./tests', './tests/tests_logs')
 
     def test_out_of_vocabulary(self):
         """
         This test starts with the fragments of CEPDB (which contains 8 different atom types)
         and allows updating fragments on-the-fly by setting oov=True.
-        Run the fragment mapping on HOPV15 and assert that 340 molecules from HOPV15 
+        Run the fragment mapping on HOPV15 and assert that 340 molecules from HOPV15
         contain different fragment types and the number of different atom types
         has increased to 12.
         """
@@ -35,7 +42,7 @@ class TestModels(unittest.TestCase):
         mol2seq_with_OOV = oscml.models.model_bilstm.Mol2seq(radius=1, oov=True, wf=wf)
         logging.info(mol2seq_with_OOV.atom_dict)
         assert len(mol2seq_with_OOV.atom_dict) == 8
-        
+
         max_index = len(wf['fragment_dict'])-1
         count_larger = 0
         for i in range(len(df_hopv15)):
@@ -58,10 +65,10 @@ class TestModels(unittest.TestCase):
                     assert seq_with_OOV[j] == fragment_index
             if larger_max_index:
                 count_larger += 1
-        
+
         logging.info(mol2seq_with_OOV.atom_dict)
         assert len(mol2seq_with_OOV.atom_dict) == 12
-        
+
         logging.info('number of molecules with at least one new atom type=%s', count_larger)
         assert count_larger == 340
 
@@ -69,7 +76,7 @@ class TestModels(unittest.TestCase):
         path = oscml.data.dataset.path_cepdb_25000()
         df_train, _, _ = oscml.data.dataset.read_and_split(path)
         transformer = oscml.data.dataset.create_transformer(df_train, column_target='pce', column_x='SMILES_str')
-        
+
         info_cep = oscml.data.dataset_cep.create_dataset_info_for_CEP25000()
         wf = info_cep.mol2seq.wf
         oscml.models.model_bilstm.Mol2seq(radius=1, oov=True, wf=wf)
@@ -80,7 +87,7 @@ class TestModels(unittest.TestCase):
             'lstm_hidden_dim': 128,
             'mlp_units': [256, 32, 32, 32, 1],
             'padding_index': 0,
-            'target_mean': transformer.target_mean, 
+            'target_mean': transformer.target_mean,
             'target_std': transformer.target_std,
         }
 
@@ -88,7 +95,7 @@ class TestModels(unittest.TestCase):
             'name': 'Adam',             # Adam, SGD, RMSProp
             'lr': 0.001,
             'momentum': 0,              # SGD and RMSProp only
-            'weight_decay': 0, 
+            'weight_decay': 0,
             'nesterov': False,          # SGD only
         }
 
@@ -118,7 +125,7 @@ class TestModels(unittest.TestCase):
         logging.info('dataset=%s, max sequence length=%s', dataset_config, max_sequence_length)
         df_train, df_val, df_test, transformer = oscml.data.dataset.get_dataframes(dataset=dataset_config)
 
-        train_dl, _, _ = oscml.models.model_bilstm.get_dataloaders(type_dict, df_train, df_val, df_test, 
+        train_dl, _, _ = oscml.models.model_bilstm.get_dataloaders(type_dict, df_train, df_val, df_test,
             transformer, batch_size=40, max_sequence_length=max_sequence_length)
 
         for batch in train_dl:
@@ -126,15 +133,35 @@ class TestModels(unittest.TestCase):
             self.assertEqual(max_sequence_length, len(batch[0][0]))
             self.assertEqual(40, len(batch[1]))
             break
-    
+
     def test_bilstm_dataloader_for_hopv15(self):
-        self.internal_test_bilstm_dataloader(type_dict=oscml.data.dataset_hopv15.HOPV15, src='./data/processed/HOPV_15_revised_2_processed_homo.csv', x_column='smiles')
-        
+        print()
+        print()
+        print('------------------------------------------------------')
+        print('-       Test: test_bilstm_dataloader_for_hopv15      -')
+        print('------------------------------------------------------')
+        print()
+        print()
+        self.internal_test_bilstm_dataloader(type_dict=oscml.data.dataset_hopv15.HOPV15, src='./data/processed/HOPV_15_revised_2_processed_homo_5fold.csv', x_column='smiles')
+
     def test_bilstm_dataloader_for_cep25000(self):
+        print()
+        print()
+        print('--------------------------------------------------------')
+        print('-       Test: test_bilstm_dataloader_for_cep25000      -')
+        print('--------------------------------------------------------')
+        print()
+        print()
         self.internal_test_bilstm_dataloader(type_dict=oscml.data.dataset_cep.CEP25000, src='./data/processed/CEPDB_25000.csv', x_column='SMILES_str')
 
     def test_profile_gnn_dataloader_for_cep25000(self):
-
+        print()
+        print()
+        print('--------------------------------------------------------')
+        print('-     Test: test_profile_gnn_dataloader_for_cep25000   -')
+        print('--------------------------------------------------------')
+        print()
+        print()
         dataset_config = {
             "src": "./data/processed/CEPDB_25000.csv",
             "z-stand": "False",
@@ -147,7 +174,7 @@ class TestModels(unittest.TestCase):
 
         #df_train = df_train[:2500]
 
-        train_dl, _, _ = oscml.models.model_gnn.get_dataloaders(oscml.data.dataset_cep.CEP25000, df_train, df_val, df_test, 
+        train_dl, _, _ = oscml.models.model_gnn.get_dataloaders(oscml.data.dataset_cep.CEP25000, df_train, df_val, df_test,
             transformer, batch_size=250)
 
         for batch in tqdm(train_dl):
@@ -157,13 +184,3 @@ class TestModels(unittest.TestCase):
 
         for batch in tqdm(train_dl):
             pass
-
-if __name__ == '__main__':
-    unittest.main()
-
-    #suite = unittest.TestSuite()
-    #suite.addTest(TestModels('test_bilstm_dataloader_for_hopv15'))
-    #suite.addTest(TestModels('test_bilstm_dataloader_for_cep25000'))
-    #suite.addTest(TestModels('test_profile_gnn_dataloader_for_cep25000'))
-    #runner = unittest.TextTestRunner()
-    #runner.run(suite)

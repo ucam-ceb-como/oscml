@@ -5,7 +5,7 @@
     "cudnn_benchmark": false
 },
 "dataset":{
-    "src": "./data/processed/HOPV_15_revised_2_processed_homo.csv",
+    "src": "./data/processed/HOPV_15_revised_2_processed_homo_5fold.csv",
     "z-stand": "False",
     "x_column": ["smiles"],
     "y_column": ["pce"],

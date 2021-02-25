@@ -8,9 +8,19 @@ from oscml.utils.util_config import set_config_param
 from time import sleep
 
 THIS_DIR = os.path.dirname(os.path.abspath(__file__))
-test_config_file = os.path.join(THIS_DIR,'..','..','conf','config_test.json')
+test_config_file = os.path.join(THIS_DIR,'test_confhpo','config_test.json')
 
 class TestConfigparser(unittest.TestCase):
+
+    @classmethod
+    def setUpClass(cls):
+        print()
+        print()
+        print('###################################')
+        print('#         Config Parser Tests     #')
+        print('###################################')
+        print()
+        print()
 
     def test_config_parser(self):
         def test_objective(trial, config_params):
@@ -91,6 +101,14 @@ class TestConfigparser(unittest.TestCase):
 
             sleep(1)
             return 1.0
+
+        print()
+        print()
+        print('-----------------------------------')
+        print('-     Test: test_config_parser    -')
+        print('-----------------------------------')
+        print()
+        print()
         #--------------------------------------
         with open(test_config_file) as json_config:
             config_params = json.load(json_config, object_pairs_hook=OrderedDict)
@@ -100,13 +118,4 @@ class TestConfigparser(unittest.TestCase):
         study = optuna.study.create_study()
         study.optimize(obj, n_trials=1,gc_after_trial=True, timeout=1)
 
-
-if __name__ == '__main__':
-    unittest.main()
-
-    suite = unittest.TestSuite()
-    suite.addTest(TestConfigparser('test_config_parser'))
-    #suite.addTest(TestModels('test_bilstm_dataloader_for_hopv15'))
-    # suite.addTest(TestModels('test_bilstm_dataloader_for_cep25000'))
-    #runner = unittest.TextTestRunner()
-    #runner.run(suite)
+        print('done')

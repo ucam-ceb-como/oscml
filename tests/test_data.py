@@ -25,30 +25,56 @@ class TestData(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        oscml.utils.util.init_logging('.', './tmp')
+        print()
+        print()
+        print('###################################')
+        print('#           Data Tests            #')
+        print('###################################')
+        print()
+        print()
+        oscml.utils.util.init_logging('./tests', './tests/tests_logs')
 
     def setUp(self):
         self.path_CEPDB = oscml.data.dataset.path_cepdb_valid_smiles()
         self.path_CEPDB_25000 = oscml.data.dataset.path_cepdb_25000()
 
     def test_dataset_read_cep_25000(self):
+        print()
+        print()
+        print('------------------------------------------------')
+        print('-       Test: test_dataset_read_cep_25000      -')
+        print('------------------------------------------------')
+        print()
+        print()
         df_train, df_val, df_test = oscml.data.dataset.read_and_split(self.path_CEPDB_25000)
         assert len(df_train) == 15000
         assert len(df_val) == 5000
         assert len(df_test) == 5000
 
     def test_dataset_transform_cep_25000(self):
-
+        print()
+        print()
+        print('------------------------------------------------')
+        print('-    Test: test_dataset_transform_cep_25000    -')
+        print('------------------------------------------------')
+        print()
+        print()
         df_train, _, _ = oscml.data.dataset.read_and_split(self.path_CEPDB_25000)
         transformer = oscml.data.dataset.create_transformer(df_train, column_target='pce', column_x='SMILES_str')
         self.assertAlmostEqual(4.120434375131375, transformer.target_mean, 1)
         self.assertAlmostEqual(2.405561853258728, transformer.target_std, 1)
 
     def test_dataset_update_state(self):
-
+        print()
+        print()
+        print('------------------------------------------------')
+        print('-       Test: test_dataset_update_state        -')
+        print('------------------------------------------------')
+        print()
+        print()
         mol2seq = oscml.features.weisfeilerlehman.Mol2seq_WL(radius=1)
         info = oscml.data.dataset.DatasetInfo(mol2seq=mol2seq)
-        
+
         smiles = '[SiH2]1C=c2c3cc([se]c3c3cc4ccccc4cc3c2=C1)-c1cncs1'
         mol = smiles2mol(smiles)
         info.update(mol, smiles)
@@ -65,7 +91,13 @@ class TestData(unittest.TestCase):
         self.assertEqual(7, len(info.node_types))
 
     def test_dataset_info_for_cepdb_25000(self):
-
+        print()
+        print()
+        print('------------------------------------------------')
+        print('-   Test: test_dataset_info_for_cepdb_25000    -')
+        print('------------------------------------------------')
+        print()
+        print()
         # check the correct size of dictionaries
         info = oscml.data.dataset_cep.create_dataset_info_for_CEP25000()
         number_node_types = len(info.node_types)
@@ -87,19 +119,26 @@ class TestData(unittest.TestCase):
         self.assertEqual(56, number_fragment_types)
 
     def test_dataset_info_for_hopv15(self):
+        print()
+        print()
+        print('------------------------------------------------')
+        print('-     Test: test_dataset_info_for_hopv15       -')
+        print('------------------------------------------------')
+        print()
+        print()
         # check the correct size of dictionaries
         info = oscml.data.dataset_hopv15.create_dataset_info_for_HOPV15()
         number_node_types = len(info.node_types)
         self.assertEqual(12, number_node_types)
         number_fragment_types = len(info.mol2seq.fragment_dict)
-        self.assertEqual(150, number_fragment_types)       
-        
+        self.assertEqual(150, number_fragment_types)
+
         # the fragments and node type were added to existing ones from CEP DB
         # compare the results when starting from scratich
         path = oscml.data.dataset.path_hopv_15()
         info_from_scratch = oscml.data.dataset_hopv15.generate_dictionaries(path, 'smiles', None)
         number_fragment_types = len(info_from_scratch.mol2seq.fragment_dict)
-        self.assertEqual(134, number_fragment_types)       
+        self.assertEqual(134, number_fragment_types)
         # that means there are 16 fragments in CEP DB that are not used in HOPV15
 
     def test_sample_without_replacement(self):
@@ -150,7 +189,7 @@ class TestData(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
-  
+
     #suite = unittest.TestSuite()
     #suite.addTest(TestData('test_dataset_info_for_cepdb_25000'))
     #suite.addTest(TestData('test_dataset_info_for_hopv15'))
