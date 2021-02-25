@@ -1,16 +1,15 @@
 #!/bin/bash
 # D. Nurkowski (danieln@cmclinnovations.com)
 
-
 AUTHOR="Daniel Nurkowski <danieln@cmclinnovations.com>"
 SPATH="$( cd  "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )/"
 
-DATA_LOCAL="./data/"
-DATA_REMOTE="vienna.cheng.cam.ac.uk:/home/userspace/CoMoCommon/Ongoing/Projects/c4e-jps-OSC/Data/ZhouLi_Data/*"
+DATA_LOCAL="./data/processed"
+DATA_REMOTE="<REPLACE_ME>"
 echo
 
 function check_conda {
-    echo "1. Verifying conda installation."
+    echo "Verifying conda installation."
     echo "-------------------------------------------------------------"
     conda_version=$(conda --version)
     if [ $? -eq 0 ]; then
@@ -26,10 +25,10 @@ function check_conda {
 }
 
 function recreate_conda_env {
-    echo "2. Creating / updating conda environment."
+    echo "Creating / updating conda environment and installing the oscml package."
     echo "-------------------------------------------------------------"
     # This will recreate conda environment
-	echo -n "Provide conda environment name to be created for this project: "	
+	echo -n "Provide conda environment name to be created for this project: "
     read CONDA_ENV_NAME
 	# Remove the environment (if one already exists)
 	conda remove --name $CONDA_ENV_NAME --all
@@ -41,35 +40,18 @@ function recreate_conda_env {
     echo
 }
 
-function redownload_data_from_server {
-	mkdir -p $DATA_LOCAL
-	echo -n "Please provide your Vienna user-name: "
-	read USERNM
-	scp -r $USERNM"@"$DATA_REMOTE $DATA_LOCAL
-}
-
 function get_data_from_server {
-    echo "4. Downloading required project data from the server..."
+    echo "Downloading required project data..."
     echo "-------------------------------------------------------------"
     echo
-    if [ -d $DATA_LOCAL ]
-    then
-        echo "INFO: Directory" $DATA_LOCAL " already exists. Would you like to remove it and re-download project data from the server:"
-        echo -n "y/[n]:"
-        read REDOWNLOAD
-        if [ "$REDOWNLOAD" = "y" ]
-        then
-            rm -r $DATA_LOCAL
-            redownload_data_from_server
-        fi
-    else
-        redownload_data_from_server
-    fi
+    curl $DATA_REMOTE -o $DATA_LOCAL"/data.zip"
+    unzip $DATA_LOCAL"/data.zip" -d $DATA_LOCAL
+    rm -f $DATA_LOCAL"/data.zip"
     echo
     echo
 }
 
-if [ "$1" == "-e" ]
+if [ "$1" == "-i" ]
 then
     check_conda
     recreate_conda_env
@@ -87,10 +69,11 @@ else
     echo
     echo "Please run the script with one of the following flags set:"
     echo "--------------------------------------------------------------------------------------------------------"
-    echo "  -a  : performs all the steps below"
-    echo "  -e  : re-creates conda environment for this project; it will remove the current '"$CONDA_ENV_NAME"'"
-    echo "        environment, if exists, and create it again installing all necessary packages"
-    echo "  -d  : downloads project data from Vienna, (will ask for your Vienna login details)"
+    echo "  -i  : creates conda environment for this project and installs the oscml package in it including all"
+    echo "        the necessary dependencies"
+    echo "  -d  : downloads project data from the remote location"
+    echo "  -a  : performs all the above steps in one go"
+
 fi
 echo
 echo "==============================================================================================================="
