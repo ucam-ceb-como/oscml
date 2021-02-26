@@ -5,7 +5,7 @@ AUTHOR="Daniel Nurkowski <danieln@cmclinnovations.com>"
 SPATH="$( cd  "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )/"
 
 DATA_LOCAL="./data/processed"
-DATA_REMOTE="<REPLACE_ME>"
+DATA_REMOTE="https://www.repository.cam.ac.uk/bitstream/handle/1810/318115/OSCML_Data.zip?sequence=1&isAllowed=y"
 echo
 
 function check_conda {
