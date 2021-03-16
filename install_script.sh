@@ -3,10 +3,39 @@
 
 AUTHOR="Daniel Nurkowski <danieln@cmclinnovations.com>"
 SPATH="$( cd  "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )/"
-
 DATA_LOCAL="./data/processed"
 DATA_REMOTE="https://www.repository.cam.ac.uk/bitstream/handle/1810/318115/OSCML_Data.zip?sequence=1&isAllowed=y"
-echo
+VENV_NAME='oscml_venv'
+GET_RESOURCES='n'
+DEV_INSTALL=''
+
+function usage {
+    echo "==============================================================================================================="
+    echo "OSCML project installation script."
+    echo
+    echo "Please run the script with one of the following flags set:"
+    echo "---------------------------------------------------------------------------------------------------------------"
+	echo "  -v              : creates conda virtual environment for this project in the project directory and"
+    echo "                    installs all its dependencies. Note, if the same named environment already exists"
+    echo "                    it will be removed and created again"
+	echo "  -n VENV_NAME    : name of the virtual environment to be created, if not provided,"
+	echo "                    default "$VENV_NAME" will be used instead"
+	echo "  -i              : installs the oscml project in the currently active virtual environment"
+	echo "  -e              : enables developer mode installation"
+    echo "  -r              : downloads project resources from the remote location"
+	echo "  -h              : print this help message"
+	echo
+	echo "Example usage:"
+    echo "./install_script.sh -v                  - this will create default virt. env. with all project dependencies"
+	echo "./install_script.sh -i                  - this will install the project in the currently active virt. env."
+	echo "./install_script.sh -v -i               - this will create default virt. env. with all project dependencies"
+    echo "                                          and install the oscml project"
+    echo "./install_script.sh -v -n my_env -i -e  - this will create virtual environment 'my_env' with all project"
+	echo "                                          dependencies and install the oscml project in a developer mode"
+	echo "==============================================================================================================="
+    exit -1
+}
+
 
 function check_conda {
     echo "Verifying conda installation."
@@ -25,19 +54,40 @@ function check_conda {
 }
 
 function recreate_conda_env {
-    echo "Creating / updating conda environment and installing the oscml package."
+    echo "Creating conda environment and installing the oscml package."
     echo "-------------------------------------------------------------"
     # This will recreate conda environment
-	echo -n "Provide conda environment name to be created for this project: "
-    read CONDA_ENV_NAME
-	# Remove the environment (if one already exists)
-	conda remove --name $CONDA_ENV_NAME --all
-	# Update the environment name in the yml file
-    sed -i '1s/.*/name: '$CONDA_ENV_NAME'/' environment.yml
-    # Create the new environment
-    conda env create -f environment.yml
+    conda config --set channel_priority strict
+    conda remove -n $VENV_NAME --all
+    # create a new environment
+    conda env create -f environment.yml -n $VENV_NAME
     echo
     echo
+}
+
+function install_project {
+	echo "Installing the oscml project"
+    echo "-----------------------------------------------"
+    echo
+    if [[ $RECREATE_VENV == 'y' ]]
+	then
+        eval "$(conda shell.bash hook)"
+        conda activate $VENV_NAME
+    fi
+    pip3 --disable-pip-version-check install $DEV_INSTALL $SPATH
+
+    if [ $? -eq 0 ]; then
+    	echo ""
+    	echo "    INFO: oscml installation complete."
+    	echo "-----------------------------------------"
+    else
+        echo ""
+    	echo ""
+    	echo "    ERROR: Failed to install oscml."
+    	echo "-----------------------------------------"
+        exit -1
+    fi
+
 }
 
 function get_data_from_server {
@@ -51,29 +101,40 @@ function get_data_from_server {
     echo
 }
 
-if [ "$1" == "-i" ]
+# Scan command-line arguments
+if [[ $# = 0 ]]
 then
-    check_conda
-    recreate_conda_env
-elif [ "$1" == "-d" ]
-then
-    get_data_from_server
-elif [ "$1" == "-a" ]
-then
-    check_conda
-    recreate_conda_env
-    get_data_from_server
-else
-    echo "==============================================================================================================="
-    echo "OSCML project installation script."
-    echo
-    echo "Please run the script with one of the following flags set:"
-    echo "--------------------------------------------------------------------------------------------------------"
-    echo "  -i  : creates conda environment for this project and installs the oscml package in it including all"
-    echo "        the necessary dependencies"
-    echo "  -d  : downloads project data from the remote location"
-    echo "  -a  : performs all the above steps in one go"
+   usage
+fi
+while [[ $# > 0 ]]
+do
+key="$1"
+case $key in
+    -h) usage;;
+    -v) RECREATE_VENV='y'; shift;;
+	-n) VENV_NAME=$2; shift 2;;
+    -i) INSTALL_PROJ='y'; shift;;
+	-e) DEV_INSTALL=' -e '; shift;;
+	-r) GET_RESOURCES='y '; shift;;
+     *)
+	# otherwise print the usage
+    usage
+    ;;
+esac
+done
 
+if [[ $RECREATE_VENV == 'y' ]]
+then
+    check_conda
+    recreate_conda_env
+fi
+if [[ $INSTALL_PROJ == 'y' ]]
+then
+    install_project
+fi
+if [[ $GET_RESOURCES == 'y' ]]
+then
+    get_data_from_server
 fi
 echo
 echo "==============================================================================================================="
