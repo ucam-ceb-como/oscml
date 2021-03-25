@@ -9,7 +9,7 @@
     "z-stand": "False",
     "x_column": ["smiles"],
     "y_column": ["pce"],
-	"split": "ml_phase_fold_0"
+	"split": "ml_phase"
     },
 "model":{
     "name": "RF",
@@ -34,7 +34,7 @@
     "metric": "mse",
 	"cross_validation": 5,
 	"direction": "minimize",
-	"n_trials": 20,
+	"trials": 45,
 	"study_name": "rf_hopv15_homo",
 	"storage": "sqlite:///rf_hopv15_homo.db",
 	"storage_timeout": 1000,
@@ -43,7 +43,8 @@
     },
 "post_processing":{
     "contour_plot": false,
-    "best_trial_retraining": true,
+	"contour_plot_alt_dir": null,
+    "best_trial_retraining": false,
     "z_transform_inverse_prediction": true,
     "regression_plot": true
 }

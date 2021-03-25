@@ -27,7 +27,7 @@ def path_osaka(root='.'):
     return root + '/data/raw/Nagasawa_RF_SI.txt'
 
 class DataTransformer():
-    
+
     def __init__(self, column_target, target_mean, target_std, column_x=None):
         self.column_target = column_target
         self.target_mean = target_mean
@@ -53,7 +53,7 @@ class DataTransformer():
             # that means isinstance(data, torch.Tensor) because the value predicted by PyTorch
             # has to be transformed back for evaluation
             return data * self.target_std + self.target_mean
-    
+
 def create_transformer(df, column_target, column_x=None):
     mean = float(df[column_target].mean())
     std = float(df[column_target].std(ddof=0))
@@ -61,7 +61,7 @@ def create_transformer(df, column_target, column_x=None):
     return DataTransformer(column_target, mean, std, column_x)
 
 def add_node2index(original, new, zero_index_for_new):
-             
+
     added = original.copy()
     for node in new:
         if node not in original:
@@ -90,7 +90,7 @@ def clean_data(df, mol2seq, column_smiles, column_target):
     mask = np.logical_and(mask_known, mask_notna)
     df_cleaned = df[mask].copy()
     logging.info('molecules with both=%s', len(df_cleaned))
-    
+
     return df_cleaned
 
 def store(df, filepath):
@@ -111,9 +111,9 @@ def read_and_split_by_size(filepath, split_size_array, seed):
         test_size = len(df) - train_size - val_size
 
     train_plus_val_size = train_size + val_size
-    df_train, df_test = sklearn.model_selection.train_test_split(df, 
+    df_train, df_test = sklearn.model_selection.train_test_split(df,
                     train_size=train_plus_val_size, shuffle=True, random_state=seed)
-    df_train, df_val = sklearn.model_selection.train_test_split(df_train, 
+    df_train, df_val = sklearn.model_selection.train_test_split(df_train,
                     train_size=train_size, shuffle=True, random_state=seed+1)
     logging.info('train=%s, val=%s, test=%s', len(df_train), len(df_val), len(df_test))
 
@@ -128,13 +128,16 @@ def read_and_split(filepath, split_column='ml_phase'):
     logging.info('split data into sets of size (train / val / test)=%s / %s / %s', len(df_train), len(df_val), len(df_test))
     return df_train, df_val, df_test
 
-def get_dataframes(dataset, seed=200):
+def get_dataframes(dataset, seed=200, altSplit=None):
 
     src = dataset['src']
     x_column = dataset['x_column'][0]
     y_column = dataset['y_column'][0]
-    split = dataset['split']
 
+    if altSplit is not None:
+        split = altSplit
+    else:
+        split = dataset['split']
     if isinstance(split, str):
         # split is the name of the split column with values train, val and test
         df_train, df_val, df_test = oscml.data.dataset.read_and_split(src, split_column=split)
@@ -147,7 +150,7 @@ def get_dataframes(dataset, seed=200):
 
     transformer = create_transformer(df_train, column_target=y_column, column_x=x_column)
     return (df_train, df_val, df_test, transformer)
- 
+
 
 class DatasetInfo:
     def __init__(self, id=None, mol2seq=None, node_types=None, max_sequence_length=None, max_molecule_size=0, max_smiles_length=0):
@@ -156,7 +159,7 @@ class DatasetInfo:
         #self.column_target = column_target
         if mol2seq:
             self.mol2seq = mol2seq
-        else:    
+        else:
             self.mol2seq = oscml.features.weisfeilerlehman.Mol2seq_WL(radius=1)
         if node_types:
             self.node_types = node_types
@@ -165,7 +168,7 @@ class DatasetInfo:
         self.max_sequence_length = max_sequence_length
         self.max_molecule_size = max_molecule_size
         self.max_smiles_length = max_smiles_length
-    
+
     def update(self, mol, smiles):
         self.mol2seq(mol)
         for a in mol.GetAtoms():
@@ -199,7 +202,7 @@ def get_dataset_info(dataset):
         return oscml.data.dataset_cep.create_dataset_info_for_CEP25000()
     elif dataset == oscml.data.dataset_hopv15.HOPV15:
         return oscml.data.dataset_hopv15.create_dataset_info_for_HOPV15()
-    
+
     raise RuntimeError('unknown dataset=' + str(dataset))
 
 def add_k_fold_columns(df, k, seed, column_name_prefix='ml_phase'):
@@ -226,18 +229,17 @@ def add_fingerprint_columns(df, smiles_column, nBits=1048, radius=2):
 		}
     params_fg_default.update({'nBits': nBits, 'radius': radius})
 
-    df['rdkitmol'] = oscml.utils.util.smiles2mol_df(df, smiles_column)        
+    df['rdkitmol'] = oscml.utils.util.smiles2mol_df(df, smiles_column)
     fp = oscml.features.fingerprint.get_fingerprints(df, 'rdkitmol', params_fg_default, as_numpy_array = True)
     df = df.drop(columns=['rdkitmol'])
 
     # convert an array of arrays (i.e. an array of fingerprints) into a matrix
     fp = np.stack(fp, axis=0)
     fp = fp.astype(int)
-    
+
     for bit in range(nBits):
         bit_column = fp[:,bit]
         column_name = 'fp' + str(bit)
         df[column_name] = bit_column
-       
+
     return df
-    

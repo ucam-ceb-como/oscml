@@ -1,16 +1,25 @@
 import datetime
 import os
-
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
 import torch.utils.data
-
 from oscml.utils.params import cfg
 import oscml.utils.util
 from oscml.utils.util import log
+import numpy as np
+import random
 
+def torch_init(seed=None,cudnn_deterministic=None,cudnn_benchmark=None):
+    seed = int(seed)
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed_all(seed)
+    torch.backends.cudnn.deterministic = True
+    torch.backends.cudnn.benchmark = False
+    np.random.seed(seed)
+    random.seed(seed)
+    os.environ['PYTHONHASHSEED'] = str(seed)
 
 def fit(epochs, model, loss_func, optimizer, train_dl, val_dl,
         inverse_transform_func, tensorboard_logger=None):

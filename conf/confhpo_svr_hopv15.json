@@ -31,7 +31,7 @@
     "metric": "mse",
 	"cross_validation": 5,
 	"direction": "minimize",
-	"n_trials": 20,
+	"trials": 2,
 	"study_name": "svr_hopv15_homo",
 	"storage": "sqlite:///svr_hopv15_homo.db",
 	"storage_timeout": 1000,

@@ -1,61 +1,85 @@
 import logging
-
 import pandas as pd
 import rdkit
 import rdkit.Chem
 import rdkit.Chem.AllChem
 import sklearn
-
 from oscml.utils.util import smiles2mol
+from oscml.utils.util_sklearn import train_model_cross_validate
+from oscml.utils.util_sklearn import train_model, train_model_hpo, best_model_retraining
+from oscml.hpo.objclass import Objective
+from oscml.hpo.hpo_utils import preproc_training_params, BL_model_train
+from oscml.hpo.hpo_utils import BL_model_train_cross_validate, BL_bestTrialRetrainDataPreproc
+
 from oscml.utils.util_config import set_config_param
 
-def create(trial, config, df_train, df_val, df_test, training_params):
 
-    x_column = config['dataset']['x_column'][0]
-    y_column = config['dataset']['y_column'][0]
+def getObjectiveRF(modelName, data, config, logFile, logDir,
+                   crossValidation, bestTrialRetraining=False, transferLearning=False):
 
+    if bestTrialRetraining:
+        data = BL_bestTrialRetrainDataPreproc(data)
+
+    objectiveRF = Objective(modelName=modelName, data=data, config=config,
+                        logFile=logFile, logDir=logDir)
+
+    model_trainer_func = BL_model_train_cross_validate if crossValidation else BL_model_train
+
+    objectiveRF.addPreModelCreateTask(objParamsKey='training', funcHandle=preproc_training_params)
+    objectiveRF.setModelCreator(funcHandle=model_create)
+    if bestTrialRetraining:
+        objectiveRF.setModelTrainer(funcHandle=model_trainer_func, extArgs=[data_preproc, best_model_retraining])
+    else:
+        objectiveRF.setModelTrainer(funcHandle=model_trainer_func, extArgs=[data_preproc, train_model_hpo])
+    return objectiveRF
+
+def model_create(trial, data, objConfig, objParams):
     # set model parameters from the config file
     #--------------------------------------
+    model_conf = objConfig['config']['model']['model_specific']
+    metric = objParams['training']['metric']
     model_params = {}
-    for key, value in config['model']['model_specific'].items():
+    for key, value in model_conf.items():
         model_params.update({key: set_config_param(trial=trial,param_name=key,param=value, all_params=model_params)})
+    logging.info('model params=%s', model_params)
+    model = sklearn.ensemble.RandomForestRegressor(**model_params, criterion=metric, n_jobs=1, verbose=0)#, random_state=0)
+    return model
 
+def data_preproc(trial, data, objConfig, objParams):
     # set fingerprint parameters from the config file
+    #--------------------------------------
+    fp_conf = objConfig['config']['model']['fingerprint_specific']
+
     fp_params = {}
-    for key, value in config['model']['fingerprint_specific'].items():
+    for key, value in objConfig['config']['model']['fingerprint_specific'].items():
         fp_params.update({key: set_config_param(trial=trial,param_name=key,param=value, all_params=fp_params)})
 
+    logging.info('fingerprint params=%s', fp_params)
 
-    logging.info('model params=%s', model_params)
-    logging.info('fingerprting params=%s', fp_params)
+    x_column = objConfig['config']['dataset']['x_column'][0]
+    y_column = objConfig['config']['dataset']['y_column'][0]
 
     # at the moment the only supported fingerprint choice is morgan
     fp_type = fp_params.pop('type',None)
     if fp_type=='morgan':
-        get_fp = get_Morgan_fingerprints
+        get_fp = dataFrameToMorganFP
     else:
         logging.exception('', exc_info=True)
         raise ValueError("Unknown fingerprint type '"+ fp_type+"'. Only 'morgan' fingerprints supported.")
 
-    if training_params['cross_validation']:
-        # df_train = pd.concat([df_train, df_val]) this should be done in train.py already
-        assert df_val is None, "validation set should be added to training set for cross validation"
-        x_train, y_train = get_fp(df_train, fp_params, x_column, y_column)
-        x_val = None
-        y_val = None
-    else:
-        x_train, y_train = get_fp(df_train, fp_params, x_column, y_column)
-        x_val, y_val = get_fp(df_val, fp_params, x_column, y_column)
-    
-    x_test, y_test = get_fp(df_test, fp_params, x_column, y_column)
+    data_processed = {
+        'train': None,
+        'val': None,
+        'test': None,
+        'transformer': data['transformer'],
+    }
+    data_processed['train'] = get_fp(data['train'], fp_params, x_column, y_column)
+    if data['val'] is not None:
+        data_processed['val'] = get_fp(data['val'], fp_params, x_column, y_column)
+    data_processed['test'] = get_fp(data['test'], fp_params, x_column, y_column)
+    return data_processed
 
-    model = sklearn.ensemble.RandomForestRegressor(**model_params, criterion=training_params['metric'], n_jobs=1, verbose=0)#, random_state=0)
-
-    return model, x_train, y_train, x_val, y_val, x_test, y_test
-
-
-def get_Morgan_fingerprints(df, params_morgan, columns_smiles, column_y):
-    logging.info('generating Morgan fingerprint samples according to params=%s', params_morgan)
+def dataFrameToMorganFP(df, params_morgan, columns_smiles, column_y):
     x = []
     y = []
     for i in range(len(df)):
@@ -66,4 +90,4 @@ def get_Morgan_fingerprints(df, params_morgan, columns_smiles, column_y):
         pce = df.iloc[i][column_y]
         y.append(pce)
 
-    return x, y
+    return (x, y)

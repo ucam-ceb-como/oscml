@@ -14,4 +14,5 @@ setup(
              'oscml_run=oscml.hpo.train:start'
         ],
     },
+    include_package_data=True
 )

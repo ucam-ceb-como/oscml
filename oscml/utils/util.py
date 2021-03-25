@@ -5,16 +5,33 @@ import pprint
 import pytorch_lightning as pl
 from time import sleep
 import yaml
-
 import numpy as np
 import rdkit.Chem
 import sklearn.metrics
 from tqdm import tqdm
-
 import oscml.utils.params
 from oscml.utils.params import cfg
+import pkg_resources
+import datetime
 
-def init_file_logging(log_config_file, log_file):
+_RES_DIR = pkg_resources.resource_filename(__name__,os.path.join('..','resources'))
+_RES_LOG_CONFIG_FILE = os.path.join(_RES_DIR,'logging.yaml')
+
+def init_file_logging(log_config_file='default', log_main_dir='default', \
+                      log_sub_dir_prefix='default', log_file_name='default'):
+    if log_config_file=='default':
+        log_config_file = _RES_LOG_CONFIG_FILE
+    if log_main_dir=='default':
+        log_main_dir = './logs/'
+    if log_sub_dir_prefix=='default':
+        log_sub_dir_prefix = 'hpo_'
+    if log_file_name=='default':
+        log_file_name = 'oscml.log'
+
+    log_file = os.path.normpath(os.path.join(log_main_dir, \
+                log_sub_dir_prefix + datetime.datetime.now().strftime('%Y%m%d_%H%M%S'),log_file_name))
+
+
     print('initializing logging with log config file=', log_config_file, ', log file=', log_file)
     with open(log_config_file, 'r') as f:
         # always use safe_load to avoid reading and executing as YAML serialized Python code
@@ -39,6 +56,7 @@ def init_file_logging(log_config_file, log_file):
     logging.config.dictConfig(log_cfg)
 
     logging.info(concat('initialized logging with config file=', log_config_file, ', log file=', log_file))
+    return log_file
 
 
 def init_logging(src_directory, dst_directory):
@@ -60,10 +78,10 @@ def concat(*args):
         for m in args:
             message += str(m) + ' '
         return message
-    
+
 def log(*args):
     logging.info(concat(*args))
-       
+
 def logm(*args):
     logging.getLogger().info(args)
 

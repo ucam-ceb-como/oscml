@@ -1,14 +1,41 @@
 import logging
 import os
-
 import optuna
 import optuna.samplers
-
 import oscml.hpo.train
 import oscml.visualization.util_sns_plot
-
+from oscml.utils.util_sklearn import calculate_metrics, standard_score_transform
+import pandas as pd
+import numpy as np
+from pathlib import Path
 
 os.environ["SLURM_JOB_NAME"]="bash"
+
+def get_statistics(study):
+    running_trials = [t for t in study.trials if t.state == optuna.trial.TrialState.RUNNING]
+    completed_trials = [t for t in study.trials if t.state == optuna.trial.TrialState.COMPLETE]
+    pruned_trials = [t for t in study.trials if t.state == optuna.trial.TrialState.PRUNED]
+    failed_trials = [t for t in study.trials if t.state == optuna.trial.TrialState.FAIL]
+    return {'all': len(study.trials), 'running': len(running_trials), 'completed': len(completed_trials),
+            'pruned': len(pruned_trials), 'failed': len(failed_trials)}
+
+def create_study(direction, seed, **kwargs):
+    # pruner = optuna.pruners.MedianPruner()
+    # pruner = optuna.pruners.MedianPruner(n_startup_trials=5, n_warmup_steps=30, interval_steps=10)
+    # pruner = optuna.pruners.PercentilePruner(25.0, n_startup_trials=5, n_warmup_steps=30, interval_steps=10) #keep top 25%
+    # #pruner = ThresholdPruner(upper=1.0)
+    #pruner = optuna.pruners.HyperbandPruner(min_resource=1, max_resource=9, reduction_factor=3)
+    pruner = None
+    sampler = optuna.samplers.TPESampler(consider_prior=True, n_startup_trials=10, seed=seed)
+    study = optuna.create_study(direction=direction, pruner=pruner, sampler=sampler, **kwargs)
+    return study
+
+def callback_on_trial_finished(study, trial):
+    statistics = get_statistics(study)
+    logging.info('current study statistics: number of trials=%s', statistics)
+    if statistics['failed'] >= 50:
+        logging.error('THE MAXIMUM NUMBER OF FAILED TRIALS HAS BEEN REACHED, AND THE STUDY WILL STOP NOW.')
+        study.stop()
 
 def create_objective_decorator(objective, n_trials):
     def decorator(trial):
@@ -27,55 +54,37 @@ def create_objective_decorator(objective, n_trials):
 
     return decorator
 
+def log_and_save(study, log_dir, statistics):
+    path = log_dir + '/hpo_result.csv'
+    logging.info('Saving HPO results to %s', path)
 
-def create_study(direction, seed, **kwargs):
-    # pruner = optuna.pruners.MedianPruner()
-    # pruner = optuna.pruners.MedianPruner(n_startup_trials=5, n_warmup_steps=30, interval_steps=10)
-    # pruner = optuna.pruners.PercentilePruner(25.0, n_startup_trials=5, n_warmup_steps=30, interval_steps=10) #keep top 25%
-    # #pruner = ThresholdPruner(upper=1.0)
-    #pruner = optuna.pruners.HyperbandPruner(min_resource=1, max_resource=9, reduction_factor=3)
-    pruner = None
-    sampler = optuna.samplers.TPESampler(consider_prior=True, n_startup_trials=10, seed=seed)
-    study = optuna.create_study(direction=direction, pruner=pruner, sampler=sampler, **kwargs)
-    return study
+    if not os.path.exists(log_dir):
+        os.makedirs(log_dir)
 
-def get_statistics(study):
-    running_trials = [t for t in study.trials if t.state == optuna.trial.TrialState.RUNNING]
-    completed_trials = [t for t in study.trials if t.state == optuna.trial.TrialState.COMPLETE]
-    pruned_trials = [t for t in study.trials if t.state == optuna.trial.TrialState.PRUNED]
-    failed_trials = [t for t in study.trials if t.state == optuna.trial.TrialState.FAIL]
-    return {'all': len(study.trials), 'running': len(running_trials), 'completed': len(completed_trials),
-            'pruned': len(pruned_trials), 'failed': len(failed_trials)}
+    df = study.trials_dataframe()
+    df.to_csv(path)
 
-def callback_on_trial_finished(study, trial):
-    statistics = get_statistics(study)
-    logging.info('current study statistics: number of trials=%s', statistics)
-    if statistics['failed'] >= 50:
-        logging.error('THE MAXIMUM NUMBER OF FAILED TRIALS HAS BEEN REACHED, AND THE STUDY WILL STOP NOW.')
-        study.stop()
+    logging.info('final study statistics: number of trials=%s', statistics)
 
-def start_hpo(args, objective, log_dir, config, total_number_trials):
+    log_best_trial(study.best_trial)
 
-    #optuna.logging.enable_default_handler()
-    #optuna.logging.enable_propagation()  # Propagate logs to the root logger.
-    #optuna.logging.disable_default_handler()
-    #optuna.logging.set_verbosity(optuna.logging.DEBUG)
+def log_best_trial(trial):
+    logging.info('best trial number=%s', trial.number)
+    logging.info('best trial value=%s', trial.value)
+    logging.info('best trial params=%s', trial.params)
+
+def runHPO(objective, log_dir, config, total_number_trials):
 
     try:
-        seed = config['numerical_settings'].get('seed')
-        study_name = config['training'].get('study_name',args.study_name)
-        direction = config['training'].get('direction')
-        storage_url = config['training'].get('storage',args.storage)
-        storage_timeout = config['training'].get('storage_timeout',5)
-        load_if_exists = config['training'].get('load_if_exists',args.load_if_exists)
-        n_trials = config['training'].get('n_trials',args.trials)
-        n_jobs = config['training'].get('n_jobs',args.jobs)
-
-        contour_plot = config['post_processing'].get('contour_plot')
-        best_trial_retraining = config['post_processing'].get('best_trial_retraining')
-        z_transform_inverse_prediction = config['post_processing'].get('z_transform_inverse_prediction')
-        regression_plot = config['post_processing'].get('regression_plot')
-        transfer = config['post_processing'].get('transfer')
+        seed = int(config['numerical_settings']['seed'])
+        study_name = config['training']['study_name']
+        direction = config['training']['direction']
+        storage_url = config['training']['storage']
+        storage_timeout = config['training']['storage_timeout']
+        load_if_exists = config['training']['load_if_exists']
+        n_trials = int(config['training']['trials'])
+        n_jobs = int(config['training']['jobs'])
+        job_timeout = config['training']['timeout']
 
         if storage_url:
             storage = optuna.storages.RDBStorage(
@@ -92,30 +101,12 @@ def start_hpo(args, objective, log_dir, config, total_number_trials):
         study = create_study(direction=direction, seed=seed, storage=storage, study_name=study_name, load_if_exists=load_if_exists)
         decorator = create_objective_decorator(objective, total_number_trials)
         logging.info('starting HPO')
-        study.optimize(decorator, n_trials=n_trials, n_jobs=n_jobs, timeout=args.timeout,
+        study.optimize(decorator, n_trials=n_trials, n_jobs=n_jobs, timeout=job_timeout,
                 catch = (RuntimeError, ValueError, TypeError), callbacks=[callback_on_trial_finished],
                 gc_after_trial=True)
         logging.info('finished HPO')
-        path = log_dir + '/hpo_result.csv'
-        log_and_save(study, path)
+        log_and_save(study, log_dir, get_statistics(study))
         best_value = study.best_trial.value
-
-        if contour_plot:
-            oscml.visualization.util_sns_plot.contour_plot(log_dir, path)
-
-        if best_trial_retraining:
-            log_dir_best_trial_retrain = log_dir + '/best_trial_retrain'
-            objective(study.best_trial, log_dir=log_dir_best_trial_retrain,
-                      best_trial_retrain=True,
-                      z_transform_inverse_prediction=z_transform_inverse_prediction,
-                      regression_plot=regression_plot)
-
-        if transfer:
-            log_dir_transfer_learning = log_dir + '/transfer_learning'
-            df_train_trans, df_val_trans, df_test_trans, transformer_trans = oscml.hpo.train.get_dataframes(config['transfer_learning'].get('dataset'), seed)
-            objective(study.best_trial, df_train=df_train_trans, df_val=df_val_trans,
-                      df_test=df_test_trans, transformer=transformer_trans,
-                      log_dir=log_dir_transfer_learning, transfer=config['transfer_learning'])
 
         return best_value
 
@@ -125,22 +116,6 @@ def start_hpo(args, objective, log_dir, config, total_number_trials):
         raise exc
     else:
         logging.info('finished successfully')
-
-def log_best_trial(trial):
-    logging.info('best trial number=%s', trial.number)
-    logging.info('best trial value=%s', trial.value)
-    logging.info('best trial params=%s', trial.params)
-
-def log_and_save(study, path):
-
-    logging.info('Saving HPO results to %s', path)
-
-    df = study.trials_dataframe()
-    df.to_csv(path)
-
-    logging.info('final study statistics: number of trials=%s', get_statistics(study))
-
-    log_best_trial(study.best_trial)
 
 def check_for_existing_study(storage, study_name):
     n_previous_trials = 0
@@ -164,3 +139,28 @@ def check_for_existing_study(storage, study_name):
     except:
         logging.info('exception - there is no study with name=%s so far', storage)
     return n_previous_trials
+
+def runPostProcTraining(objective, logDir, logHead, jobConfig):
+    study_name = jobConfig['training']['study_name']
+    storage_url = jobConfig['training']['storage']
+    load_if_exists = jobConfig['training']['load_if_exists']
+    storage_timeout = jobConfig['training']['storage_timeout']
+    seed = jobConfig['numerical_settings']['seed']
+    direction = jobConfig['training']['direction']
+
+    if storage_url:
+        storage = optuna.storages.RDBStorage(
+        url=storage_url,
+        engine_kwargs={"connect_args": {"timeout": storage_timeout}},
+        )
+    else:
+        storage = None
+
+    study = create_study(seed=seed, direction=direction, storage=storage, study_name=study_name, load_if_exists=load_if_exists)
+
+    logHead = logHead + str(study.best_trial.number) + ']'
+    logging.info(logHead)
+
+    Path(logDir).mkdir(parents=True, exist_ok=True)
+
+    objective(study.best_trial)

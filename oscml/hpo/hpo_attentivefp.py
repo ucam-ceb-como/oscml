@@ -1,82 +1,122 @@
 import functools
 import logging
-
 import dgl
 import dgllife.data
 import dgllife.model
 import dgllife.utils
 import torch
 import torch.utils.data
-
 from oscml.utils.util_config import set_config_param
 import oscml.utils.util_lightning
 import oscml.utils.util_transfer_learning
+from oscml.hpo.objclass import Objective
+from oscml.hpo.hpo_utils import preproc_training_params
+from oscml.utils.util_transfer_learning import AttentiveFPTransfer
+from dgllife.model import AttentiveFPPredictor
+from oscml.hpo.hpo_utils import NN_model_train, NN_addBestModelRetrainCallback, NN_valDataCheck
+from oscml.hpo.hpo_utils import NN_model_train_cross_validate, NN_logBestTrialRetraining, NN_transferLearningCallback
+from oscml.hpo.hpo_utils import NN_prepareTransferLearningModel, NN_logTransferLearning
 
 
-def create(trial, config, df_train, df_val, df_test, optimizer, transformer, log_dir, freeze=False, fine_tune=False):
+def getObjectiveAttentiveFP(modelName, data, config, logFile, logDir,
+                            crossValidation, bestTrialRetraining=False, transferLearning=False):
 
-    if freeze or fine_tune:
-        x_column = config['transfer_learning']['dataset']['x_column'][0]
-        y_column = config['transfer_learning']['dataset']['y_column'][0]
+    if not crossValidation:
+        # for not cv job, make sure there is non empty validation set
+        # as NN methods require it for training
+        data = NN_valDataCheck(data, config, transferLearning)
+
+    objectiveAttentiveFP = Objective(modelName=modelName, data=data, config=config,
+                        logFile=logFile, logDir=logDir)
+
+    if transferLearning and config['transfer_learning']['freeze_and_train']:
+        modelCreatorClass = AttentiveFPTransfer
     else:
-        x_column = config['dataset']['x_column'][0]
-        y_column = config['dataset']['y_column'][0]
-    featurizer_config = config['model']['featurizer']
-    batch_size = config['training']['batch_size']
-    dgl_log_dir = log_dir + '/dgl_' + str(trial.number)
-        # no standardization of target values supported at the moment
-    target_mean = transformer.target_mean
-    target_std = transformer.target_std
+        modelCreatorClass = AttentiveFPPredictor
+
+    model_trainer_func = NN_model_train_cross_validate if crossValidation else NN_model_train
+
+    objectiveAttentiveFP.addPreModelCreateTask(objParamsKey='training', funcHandle=preproc_training_params)
+    objectiveAttentiveFP.addPreModelCreateTask(objParamsKey='featurizer', funcHandle=get_featuriser)
+    objectiveAttentiveFP.setModelCreator(funcHandle=model_create, extArgs=[modelCreatorClass])
+    objectiveAttentiveFP.setModelTrainer(funcHandle=model_trainer_func, extArgs=[data_preproc])
+
+    if bestTrialRetraining:
+        objectiveAttentiveFP.addPostModelCreateTask(objParamsKey='callbackBestTrialRetraining', funcHandle=NN_addBestModelRetrainCallback)
+        objectiveAttentiveFP.addPostTrainingTask(objParamsKey='logBestTrialRetrain', funcHandle=NN_logBestTrialRetraining)
+
+    if transferLearning:
+        objectiveAttentiveFP.addPostModelCreateTask(objParamsKey='callbackTransferLearning', funcHandle=NN_transferLearningCallback)
+        objectiveAttentiveFP.addPostModelCreateTask(objParamsKey='transferLearningModel', funcHandle=NN_prepareTransferLearningModel)
+        objectiveAttentiveFP.addPostTrainingTask(objParamsKey='logTransferLearning', funcHandle=NN_logTransferLearning)
+
+    return objectiveAttentiveFP
+
+class AttentiveFPObjective(Objective):
+    def __init__(self, *args, **kwargs):
+        super().__init__(**kwargs)
+
+    def __call__(self, trial):
+        self.objconfig['training'] = preproc_training_params(trial, self.objconfig)
+        self.objconfig['featurizer'] = get_featuriser(self.objconfig)
+
+        model = model_create(trial, self.model_creator, self.objconfig, self.data['transformer'])
+
+        self.obj_value = self.model_train(trial, model, self.data, self.objconfig, data_preproc)
+        return self.obj_value
+
+def get_featuriser(trial, data, objConfig, objParams):
+    featurizer = {
+        "node_featurizer": None,
+        "edge_featurizer": None,
+        "node_feat_size": None,
+        "edge_feat_size": None
+    }
+    featurizer_config = objConfig['config']['model']['featurizer']
 
     if featurizer_config == 'full':
-        node_featurizer = dgllife.utils.AttentiveFPAtomFeaturizer()
-        edge_featurizer = dgllife.utils.AttentiveFPBondFeaturizer(self_loop=True)
-        node_feat_size = node_featurizer.feat_size('h')     # = 39
-        edge_feat_size = edge_featurizer.feat_size('e')     # = 11
+        featurizer['node_featurizer'] = dgllife.utils.AttentiveFPAtomFeaturizer()
+        featurizer['edge_featurizer'] = dgllife.utils.AttentiveFPBondFeaturizer(self_loop=True)
+        featurizer['node_feat_size'] = featurizer['node_featurizer'].feat_size('h')     # = 39
+        featurizer['edge_feat_size'] = featurizer['edge_featurizer'].feat_size('e')     # = 11
     else:
-        node_featurizer = SimpleAtomFeaturizer2()
+        featurizer['node_featurizer'] = SimpleAtomFeaturizer2()
         #edge_featurizer = dgllife.utils.AttentiveFPBondFeaturizer(self_loop=True)
         #edge_featurizer = dgllife.utils.CanonicalBondFeaturizer(self_loop=True)
-        edge_featurizer = EmptyBondFeaturizes(self_loop=True)
-        node_feat_size = node_featurizer.feat_size('h')
-        edge_feat_size = edge_featurizer.feat_size('e')
+        featurizer['edge_featurizer'] = EmptyBondFeaturizes(self_loop=True)
+        featurizer['node_feat_size'] = featurizer['node_featurizer'].feat_size('h')
+        featurizer['edge_feat_size'] = featurizer['edge_featurizer'].feat_size('e')
+    return featurizer
 
+def model_create(trial, data, objConfig, objParams, modelCreatorClass):
+
+    transformer = data['transformer']
+    optimizer = objParams['training']['optimiser']
+    featurizer = objParams['featurizer']
+    # no standardization of target values supported at the moment
+    target_mean = transformer.target_mean
+    target_std = transformer.target_std
 
     # set model parameters from the config file
     #--------------------------------------
     model_params = {}
-    for key, value in config['model']['model_specific'].items():
+    for key, value in objConfig['config']['model']['model_specific'].items():
         model_params.update({key: set_config_param(trial=trial,param_name=key,param=value, all_params=model_params)})
 
     # add extra params not defined in the config file
     extra_params = {
-        'node_feat_size': node_feat_size,
-        'edge_feat_size': edge_feat_size,
+        'node_feat_size': featurizer['node_feat_size'],
+        'edge_feat_size': featurizer['edge_feat_size'],
         'n_tasks': 1
     }
     model_params.update(extra_params)
 
     logging.info('model params=%s', model_params)
 
-    if freeze:
-        model_predictor = oscml.utils.util_transfer_learning.AttentiveFPTransfer(**model_params)
-    else:
-        model_predictor = dgllife.model.AttentiveFPPredictor(**model_params)
-
-
-    dataloader_fct = functools.partial(get_dataloader, smiles_column=x_column, y_column=y_column, transformer=transformer,
-        batch_size=batch_size, log_dir=dgl_log_dir, node_featurizer=node_featurizer, edge_featurizer=edge_featurizer,
-        collate_fn=collate_molgraphs)
-
-    train_dl = dataloader_fct(df=df_train, file_name="graph_train.bin", shuffle=True)
-    val_dl = dataloader_fct(df=df_val, file_name="graph_val.bin", shuffle=False)
-    test_dl = dataloader_fct(df=df_test, file_name="graph_test.bin", shuffle=False)
-
+    model_predictor = modelCreatorClass(**model_params)
     model = oscml.utils.util_lightning.ModelWrapper(model_predictor, optimizer, target_mean, target_std)
 
-    return model, train_dl, val_dl, test_dl
-
-
+    return model
 class SimpleAtomFeaturizer(dgllife.utils.BaseAtomFeaturizer):
 
     def __init__(self, atom_data_field='h'):
@@ -109,10 +149,10 @@ class EmptyBondFeaturizes(dgllife.utils.BaseBondFeaturizer):
             #featurizer_funcs={}, self_loop=self_loop)
 
 def get_dataloader(df, file_name, shuffle, smiles_column, y_column, transformer, batch_size, log_dir, node_featurizer, edge_featurizer, collate_fn):
-    
+
     #TODO AE URGENT for development only
     #df = df[:150]
-    
+
     smiles_to_graph=functools.partial(dgllife.utils.smiles_to_bigraph, add_self_loop=True)
 
     transformed_y = transformer.transform(df)
@@ -181,3 +221,27 @@ def collate_molgraphs(data):
     y = labels
 
     return x, y
+
+def data_preproc(trial, data, objConfig, objParams):
+    x_column = objConfig['config']['dataset']['x_column'][0]
+    y_column = objConfig['config']['dataset']['y_column'][0]
+    featurizer = objParams['featurizer']
+    batch_size = objParams['training']['batch_size']
+    transformer = data['transformer']
+    dgl_log_dir = objConfig['log_dir'] + '/dgl_' + str(trial.number)
+
+    dataloader_fct = functools.partial(get_dataloader, smiles_column=x_column, y_column=y_column, transformer=transformer,
+        batch_size=batch_size, log_dir=dgl_log_dir, node_featurizer=featurizer['node_featurizer'],
+        edge_featurizer=featurizer['edge_featurizer'], collate_fn=collate_molgraphs)
+
+    train_dl = dataloader_fct(df=data['train'], file_name="graph_train.bin", shuffle=True)
+    val_dl = dataloader_fct(df=data['val'], file_name="graph_val.bin", shuffle=False)
+    test_dl = dataloader_fct(df=data['test'], file_name="graph_test.bin", shuffle=False)
+
+    processed_data = {
+        "train": train_dl,
+        "val": val_dl,
+        "test": test_dl,
+        "transformer": data['transformer']
+    }
+    return processed_data

@@ -115,7 +115,7 @@ case $key in
 	-n) VENV_NAME=$2; shift 2;;
     -i) INSTALL_PROJ='y'; shift;;
 	-e) DEV_INSTALL=' -e '; shift;;
-	-r) GET_RESOURCES='y '; shift;;
+	-r) GET_RESOURCES='y'; shift;;
      *)
 	# otherwise print the usage
     usage
