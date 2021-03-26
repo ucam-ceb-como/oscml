@@ -20,7 +20,7 @@ Provided all above prerequisites are met the package can be installed via the fo
 2. Navigate to the project directory
 3. Run:
 ```console
-    install_script.sh -v -i -r
+    install_script.sh -v -i -r [-n VENV_NAME]
 ```
 
 (Linux)
@@ -36,10 +36,10 @@ Provided all above prerequisites are met the package can be installed via the fo
 3. Navigate to the project directory
 4. Run:
 ```console
-    install_script.sh -v -i -r
+    install_script.sh -v -i -r [-n VENV_NAME]
 ```
 
-The steps above should create a separate conda virtual environment in a default location used by conda to store environments, install all required packages and download the project data from the remote server. During the installation, the script will prompt for the name of the conda virtual environment, `VENV_NAME`, to be used for the project. `PLEASE NOTE`, if indicated conda environment name already exists, it will be `REMOVED` and created again.
+The steps above should create a separate conda virtual environment in a default location used by conda to store environments, install all required packages and download the project data from the remote server. The optional `-n VENV` flag can be used to set the virtual environment name and if not provided the name will defaut to `oscml_venv`. `PLEASE NOTE`, if indicated conda environment name already exists, it will be `REMOVED` and created again.
 
 After successful installation, please do not forget to activate the newly created conda environment to run the code via the following command:
 ```console
