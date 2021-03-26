@@ -20,7 +20,7 @@ Provided all above prerequisites are met the package can be installed via the fo
 2. Navigate to the project directory
 3. Run:
 ```console
-    install_script.sh -a
+    install_script.sh -v -i -r
 ```
 
 (Linux)
@@ -36,7 +36,7 @@ Provided all above prerequisites are met the package can be installed via the fo
 3. Navigate to the project directory
 4. Run:
 ```console
-    install_script.sh -a
+    install_script.sh -v -i -r
 ```
 
 The steps above should create a separate conda virtual environment in a default location used by conda to store environments, install all required packages and download the project data from the remote server. During the installation, the script will prompt for the name of the conda virtual environment, `VENV_NAME`, to be used for the project. `PLEASE NOTE`, if indicated conda environment name already exists, it will be `REMOVED` and created again.
@@ -50,7 +50,7 @@ After successful installation, please do not forget to activate the newly create
 
 After successful installation, the package can be used via the following command:
 ```console
-    oscml_run --config CONFIG_FILE_NAME OPTIONS
+    driver <config_file_name> [OPTIONS]
 
     OPTIONS:
     --trials          default= 1        - number of hpo trials to use
@@ -61,16 +61,22 @@ After successful installation, the package can be used via the following command
     --timeout         default= None     - timeout on accessing the hpo storage
 ```
 
-where the `CONFIG_FILE_NAME` is the name of the config file that specifies the job that should be run and `OPTIONS` indicate any additional command line options that can be used to control the job (if any). `Note` that all additional command line options can be also defined in the config file and if that is the case, the config file options take precedence over the command line options. More information about the config file syntax and command line options can be found in the code and in the sample config files provided as part of this repository.
+where the `<config_file_name>` is the name of the config file that specifies the job that should be run and `OPTIONS` indicate any additional command line options that can be used to control the job (if any). `Note` that all additional command line options can be also defined in the config file. More information about the config file syntax and command line options can be found in the code and in the sample config files provided as part of this repository.
 
 
 # Testing #
 
 All the unit tests for this project are collated in the `tests` folder and can be run via the following command:
 ```console
-    python .\tests\run_oscml_tests.py
+    python .\tests\other_tests.py
 ```
-`Note` that the tests might take a while to complete.
+
+All the regression tests for this project are collated in the `tests` folder and can be run via the following command:
+```console
+    python .\tests\regression_tests.py
+```
+
+`Note` that the regression tests are only for developers and the results are platform dependent. Therefore, it is not guaranteed that the tests will pass on different hardware.
 
 # Important note for the VS CODE users #
 
