@@ -33,7 +33,8 @@ function usage {
     echo "./install_script.sh -v -n my_env -i -e  - this will create virtual environment 'my_env' with all project"
 	echo "                                          dependencies and install the oscml project in a developer mode"
 	echo "==============================================================================================================="
-    exit -1
+	read -n 1 -s -r -p "Press any key to continue"
+    exit
 }
 
 
@@ -85,7 +86,8 @@ function install_project {
     	echo ""
     	echo "    ERROR: Failed to install oscml."
     	echo "-----------------------------------------"
-        exit -1
+		read -n 1 -s -r -p "Press any key to continue"
+		exit -1
     fi
 
 }
@@ -140,3 +142,4 @@ echo
 echo "==============================================================================================================="
 echo
 read -n 1 -s -r -p "Press any key to continue"
+exit
