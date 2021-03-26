@@ -36,6 +36,10 @@ def getObjectiveAttentiveFP(modelName, data, config, logFile, logDir,
 
     model_trainer_func = NN_model_train_cross_validate if crossValidation else NN_model_train
 
+    # this flag disables model creation in the objclass _createModel step, instead the model is
+    # created in the trainer as part of the cross validation loop
+    objectiveAttentiveFP.setCrossValidation(crossValidation)
+
     objectiveAttentiveFP.addPreModelCreateTask(objParamsKey='training', funcHandle=preproc_training_params)
     objectiveAttentiveFP.addPreModelCreateTask(objParamsKey='featurizer', funcHandle=get_featuriser)
     objectiveAttentiveFP.setModelCreator(funcHandle=model_create, extArgs=[modelCreatorClass])

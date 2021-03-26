@@ -27,7 +27,8 @@ DEFAULTS_ = {
 	"log_main_dir": "./logs",
 	"log_sub_dir_prefix": "job_",
 	"log_config_file": _RES_LOG_CONFIG_FILE,
-	"log_file_name": "oscml.log"
+	"log_file_name": "oscml.log",
+	"use_date_time": True
 },
 "post_processing":{
     "contour_plot": False,

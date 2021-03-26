@@ -33,12 +33,13 @@ def NN_model_train(trial, model, data, objConfig, objParams, dataPreproc):
     n_trials = objParams['training']['trials']
     log_head = objConfig['log_head']
     log_dir = objConfig['log_dir']
+    cv_index = objParams.get('cv_fold', '')
 
     if log_head is None:
         log_head = '[Trial '+ str(trial.number) +']'
         objConfig['log_head'] = log_head
 
-    #best_trial_retrain = objParams['bestTrialRetraining']
+
     # create callbacks for Optuna for receiving the metric values from Lightning and for
     # pruning trials
     metrics_callback = MetricsCallback()
@@ -68,7 +69,7 @@ def NN_model_train(trial, model, data, objConfig, objParams, dataPreproc):
     # version='' means that no version-subdirectory is created
     csv_logger = pl.loggers.CSVLogger(save_dir=log_dir,
                                       name='trial_' + str(trial.number),
-                                      version='')
+                                      version=cv_index)
 
     # put all trainer params together
     trainer_params.update({
@@ -119,6 +120,8 @@ def NN_model_train_cross_validate(trial, model, data, objConfig, objParams, data
     cv_index = 1
     cv_metric = []
     split_data = {}
+    modelCreator = objParams['modelCreator']
+
     for train_index, val_index in kf.split(df_train):
         logging.info('[trial %s] run %s of %s fold cross-validation', trial.number, cv_index, cross_validation)
         split_data = {'train': df_train.iloc[train_index],
@@ -127,7 +130,11 @@ def NN_model_train_cross_validate(trial, model, data, objConfig, objParams, data
                       'transformer': transformer}
 
         objConfig['log_head'] = '[Trial '+ str(trial.number) + ' - fold ' + str(cv_index) + ']'
+        objParams['cv_fold'] = str(cv_index)
+
+        model = modelCreator.run(trial, split_data, objConfig, objParams)
         metric_value = NN_model_train(trial, model, split_data, objConfig, objParams, dataPreproc)
+
         cv_index += 1
         cv_metric.append(metric_value)
     metric_value = np.array(cv_metric).mean()

@@ -245,7 +245,7 @@ def log_and_plot(model, x_train, y_train, x_test, y_test, dirpath, transformer=N
             pred_df['Predicted PCE'] = y_pred
 
         pred_df.to_csv(dirpath + 'predictions_{}.csv'.format(index_.replace(' ', '_')))
-    pd.DataFrame(results_metric).to_csv(dirpath + 'best_trial_retrain_model_result.csv')
+    pd.DataFrame(results_metric).to_csv(dirpath + 'best_trial_retrain_model.csv')
 
     if regression_plot:
         oscml.visualization.util_sns_plot.prediction_plot(dirpath, dirpath + 'predictions_training_set.csv',

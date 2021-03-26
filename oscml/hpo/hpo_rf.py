@@ -27,6 +27,7 @@ def getObjectiveRF(modelName, data, config, logFile, logDir,
 
     objectiveRF.addPreModelCreateTask(objParamsKey='training', funcHandle=preproc_training_params)
     objectiveRF.setModelCreator(funcHandle=model_create)
+
     if bestTrialRetraining:
         objectiveRF.setModelTrainer(funcHandle=model_trainer_func, extArgs=[data_preproc, best_model_retraining])
     else:

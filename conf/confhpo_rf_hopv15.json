@@ -34,12 +34,12 @@
     "metric": "mse",
 	"cross_validation": 5,
 	"direction": "minimize",
-	"trials": 45,
+	"trials": 20,
 	"study_name": "rf_hopv15_homo",
 	"storage": "sqlite:///rf_hopv15_homo.db",
 	"storage_timeout": 1000,
 	"load_if_exists": true,
-	"__remove_this_bit__n_jobs": 20
+	"jobs": 1
     },
 "post_processing":{
     "contour_plot": false,

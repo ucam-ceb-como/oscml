@@ -39,10 +39,11 @@
 	"storage": "sqlite:///attentivefp_hopv15_homo.db",
 	"storage_timeout": 1000,
 	"load_if_exists": true,
-	"__remove_this_bit__n_jobs": 20
+	"jobs": 1
     },
 "post_processing":{
     "contour_plot": false,
+	"contour_plot_alt_dir": null,
     "best_trial_retraining": true,
     "z_transform_inverse_prediction": true,
     "regression_plot": true

@@ -32,6 +32,10 @@ def getObjectiveBilstm(modelName, data, config, logFile, logDir,
         modelCreatorClass = BiLstmForPce
     model_trainer_func = NN_model_train_cross_validate if crossValidation else NN_model_train
 
+    # this flag disables model creation in the objclass _createModel step, instead the model is
+    # created in the trainer as part of the cross validation loop
+    objectiveBilstm.setCrossValidation(crossValidation)
+
     objectiveBilstm.addPreModelCreateTask(objParamsKey='training', funcHandle=preproc_training_params)
     objectiveBilstm.setModelCreator(funcHandle=model_create, extArgs=[modelCreatorClass])
     objectiveBilstm.setModelTrainer(funcHandle=model_trainer_func, extArgs=[data_preproc])

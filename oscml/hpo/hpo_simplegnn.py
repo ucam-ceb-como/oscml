@@ -37,6 +37,10 @@ def getObjectiveSimpleGNN(modelName, data, config, logFile, logDir,
     objectiveSimpleGNN.setModelCreator(funcHandle=model_create, extArgs=[modelCreatorClass])
     objectiveSimpleGNN.setModelTrainer(funcHandle=model_trainer_func, extArgs=[data_preproc])
 
+    # this flag disables model creation in the objclass _createModel step, instead the model is
+    # created in the trainer as part of the cross validation loop
+    objectiveSimpleGNN.setCrossValidation(crossValidation)
+
     if bestTrialRetraining:
         objectiveSimpleGNN.addPostModelCreateTask(objParamsKey='callbackBestTrialRetraining', funcHandle=NN_addBestModelRetrainCallback)
         objectiveSimpleGNN.addPostTrainingTask(objParamsKey='logBestTrialRetrain', funcHandle=NN_logBestTrialRetraining)

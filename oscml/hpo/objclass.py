@@ -1,5 +1,4 @@
-import torch
-
+from oscml.hpo.hpo_utils import NN_empty_torch_cache
 class ObjectiveTask:
     def __init__(self, funcHandle=None, objParamsKey=None, extArgs=[]):
         self.funcHandle = funcHandle
@@ -21,41 +20,57 @@ class Objective:
             "log_dir": logDir,
             "log_head": logHead
         }
-        self.objParams = {}
+        self.objParams = {
+            'preModelCreateTasks': [],
+            'postModelCreateTasks': [],
+            'postTrainingTasks': [],
+            'modelCreator': None,
+            'modelTrainer': None
+        }
 
-        #self.processed_data = None
         self.trial = None
         self.obj_val = None
         self.model = None
         self.modelCreator = None
         self.modelTrainer = None
-        self.preModelCreateTasks = []
-        self.postModelCreateTasks = []
-        self.postTrainingTasks = []
+        self.crossValidation = False
+
 
     def addPreModelCreateTask(self, funcHandle, objParamsKey, extArgs=[]):
-        self.preModelCreateTasks.append(ObjectiveTask(funcHandle=funcHandle, objParamsKey=objParamsKey, extArgs=extArgs))
+        preModelCreateTasks = self.objParams['preModelCreateTasks']
+        preModelCreateTasks.append(ObjectiveTask(funcHandle=funcHandle, objParamsKey=objParamsKey, extArgs=extArgs))
+        self.objParams['preModelCreateTasks'] = preModelCreateTasks
 
     def addPostModelCreateTask(self, funcHandle, objParamsKey, extArgs=[]):
-        self.postModelCreateTasks.append(ObjectiveTask(funcHandle=funcHandle, objParamsKey=objParamsKey, extArgs=extArgs))
+        postModelCreateTasks = self.objParams['postModelCreateTasks']
+        postModelCreateTasks.append(ObjectiveTask(funcHandle=funcHandle, objParamsKey=objParamsKey, extArgs=extArgs))
+        self.objParams['postModelCreateTasks'] = postModelCreateTasks
+        #self.postModelCreateTasks.append(ObjectiveTask(funcHandle=funcHandle, objParamsKey=objParamsKey, extArgs=extArgs))
 
     def addPostTrainingTask(self, funcHandle, objParamsKey, extArgs=[]):
-        self.postTrainingTasks.append(ObjectiveTask(funcHandle=funcHandle, objParamsKey=objParamsKey, extArgs=extArgs))
+        postTrainingTasks = self.objParams['postTrainingTasks']
+        postTrainingTasks.append(ObjectiveTask(funcHandle=funcHandle, objParamsKey=objParamsKey, extArgs=extArgs))
+        self.objParams['postTrainingTasks'] = postTrainingTasks
+        #self.postTrainingTasks.append(ObjectiveTask(funcHandle=funcHandle, objParamsKey=objParamsKey, extArgs=extArgs))
 
     def setModelCreator(self, funcHandle, extArgs=[]):
-        self.modelCreator = ObjectiveTask(funcHandle=funcHandle, extArgs=extArgs)
+        self.objParams['modelCreator'] = ObjectiveTask(funcHandle=funcHandle, extArgs=extArgs)
 
     def setModelTrainer(self, funcHandle, extArgs=[]):
-        self.modelTrainer = ObjectiveTask(funcHandle=funcHandle, extArgs=extArgs)
+        self.objParams['modelTrainer'] = ObjectiveTask(funcHandle=funcHandle, extArgs=extArgs)
 
-    def setDataPreprocFunc(self, funcHandle):
-        self.dataPreprocFunc = funcHandle
+    def setCrossValidation(self, crossValidation):
+        self.crossValidation= crossValidation
 
     def _doTraining(self):
-        self.obj_val = self.modelTrainer.run(self.trial, self.model, self.data, self.objConfig, self.objParams)
+        modelTrainer = self.objParams['modelTrainer']
+        self.obj_val = modelTrainer.run(self.trial, self.model, self.data, self.objConfig, self.objParams)
 
     def _createModel(self):
-        self.model = self.modelCreator.run(self.trial, self.data, self.objConfig, self.objParams)
+        modelCreator = self.objParams['modelCreator']
+        # for neural models run with cross_validation, the model is created in the trainer call
+        if not self.crossValidation:
+            self.model = modelCreator.run(self.trial, self.data, self.objConfig, self.objParams)
 
     def __call__(self, trial):
         self._releaseMemory()
@@ -71,23 +86,26 @@ class Objective:
         self.trial = trial
 
     def _doPreModelCreateTasks(self):
-        for task in self.preModelCreateTasks:
+        preModelCreateTasks = self.objParams['preModelCreateTasks']
+        for task in preModelCreateTasks:
             task_result= task.run(self.trial, self.data, self.objConfig, self.objParams)
             if task.objParamsKey is not None:
                 self.objParams[task.objParamsKey] = task_result
 
     def _doPostModelCreateTasks(self):
-        for task in self.postModelCreateTasks:
+        postModelCreateTasks = self.objParams['postModelCreateTasks']
+        for task in postModelCreateTasks:
             task_result = task.run(self.trial, self.model, self.data, self.objConfig, self.objParams)
             if task.objParamsKey is not None:
                 self.objParams[task.objParamsKey] = task_result
 
     def _doPostTrainingTasks(self):
-        for task in self.postTrainingTasks:
+        postTrainingTasks = self.objParams['postTrainingTasks']
+        for task in postTrainingTasks:
             task_result = task.run(self.trial, self.model, self.data, self.objConfig, self.objParams)
             if task.objParamsKey is not None:
                 self.objParams[task.objParamsKey] = task_result
 
     @staticmethod
     def _releaseMemory():
-        torch.cuda.empty_cache()
+        NN_empty_torch_cache()

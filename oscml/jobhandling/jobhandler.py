@@ -6,7 +6,6 @@ from oscml.utils.util import init_file_logging
 from oscml.data.dataset import get_dataframes
 from oscml.hpo.optunawrapper import check_for_existing_study
 from oscml.hpo.optunawrapper import runHPO, runPostProcTraining
-from oscml.hpo.objective import objective
 from oscml.visualization.util_sns_plot import contour_plot
 import logging
 import os
@@ -97,7 +96,7 @@ class JobHandler:
         if nestedCvFolds:
             # get the data, and
             # - if cross_validation on: splits them into train, val and test
-            crossValidation = self.configParams['training']['cross_validation']
+            crossValidation = self.configParams['training']['cross_validation'] > 1
             transferLearning = self.configParams['post_processing']['transfer'] and self.goals[0].name == 'transfer_learning'
 
             self._initData(crossValidation=crossValidation, transferLearning=transferLearning, nestedCvFolds=nestedCvFolds)
@@ -118,7 +117,7 @@ class JobHandler:
             goal.run()
 
     def _runHpoOrtrain(self):
-        crossValidation = self.configParams['training']['cross_validation']
+        crossValidation = self.configParams['training']['cross_validation'] > 1
         if not self.dataInit:
             self._initData(crossValidation=crossValidation)
         log_dir = os.path.join(self.log_dir,'hpo')
@@ -192,10 +191,14 @@ class JobHandler:
         if cvFold >= 0:
             log_main_dir = self.configFile['logging_settings']['log_main_dir']
             log_sub_dir_prefix = self.configFile['logging_settings']['log_sub_dir_prefix']
+            use_date_time = self.configFile['logging_settings']['use_date_time']
 
             if cvFold ==0:
+                current_date_time = ''
+                if use_date_time:
+                    current_date_time = '_'+datetime.datetime.now().strftime('%Y%m%d_%H%M%S')
                 self.configParams['logging_settings']['log_main_dir'] = os.path.normpath(os.path.join(log_main_dir,
-                            log_sub_dir_prefix+datetime.datetime.now().strftime('%Y%m%d_%H%M%S')))
+                            log_sub_dir_prefix+current_date_time))
             self.configParams['logging_settings']['log_sub_dir_prefix'] = log_sub_dir_prefix + 'm'+str(cvFold)+'_'
 
         self.log_file = init_file_logging(**self.configParams['logging_settings'])
