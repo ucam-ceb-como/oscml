@@ -19,13 +19,6 @@ import shutil
 
 THIS_DIR = os.path.dirname(os.path.abspath(__file__))
 
-test_cases = {
-    #'rf': ['trials_5_no_cv','trials_1_cv_2', 'trials_2_cv_2'],
-    #'svr': ['trials_5_no_cv','trials_1_cv_2', 'trials_2_cv_2'],
-    #'simplegnn': ['trials_5_no_cv','trials_1_cv_2', 'trials_2_cv_2'],
-    'bilstm': ['trials_5_no_cv','trials_1_cv_2', 'trials_2_cv_2']
-}
-
 
 rf_test_cases = {
     'rf': ['trials_5_no_cv','trials_1_cv_2', 'trials_2_cv_2']

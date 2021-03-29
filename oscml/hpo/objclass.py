@@ -35,7 +35,6 @@ class Objective:
         self.modelTrainer = None
         self.crossValidation = False
 
-
     def addPreModelCreateTask(self, funcHandle, objParamsKey, extArgs=[]):
         preModelCreateTasks = self.objParams['preModelCreateTasks']
         preModelCreateTasks.append(ObjectiveTask(funcHandle=funcHandle, objParamsKey=objParamsKey, extArgs=extArgs))

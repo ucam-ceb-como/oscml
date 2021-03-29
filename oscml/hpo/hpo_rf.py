@@ -1,16 +1,13 @@
 import logging
-import pandas as pd
 import rdkit
 import rdkit.Chem
 import rdkit.Chem.AllChem
-import sklearn
+from sklearn.ensemble import RandomForestRegressor
 from oscml.utils.util import smiles2mol
-from oscml.utils.util_sklearn import train_model_cross_validate
-from oscml.utils.util_sklearn import train_model, train_model_hpo, best_model_retraining
+from oscml.utils.util_sklearn import train_model_hpo, best_model_retraining
 from oscml.hpo.objclass import Objective
 from oscml.hpo.hpo_utils import preproc_training_params, BL_model_train
 from oscml.hpo.hpo_utils import BL_model_train_cross_validate, BL_bestTrialRetrainDataPreproc
-
 from oscml.utils.util_config import set_config_param
 
 
@@ -43,7 +40,7 @@ def model_create(trial, data, objConfig, objParams):
     for key, value in model_conf.items():
         model_params.update({key: set_config_param(trial=trial,param_name=key,param=value, all_params=model_params)})
     logging.info('model params=%s', model_params)
-    model = sklearn.ensemble.RandomForestRegressor(**model_params, criterion=metric, n_jobs=1, verbose=0)#, random_state=0)
+    model = RandomForestRegressor(**model_params, criterion=metric, n_jobs=1, verbose=0)#, random_state=0)
     return model
 
 def data_preproc(trial, data, objConfig, objParams):

@@ -52,7 +52,6 @@ def getObjectiveSimpleGNN(modelName, data, config, logFile, logDir,
 
     return objectiveSimpleGNN
 
-
 def model_create(trial, data, objConfig, objParams, modelCreatorClass):
     transformer = data['transformer']
     type_dict = objConfig['config']['model']['type_dict']
@@ -94,7 +93,6 @@ def model_create(trial, data, objConfig, objParams, modelCreatorClass):
     model = modelCreatorClass(**model_params, optimizer=optimizer)
 
     return model
-
 
 def data_preproc(trial, data, objConfig, objParams):
 

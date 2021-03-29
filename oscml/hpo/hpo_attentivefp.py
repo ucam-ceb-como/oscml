@@ -56,19 +56,6 @@ def getObjectiveAttentiveFP(modelName, data, config, logFile, logDir,
 
     return objectiveAttentiveFP
 
-class AttentiveFPObjective(Objective):
-    def __init__(self, *args, **kwargs):
-        super().__init__(**kwargs)
-
-    def __call__(self, trial):
-        self.objconfig['training'] = preproc_training_params(trial, self.objconfig)
-        self.objconfig['featurizer'] = get_featuriser(self.objconfig)
-
-        model = model_create(trial, self.model_creator, self.objconfig, self.data['transformer'])
-
-        self.obj_value = self.model_train(trial, model, self.data, self.objconfig, data_preproc)
-        return self.obj_value
-
 def get_featuriser(trial, data, objConfig, objParams):
     featurizer = {
         "node_featurizer": None,

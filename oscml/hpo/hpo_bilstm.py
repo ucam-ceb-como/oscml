@@ -50,7 +50,6 @@ def getObjectiveBilstm(modelName, data, config, logFile, logDir,
         objectiveBilstm.addPostTrainingTask(objParamsKey='logTransferLearning', funcHandle=NN_logTransferLearning)
     return objectiveBilstm
 
-
 def model_create(trial, data, objConfig, objParams, modelCreatorClass):
     transformer = data['transformer']
     type_dict = objConfig['config']['model']['type_dict']

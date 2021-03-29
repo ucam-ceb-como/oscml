@@ -8,7 +8,7 @@ from oscml.utils.util_lightning import get_standard_params_for_trainer
 import numpy as np
 from oscml.utils.util_sklearn import train_model_cross_validate
 from oscml.utils.util_sklearn import train_model
-from oscml.utils.util_sklearn import calculate_metrics, standard_score_transform
+from oscml.utils.util_sklearn import standard_score_transform
 import glob
 import torch
 import pandas as pd

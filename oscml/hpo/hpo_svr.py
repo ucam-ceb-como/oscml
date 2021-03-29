@@ -1,11 +1,4 @@
 import logging
-
-import rdkit
-import rdkit.Chem
-import rdkit.Chem.AllChem
-import pandas as pd
-
-import oscml.data.dataset
 import oscml.models.model_kernel
 from oscml.utils.util_config import set_config_param
 from oscml.models.model_kernel import preprocess_data_phys_and_struct
@@ -34,31 +27,6 @@ def getObjectiveSVR(modelName, data, config, logFile, logDir,
         objectiveSVR.setModelTrainer(funcHandle=model_trainer_func, extArgs=[data_preproc, train_model_hpo])
 
     return objectiveSVR
-
-class SVRObjective(Objective):
-    def __init__(self, *args, **kwargs):
-        super().__init__(**kwargs)
-
-    def __call__(self, trial):
-        self.objconfig['training'] = preproc_training_params(trial, self.objconfig)
-        model = model_create(trial, self.objconfig)
-        data = data_preproc(trial, self.data, self.objconfig)
-        if self.objconfig['training']['cross_validation']:
-            self.obj_value = model_train_cross_validate(trial, model, data, self.objconfig)
-        else:
-            self.obj_value = model_train(trial, model, data, self.objconfig)
-
-        return self.obj_value
-
-def model_train(trial, model, data, objConfig, objParams, dataPreproc):
-    data = dataPreproc(trial, data, objConfig, objParams)
-    obj_value = train_model(trial, model, data, objConfig, objParams)
-    return obj_value
-
-def model_train_cross_validate(trial, model, data, objConfig, objParams, dataPreproc):
-    data = dataPreproc(trial, data, objConfig, objParams)
-    obj_value = train_model_cross_validate(trial, model, data, objConfig, objParams)
-    return obj_value
 
 def model_create(trial, data, objConfig, objParams):
     # set model parameters from the config file

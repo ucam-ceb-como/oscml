@@ -1,18 +1,13 @@
 import collections
 import logging
-
 import numpy as np
-import pandas as pd
 import pytorch_lightning as pl
 import rdkit
 import rdkit.Chem
 import rdkit.Chem.AllChem
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
-import torch.optim as optim
 import torch.utils.data
-
 import oscml.utils.params
 from oscml.utils.params import cfg
 from oscml.utils.util import smiles2mol, concat
@@ -232,7 +227,7 @@ class Attention(pl.LightningModule):
         #
 
         # next linear layer has one output neuron and no bias vector
-        # and thus is equivalent to dot produxt <x, u_sub> 
+        # and thus is equivalent to dot produxt <x, u_sub>
         # (where u_sub is the sub-fragment context vector, i.e. the trainable weights in the linear layer)
         x = self.u_sub_linear(x)
         # x.size() = [2, 3, 1]
@@ -250,7 +245,7 @@ class Attention(pl.LightningModule):
         #        3, alpha3 ]
         alpha = self.softmax(x)
 
-        # parallel multiplication of scalar alpha_t and vector h_t for all t=1..max_sequence_length 
+        # parallel multiplication of scalar alpha_t and vector h_t for all t=1..max_sequence_length
         m = alpha * h
         # m.size() = [2, 3, 256]
 
@@ -288,7 +283,7 @@ class BiLstmForPce(util_lightning.OscmlModule):
         # padding_idx = 0 in a sequences is mapped to zero vector
         # the extra 0-index vector is used for out of vocabulary fragment or for padded entries
         self.embedding = nn.Embedding(number_of_subgraphs+1, embedding_dim, padding_idx=padding_index)
-        self.bilstm = nn.LSTM(input_size=embedding_dim, hidden_size=lstm_hidden_dim, bidirectional=True, 
+        self.bilstm = nn.LSTM(input_size=embedding_dim, hidden_size=lstm_hidden_dim, bidirectional=True,
                         batch_first=True)
         # factor 2 because the LSTM is birectional
         lstm_output_dim = 2 * lstm_hidden_dim

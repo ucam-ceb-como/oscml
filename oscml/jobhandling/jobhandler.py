@@ -13,8 +13,6 @@ from pprint import pformat
 import pandas as pd
 import functools
 import datetime
-from oscml.visualization.util_sns_plot import contour_plot
-
 from oscml.resources.defaults import DEFAULTS_
 
 class JobGoal:
