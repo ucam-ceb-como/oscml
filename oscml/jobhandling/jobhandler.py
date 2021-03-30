@@ -153,7 +153,7 @@ class JobHandler:
 
         n_trials = self.configParams['training']['trials']
         if n_previous_trials > 0:
-            total_number_trials = n_trials + n_previous_trials - 1
+            total_number_trials = n_trials + n_previous_trials
         else:
             total_number_trials = n_trials
 
@@ -187,14 +187,15 @@ class JobHandler:
     def _initLogging(self, cvFold=-1):
         # init file logging
         if cvFold >= 0:
-            log_main_dir = self.configFile['logging_settings']['log_main_dir']
-            log_sub_dir_prefix = self.configFile['logging_settings']['log_sub_dir_prefix']
-            use_date_time = self.configFile['logging_settings']['use_date_time']
+            logging_settings = self.configFile.get('logging_settings',  DEFAULTS_['logging_settings'])
+            log_main_dir = logging_settings['log_main_dir']
+            log_sub_dir_prefix = logging_settings['log_sub_dir_prefix']
+            use_date_time = logging_settings['use_date_time']
 
             if cvFold ==0:
                 current_date_time = ''
                 if use_date_time:
-                    current_date_time = '_'+datetime.datetime.now().strftime('%Y%m%d_%H%M%S')
+                    current_date_time = datetime.datetime.now().strftime('%Y%m%d_%H%M%S')
                 self.configParams['logging_settings']['log_main_dir'] = os.path.normpath(os.path.join(log_main_dir,
                             log_sub_dir_prefix+current_date_time))
             self.configParams['logging_settings']['log_sub_dir_prefix'] = log_sub_dir_prefix + 'm'+str(cvFold)+'_'
@@ -208,9 +209,11 @@ class JobHandler:
         logging.info('finalJobParams=%s', pformat(self.configParams))
 
     def _initJobMisc(self, cvFold):
-        self.configParams['training']['study_name'] = self.configFile['training']['study_name'] + '_m'+str(cvFold)
+        self.configParams['training']['study_name'] = self.configFile['training'].get('study_name',
+                             DEFAULTS_['training']['study_name']) + '_m'+str(cvFold)
         if self.configParams['training']['study_name'] is not None:
-            self.configParams['training']['storage'] = self.configFile['training']['storage'].replace('.db','_m'+str(cvFold)+'.db')
+            self.configParams['training']['storage'] = self.configFile['training'].get('storage',
+                            DEFAULTS_['training']['storage']).replace('.db','_m'+str(cvFold)+'.db')
 
     def _initData(self, crossValidation, transferLearning=False, nestedCvFolds=0):
         if transferLearning and not self.transferDataInit:
@@ -225,8 +228,7 @@ class JobHandler:
         seed = self.configParams['numerical_settings']['seed']
         if nestedCvFolds:
             for cvFold in range(nestedCvFolds):
-                altSplit = self.configParams['dataset']['split'] + '_fold_'+str(cvFold)
-                df_train, df_val, df_test, transformer = get_dataframes(dataset=dataset, seed = seed, altSplit=altSplit)
+                df_train, df_val, df_test, transformer = get_dataframes(dataset=dataset, seed = seed, cvFold=cvFold, nestedCvFolds=nestedCvFolds)
 
                 # concatenate the train and validation dataset to one dataset when cross-validation is on
                 if crossValidation:

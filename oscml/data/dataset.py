@@ -13,6 +13,7 @@ import oscml.features.fingerprint
 import oscml.features.weisfeilerlehman
 import oscml.models.model_gnn
 from oscml.utils.util import smiles2mol
+import os
 
 def path_cepdb_valid_smiles(root='.'):
     return root + '/data/processed/CEPDB_valid_SMILES.csv'
@@ -25,6 +26,9 @@ def path_hopv_15(root='.'):
 
 def path_osaka(root='.'):
     return root + '/data/raw/Nagasawa_RF_SI.txt'
+
+def path_kgdata(root='.'):
+    return root + '/data/processed/kg_data.csv'
 
 class DataTransformer():
 
@@ -128,16 +132,44 @@ def read_and_split(filepath, split_column='ml_phase'):
     logging.info('split data into sets of size (train / val / test)=%s / %s / %s', len(df_train), len(df_val), len(df_test))
     return df_train, df_val, df_test
 
-def get_dataframes(dataset, seed=200, altSplit=None):
+def get_dataframes(dataset, seed=200, cvFold=None, nestedCvFolds=None):
 
     src = dataset['src']
     x_column = dataset['x_column'][0]
     y_column = dataset['y_column'][0]
+    kg_options = dataset['kg_options']
+    kg_data_file = kg_options.get("dst", "")
 
-    if altSplit is not None:
-        split = altSplit
+    if kg_options is not None and not os.path.exists(kg_data_file.replace('.csv', '2.csv')):
+        # 1. get data from the KG
+        # 2. sort data
+        # 3. reshuffle data
+        # 4. add ml_phase column(s) with initial split
+        # 5. write to a file, then update the config and config params to point to this data source...
+        # the rest should proceed as normal
+
+        df = pd.read_csv(kg_data_file)
+        df_train, df_val, df_test = read_and_split_by_size(kg_data_file, split_size_array=dataset['split'], seed=seed)
+        df_train['ml_phase'] = 'train'
+        df_val['ml_phase'] = 'val'
+        df_test['ml_phase'] = 'test'
+
+        df = pd.concat([df_train,df_val,df_test])
+
+        if nestedCvFolds:
+            add_k_fold_columns(df=df, k=nestedCvFolds, seed=seed, column_name_prefix='ml_phase')
+
+        df.to_csv(kg_data_file.replace('.csv', '2.csv'), index=False)
+
+    if kg_options is not None:
+        src = kg_data_file.replace('.csv', '2.csv')
+        dataset['split'] = 'ml_phase'
+
+    if cvFold is not None:
+        split = dataset['split'] + '_fold_'+str(cvFold)
     else:
         split = dataset['split']
+
     if isinstance(split, str):
         # split is the name of the split column with values train, val and test
         df_train, df_val, df_test = oscml.data.dataset.read_and_split(src, split_column=split)

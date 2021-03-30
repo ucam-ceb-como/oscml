@@ -10,6 +10,9 @@ DEFAULTS_ = {
     "cudnn_deterministic": True,
     "cudnn_benchmark": False
 },
+"dataset":{
+	"kg_options": None
+},
 "training":{
     "metric": "mse",
 	"cross_validation": 0,
@@ -19,7 +22,7 @@ DEFAULTS_ = {
     "jobs": 1,
     "timeout": None,
 	"study_name": "oscml_study",
-	"storage": None,
+	"storage": "oscml_study.db",
 	"storage_timeout": 1000,
 	"load_if_exists": True,
 },

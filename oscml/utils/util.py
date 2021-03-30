@@ -30,7 +30,7 @@ def init_file_logging(log_config_file='default', log_main_dir='default', \
 
     current_date_time = ''
     if use_date_time:
-        current_date_time = '_'+datetime.datetime.now().strftime('%Y%m%d_%H%M%S')
+        current_date_time = datetime.datetime.now().strftime('%Y%m%d_%H%M%S')
 
     log_file = os.path.normpath(os.path.join(log_main_dir, \
                 log_sub_dir_prefix + current_date_time,log_file_name))

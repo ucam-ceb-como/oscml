@@ -35,9 +35,9 @@ def callback_on_trial_finished(study, trial):
 def create_objective_decorator(objective, n_trials):
     def decorator(trial):
         try:
-            logging.info('starting trial %s / %s', trial.number, n_trials)
+            logging.info('starting trial %s / %s', trial.number, abs(n_trials-1))
             value = objective(trial)
-            logging.info('finished trial %s / %s', trial.number, n_trials)
+            logging.info('finished trial %s / %s', trial.number, abs(n_trials-1))
             return value
         except optuna.exceptions.TrialPruned as exc:
             logging.info('pruned trial, trial number=%s', trial.number)
