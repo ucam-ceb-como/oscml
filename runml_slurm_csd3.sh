@@ -14,15 +14,15 @@ function usage {
     echo "JOB_OTPIONS:"
     echo "  -c               : config file path                            "
     echo "                                                                 "
-    echo "  -t  (hh:mm:ss)   : Estimated total wall-time                   "
-    echo "                     Warning: Underestimate the run-time and your"
+    echo "  -t  (hh:mm:ss)   : estimated total wall-time                   "
+    echo "                     warning: Underestimate the run-time and your"
     echo "                     job will be killed pre-maturely...          "
     echo "                                                                 "
     echo "  -n               : job name (optional)                         "
-    echo "  -h               : Display this help and exit                  "
+    echo "  -h               : display this help and exit                  "
     echo
     echo "ML_OPTIONS"
-    echo "    Please see the oscml readme"
+    echo "    please see the oscml readme"
     echo
     echo
     echo "Example call:"
