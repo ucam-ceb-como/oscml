@@ -14,6 +14,7 @@ import oscml.features.weisfeilerlehman
 import oscml.models.model_gnn
 from oscml.utils.util import smiles2mol
 import os
+from oscml.kg.kgQuery import queryKG
 
 def path_cepdb_valid_smiles(root='.'):
     return root + '/data/processed/CEPDB_valid_SMILES.csv'
@@ -137,10 +138,13 @@ def get_dataframes(dataset, seed=200, cvFold=None, nestedCvFolds=None):
     src = dataset['src']
     x_column = dataset['x_column'][0]
     y_column = dataset['y_column'][0]
-    kg_options = dataset['kg_options']
-    kg_data_file = kg_options.get("dst", "")
+    kg_options = dataset.get('kg_options', None)
+    kg_data_file = ""
+    if kg_options is not None: kg_data_file = kg_options.get("dst", "")
 
-    if kg_options is not None and not os.path.exists(kg_data_file.replace('.csv', '2.csv')):
+    if kg_options is not None and not os.path.exists(kg_data_file):
+
+        response = queryKG(kg_options['sparqlEndPoint'],kg_options['queryStr'])
         # 1. get data from the KG
         # 2. sort data
         # 3. reshuffle data
