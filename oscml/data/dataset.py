@@ -28,9 +28,6 @@ def path_hopv_15(root='.'):
 def path_osaka(root='.'):
     return root + '/data/raw/Nagasawa_RF_SI.txt'
 
-def path_kgdata(root='.'):
-    return root + '/data/processed/kg_data.csv'
-
 class DataTransformer():
 
     def __init__(self, column_target, target_mean, target_std, column_x=None):
