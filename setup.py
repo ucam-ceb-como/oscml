@@ -17,6 +17,5 @@ setup(
              'oscml=oscml.driver:run'
         ],
     },
-    include_package_data=True,
-	install_requires= ["py4jps @ file://"+cwd_abspath+"/extDependencies/py4jps-1.0.0-py3-none-any.whl"]
+    include_package_data=True
 )
