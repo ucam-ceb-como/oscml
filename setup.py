@@ -1,4 +1,7 @@
 from setuptools import setup, find_packages
+from os import path
+
+cwd_abspath= path.abspath(path.dirname(__file__))
 
 setup(
     name='oscml',
@@ -11,8 +14,9 @@ setup(
     python_requires='>=3.7, <4',
     entry_points={
         'console_scripts': [
-             'oscml_run=oscml.hpo.train:start'
+             'oscml=oscml.driver:run'
         ],
     },
-    include_package_data=True
+    include_package_data=True,
+	install_requires= ["py4jps @ file://"+cwd_abspath+"/extDependencies/py4jps-1.0.0-py3-none-any.whl"],
 )

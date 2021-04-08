@@ -2,7 +2,9 @@ from docopt import docopt, DocoptExit
 from oscml.jobhandling import JobHandler
 
 
-__doc__ = """oscml_run
+__doc__ = """
+oscml
+
 Usage:
     oscml <configFile> [options]
 
