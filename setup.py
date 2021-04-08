@@ -18,5 +18,5 @@ setup(
         ],
     },
     include_package_data=True,
-	install_requires= ["py4jps @ file://"+cwd_abspath+"/extDependencies/py4jps-1.0.0-py3-none-any.whl"],
+	install_requires= ["py4jps @ file://"+cwd_abspath+"/extDependencies/py4jps-1.0.0-py3-none-any.whl"]
 )
