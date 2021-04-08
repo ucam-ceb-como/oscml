@@ -10,9 +10,6 @@ from oscml.hpo.hpo_utils import NN_addBestModelRetrainCallback
 from oscml.hpo.hpo_utils import NN_logBestTrialRetraining, NN_transferLearningCallback
 from oscml.hpo.hpo_utils import NN_logTransferLearning, NN_prepareTransferLearningModel
 from oscml.hpo.hpo_utils import NN_valDataCheck
-
-
-NN_logTransferLearning
 from oscml.data.dataset import get_dataset_info
 
 def getObjectiveBilstm(modelName, data, config, logFile, logDir,
