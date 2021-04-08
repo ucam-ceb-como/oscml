@@ -8,6 +8,7 @@ DATA_REMOTE="https://www.repository.cam.ac.uk/bitstream/handle/1810/318115/OSCML
 VENV_NAME='oscml_venv'
 GET_RESOURCES='n'
 DEV_INSTALL=''
+GPU_VERSION=''
 
 function usage {
     echo "==============================================================================================================="
@@ -20,6 +21,7 @@ function usage {
     echo "                    it will be removed and created again"
 	echo "  -n VENV_NAME    : name of the virtual environment to be created, if not provided,"
 	echo "                    default "$VENV_NAME" will be used instead"
+    echo "  -g              : install cuda-enabled version allowing to run training on gpu"
 	echo "  -i              : installs the oscml project in the currently active virtual environment"
 	echo "  -e              : enables developer mode installation"
     echo "  -r              : downloads project resources from the remote location"
@@ -57,11 +59,20 @@ function check_conda {
 function recreate_conda_env {
     echo "Creating conda environment and installing the oscml package."
     echo "-------------------------------------------------------------"
+    echo
     # This will recreate conda environment
     conda config --set channel_priority strict
     conda remove -n $VENV_NAME --all
     # create a new environment
-    conda env create -f environment.yml -n $VENV_NAME
+
+    if [[ $GPU_VERSION == 'y' ]]
+	then
+        echo "pytorch gpu version selected"
+        conda env create -f environment_gpu.yml -n $VENV_NAME
+    else
+        echo "pytorch cpu version selected"
+        conda env create -f environment_cpu.yml -n $VENV_NAME
+    fi
     echo
     echo
 }
@@ -114,6 +125,7 @@ key="$1"
 case $key in
     -h) usage;;
     -v) RECREATE_VENV='y'; shift;;
+    -g) GPU_VERSION='y'; shift;;
 	-n) VENV_NAME=$2; shift 2;;
     -i) INSTALL_PROJ='y'; shift;;
 	-e) DEV_INSTALL=' -e '; shift;;
