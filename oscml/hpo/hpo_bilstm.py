@@ -9,43 +9,66 @@ from oscml.hpo.hpo_utils import NN_model_train, NN_model_train_cross_validate
 from oscml.hpo.hpo_utils import NN_addBestModelRetrainCallback
 from oscml.hpo.hpo_utils import NN_logBestTrialRetraining, NN_transferLearningCallback
 from oscml.hpo.hpo_utils import NN_logTransferLearning, NN_prepareTransferLearningModel
-from oscml.hpo.hpo_utils import NN_valDataCheck
+from oscml.hpo.hpo_utils import NN_valDataCheck, NN_loadModelFromCheckpoint
 from oscml.data.dataset import get_dataset_info
 
 def getObjectiveBilstm(modelName, data, config, logFile, logDir,
-                       crossValidation, bestTrialRetraining=False, transferLearning=False):
+                       crossValidation, bestTrialRetraining=False,
+                       transferLearning=False, evaluateModel=False):
 
     if not crossValidation:
         # for not cv job, make sure there is non empty validation set
         # as NN methods require it for training
         data = NN_valDataCheck(data, config, transferLearning)
 
+    # create a model agnostic objective instance
     objectiveBilstm = Objective(modelName=modelName, data=data, config=config,
                         logFile=logFile, logDir=logDir)
 
-    if transferLearning and config['transfer_learning']['freeze_and_train']:
-        modelCreatorClass = BiLstmForPceTransfer
+    # add goal and model specific settings
+    if bestTrialRetraining:
+        objectiveBilstm = addBestTrialRetrainingSettings(objectiveBilstm)
+    elif transferLearning:
+        objectiveBilstm = addTransferLearningSettings(objectiveBilstm, crossValidation, config)
     else:
-        modelCreatorClass = BiLstmForPce
+        objectiveBilstm = addHpoSettings(objectiveBilstm, crossValidation)
+    return objectiveBilstm
+
+def addBestTrialRetrainingSettings(objective):
+    objective.setModelCreator(funcHandle=model_create,extArgs=[BiLstmForPce])
+    objective.setModelTrainer(funcHandle=NN_model_train,extArgs=[data_preproc])
+    objective.addPreModelCreateTask(objParamsKey='training', funcHandle=preproc_training_params)
+    objective.addPostModelCreateTask(objParamsKey='callbackBestTrialRetraining', funcHandle=NN_addBestModelRetrainCallback)
+    objective.addPostTrainingTask(objParamsKey='logBestTrialRetrain', funcHandle=NN_logBestTrialRetraining)
+    return objective
+
+def addTransferLearningSettings(objective, crossValidation, config):
+    freeze_and_train = config['transfer_learning']['freeze_and_train']
+    modelCreatorClass = BiLstmForPceTransfer if freeze_and_train else BiLstmForPce
     model_trainer_func = NN_model_train_cross_validate if crossValidation else NN_model_train
 
     # this flag disables model creation in the objclass _createModel step, instead the model is
     # created in the trainer as part of the cross validation loop
-    objectiveBilstm.setCrossValidation(crossValidation)
+    objective.setCrossValidation(crossValidation)
+    objective.setModelCreator(funcHandle=model_create,extArgs=[modelCreatorClass])
+    objective.setModelTrainer(funcHandle=model_trainer_func,extArgs=[data_preproc])
+    objective.addPreModelCreateTask(objParamsKey='training', funcHandle=preproc_training_params)
+    objective.addPostModelCreateTask(objParamsKey='callbackTransferLearning', funcHandle=NN_transferLearningCallback)
+    objective.addPostModelCreateTask(objParamsKey='transferLearningModel', funcHandle=NN_prepareTransferLearningModel)
+    objective.addPostTrainingTask(objParamsKey='logTransferLearning', funcHandle=NN_logTransferLearning)
+    return objective
 
-    objectiveBilstm.addPreModelCreateTask(objParamsKey='training', funcHandle=preproc_training_params)
-    objectiveBilstm.setModelCreator(funcHandle=model_create, extArgs=[modelCreatorClass])
-    objectiveBilstm.setModelTrainer(funcHandle=model_trainer_func, extArgs=[data_preproc])
+def addHpoSettings(objective, crossValidation):
+    model_trainer_func = NN_model_train_cross_validate if crossValidation else NN_model_train
 
-    if bestTrialRetraining:
-        objectiveBilstm.addPostModelCreateTask(objParamsKey='callbackBestTrialRetraining', funcHandle=NN_addBestModelRetrainCallback)
-        objectiveBilstm.addPostTrainingTask(objParamsKey='logBestTrialRetrain', funcHandle=NN_logBestTrialRetraining)
+    # this flag disables model creation in the objclass _createModel step, instead the model is
+    # created in the trainer as part of the cross validation loop
+    objective.setCrossValidation(crossValidation)
+    objective.setModelCreator(funcHandle=model_create,extArgs=[BiLstmForPce])
+    objective.setModelTrainer(funcHandle=model_trainer_func,extArgs=[data_preproc])
+    objective.addPreModelCreateTask(objParamsKey='training', funcHandle=preproc_training_params)
+    return objective
 
-    if transferLearning:
-        objectiveBilstm.addPostModelCreateTask(objParamsKey='callbackTransferLearning', funcHandle=NN_transferLearningCallback)
-        objectiveBilstm.addPostModelCreateTask(objParamsKey='transferLearningModel', funcHandle=NN_prepareTransferLearningModel)
-        objectiveBilstm.addPostTrainingTask(objParamsKey='logTransferLearning', funcHandle=NN_logTransferLearning)
-    return objectiveBilstm
 
 def model_create(trial, data, objConfig, objParams, modelCreatorClass):
     transformer = data['transformer']
@@ -56,7 +79,6 @@ def model_create(trial, data, objConfig, objParams, modelCreatorClass):
 
     batch_size = objParams['training']['batch_size']
     optimizer = objParams['training']['optimiser']
-
 
     # set model parameters from the config file
     model_params = {}

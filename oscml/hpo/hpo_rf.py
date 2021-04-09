@@ -14,22 +14,31 @@ from oscml.utils.util_config import set_config_param
 def getObjectiveRF(modelName, data, config, logFile, logDir,
                    crossValidation, bestTrialRetraining=False, transferLearning=False):
 
-    if bestTrialRetraining:
-        data = BL_bestTrialRetrainDataPreproc(data)
-
     objectiveRF = Objective(modelName=modelName, data=data, config=config,
                         logFile=logFile, logDir=logDir)
 
+    # add goal and model specific settings
+    if bestTrialRetraining:
+        objectiveRF = addBestTrialRetrainingSettings(objectiveRF)
+    else:
+        objectiveRF = addHpoSettings(objectiveRF, crossValidation)
+    return objectiveRF
+
+def addBestTrialRetrainingSettings(objective):
+    objective.data = BL_bestTrialRetrainDataPreproc(objective.data)
+    objective.setModelCreator(funcHandle=model_create)
+    objective.setModelTrainer(funcHandle=BL_model_train,extArgs=[data_preproc, best_model_retraining])
+    objective.addPreModelCreateTask(objParamsKey='training', funcHandle=preproc_training_params)
+    return objective
+
+def addHpoSettings(objective, crossValidation):
     model_trainer_func = BL_model_train_cross_validate if crossValidation else BL_model_train
 
-    objectiveRF.addPreModelCreateTask(objParamsKey='training', funcHandle=preproc_training_params)
-    objectiveRF.setModelCreator(funcHandle=model_create)
+    objective.setModelCreator(funcHandle=model_create)
+    objective.setModelTrainer(funcHandle=model_trainer_func,extArgs=[data_preproc, train_model_hpo])
+    objective.addPreModelCreateTask(objParamsKey='training', funcHandle=preproc_training_params)
+    return objective
 
-    if bestTrialRetraining:
-        objectiveRF.setModelTrainer(funcHandle=model_trainer_func, extArgs=[data_preproc, best_model_retraining])
-    else:
-        objectiveRF.setModelTrainer(funcHandle=model_trainer_func, extArgs=[data_preproc, train_model_hpo])
-    return objectiveRF
 
 def model_create(trial, data, objConfig, objParams):
     # set model parameters from the config file

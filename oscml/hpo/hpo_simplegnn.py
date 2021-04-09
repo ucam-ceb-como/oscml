@@ -25,32 +25,51 @@ def getObjectiveSimpleGNN(modelName, data, config, logFile, logDir,
     objectiveSimpleGNN = Objective(modelName=modelName, data=data, config=config,
                         logFile=logFile, logDir=logDir)
 
-    # configure SimpleGNN objective
-    if transferLearning and config['transfer_learning']['freeze_and_train']:
-        modelCreatorClass = SimpleGNNTransfer
+    # add goal and model specific settings
+    if bestTrialRetraining:
+        objectiveSimpleGNN = addBestTrialRetrainingSettings(objectiveSimpleGNN)
+    elif transferLearning:
+        objectiveSimpleGNN = addTransferLearningSettings(objectiveSimpleGNN, crossValidation, config)
     else:
-        modelCreatorClass = SimpleGNN
+        objectiveSimpleGNN = addHpoSettings(objectiveSimpleGNN, crossValidation)
+    return objectiveSimpleGNN
 
+def addBestTrialRetrainingSettings(objective):
+    objective.setModelCreator(funcHandle=model_create,extArgs=[SimpleGNN])
+    objective.setModelTrainer(funcHandle=NN_model_train,extArgs=[data_preproc])
+    objective.addPreModelCreateTask(objParamsKey='training', funcHandle=preproc_training_params)
+    objective.addPostModelCreateTask(objParamsKey='callbackBestTrialRetraining', funcHandle=NN_addBestModelRetrainCallback)
+    objective.addPostTrainingTask(objParamsKey='logBestTrialRetrain', funcHandle=NN_logBestTrialRetraining)
+    return objective
+
+def addTransferLearningSettings(objective, crossValidation, config):
+    freeze_and_train = config['transfer_learning']['freeze_and_train']
+    modelCreatorClass = SimpleGNNTransfer if freeze_and_train else SimpleGNN
     model_trainer_func = NN_model_train_cross_validate if crossValidation else NN_model_train
-
-    objectiveSimpleGNN.addPreModelCreateTask(objParamsKey='training', funcHandle=preproc_training_params)
-    objectiveSimpleGNN.setModelCreator(funcHandle=model_create, extArgs=[modelCreatorClass])
-    objectiveSimpleGNN.setModelTrainer(funcHandle=model_trainer_func, extArgs=[data_preproc])
 
     # this flag disables model creation in the objclass _createModel step, instead the model is
     # created in the trainer as part of the cross validation loop
-    objectiveSimpleGNN.setCrossValidation(crossValidation)
+    objective.setCrossValidation(crossValidation)
+    objective.setModelCreator(funcHandle=model_create,extArgs=[modelCreatorClass])
+    objective.setModelTrainer(funcHandle=model_trainer_func,extArgs=[data_preproc])
+    objective.addPreModelCreateTask(objParamsKey='training', funcHandle=preproc_training_params)
+    objective.addPostModelCreateTask(objParamsKey='callbackTransferLearning', funcHandle=NN_transferLearningCallback)
+    objective.addPostModelCreateTask(objParamsKey='transferLearningModel', funcHandle=NN_prepareTransferLearningModel)
+    objective.addPostTrainingTask(objParamsKey='logTransferLearning', funcHandle=NN_logTransferLearning)
+    return objective
 
-    if bestTrialRetraining:
-        objectiveSimpleGNN.addPostModelCreateTask(objParamsKey='callbackBestTrialRetraining', funcHandle=NN_addBestModelRetrainCallback)
-        objectiveSimpleGNN.addPostTrainingTask(objParamsKey='logBestTrialRetrain', funcHandle=NN_logBestTrialRetraining)
+def addHpoSettings(objective, crossValidation):
+    model_trainer_func = NN_model_train_cross_validate if crossValidation else NN_model_train
 
-    if transferLearning:
-        objectiveSimpleGNN.addPostModelCreateTask(objParamsKey='callbackTransferLearning', funcHandle=NN_transferLearningCallback)
-        objectiveSimpleGNN.addPostModelCreateTask(objParamsKey='transferLearningModel', funcHandle=NN_prepareTransferLearningModel)
-        objectiveSimpleGNN.addPostTrainingTask(objParamsKey='logTransferLearning', funcHandle=NN_logTransferLearning)
+    # this flag disables model creation in the objclass _createModel step, instead the model is
+    # created in the trainer as part of the cross validation loop
+    objective.setCrossValidation(crossValidation)
+    objective.setModelCreator(funcHandle=model_create,extArgs=[SimpleGNN])
+    objective.setModelTrainer(funcHandle=model_trainer_func,extArgs=[data_preproc])
+    objective.addPreModelCreateTask(objParamsKey='training', funcHandle=preproc_training_params)
+    return objective
 
-    return objectiveSimpleGNN
+
 
 def model_create(trial, data, objConfig, objParams, modelCreatorClass):
     transformer = data['transformer']

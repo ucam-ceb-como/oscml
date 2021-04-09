@@ -10,23 +10,30 @@ from oscml.utils.util_sklearn import train_model, train_model_hpo, best_model_re
 def getObjectiveSVR(modelName, data, config, logFile, logDir,
                     crossValidation, bestTrialRetraining=False, transferLearning=False):
 
-    if bestTrialRetraining:
-        data = BL_bestTrialRetrainDataPreproc(data)
-
     objectiveSVR = Objective(modelName=modelName, data=data, config=config,
                         logFile=logFile, logDir=logDir)
 
+    # add goal and model specific settings
+    if bestTrialRetraining:
+        objectiveSVR = addBestTrialRetrainingSettings(objectiveSVR)
+    else:
+        objectiveSVR = addHpoSettings(objectiveSVR, crossValidation)
+    return objectiveSVR
+
+def addBestTrialRetrainingSettings(objective):
+    objective.data = BL_bestTrialRetrainDataPreproc(objective.data)
+    objective.setModelCreator(funcHandle=model_create)
+    objective.setModelTrainer(funcHandle=BL_model_train,extArgs=[data_preproc, best_model_retraining])
+    objective.addPreModelCreateTask(objParamsKey='training', funcHandle=preproc_training_params)
+    return objective
+
+def addHpoSettings(objective, crossValidation):
     model_trainer_func = BL_model_train_cross_validate if crossValidation else BL_model_train
 
-    objectiveSVR.addPreModelCreateTask(objParamsKey='training', funcHandle=preproc_training_params)
-    objectiveSVR.setModelCreator(funcHandle=model_create)
-
-    if bestTrialRetraining:
-        objectiveSVR.setModelTrainer(funcHandle=model_trainer_func, extArgs=[data_preproc, best_model_retraining])
-    else:
-        objectiveSVR.setModelTrainer(funcHandle=model_trainer_func, extArgs=[data_preproc, train_model_hpo])
-
-    return objectiveSVR
+    objective.setModelCreator(funcHandle=model_create)
+    objective.setModelTrainer(funcHandle=model_trainer_func,extArgs=[data_preproc, train_model_hpo])
+    objective.addPreModelCreateTask(objParamsKey='training', funcHandle=preproc_training_params)
+    return objective
 
 def model_create(trial, data, objConfig, objParams):
     # set model parameters from the config file

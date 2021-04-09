@@ -29,32 +29,52 @@ def getObjectiveAttentiveFP(modelName, data, config, logFile, logDir,
     objectiveAttentiveFP = Objective(modelName=modelName, data=data, config=config,
                         logFile=logFile, logDir=logDir)
 
-    if transferLearning and config['transfer_learning']['freeze_and_train']:
-        modelCreatorClass = AttentiveFPTransfer
+    # add goal and model specific settings
+    if bestTrialRetraining:
+        objectiveAttentiveFP = addBestTrialRetrainingSettings(objectiveAttentiveFP)
+    elif transferLearning:
+        objectiveAttentiveFP = addTransferLearningSettings(objectiveAttentiveFP, crossValidation, config)
     else:
-        modelCreatorClass = AttentiveFPPredictor
+        objectiveAttentiveFP = addHpoSettings(objectiveAttentiveFP, crossValidation)
+    return objectiveAttentiveFP
 
+def addBestTrialRetrainingSettings(objective):
+    objective.setModelCreator(funcHandle=model_create,extArgs=[AttentiveFPPredictor])
+    objective.setModelTrainer(funcHandle=NN_model_train,extArgs=[data_preproc])
+    objective.addPreModelCreateTask(objParamsKey='training', funcHandle=preproc_training_params)
+    objective.addPreModelCreateTask(objParamsKey='featurizer', funcHandle=get_featuriser)
+    objective.addPostModelCreateTask(objParamsKey='callbackBestTrialRetraining', funcHandle=NN_addBestModelRetrainCallback)
+    objective.addPostTrainingTask(objParamsKey='logBestTrialRetrain', funcHandle=NN_logBestTrialRetraining)
+    return objective
+
+def addTransferLearningSettings(objective, crossValidation, config):
+    freeze_and_train = config['transfer_learning']['freeze_and_train']
+    modelCreatorClass = AttentiveFPTransfer if freeze_and_train else AttentiveFPPredictor
     model_trainer_func = NN_model_train_cross_validate if crossValidation else NN_model_train
 
     # this flag disables model creation in the objclass _createModel step, instead the model is
     # created in the trainer as part of the cross validation loop
-    objectiveAttentiveFP.setCrossValidation(crossValidation)
+    objective.setCrossValidation(crossValidation)
+    objective.setModelCreator(funcHandle=model_create,extArgs=[modelCreatorClass])
+    objective.setModelTrainer(funcHandle=model_trainer_func,extArgs=[data_preproc])
+    objective.addPreModelCreateTask(objParamsKey='training', funcHandle=preproc_training_params)
+    objective.addPreModelCreateTask(objParamsKey='featurizer', funcHandle=get_featuriser)
+    objective.addPostModelCreateTask(objParamsKey='callbackTransferLearning', funcHandle=NN_transferLearningCallback)
+    objective.addPostModelCreateTask(objParamsKey='transferLearningModel', funcHandle=NN_prepareTransferLearningModel)
+    objective.addPostTrainingTask(objParamsKey='logTransferLearning', funcHandle=NN_logTransferLearning)
+    return objective
 
-    objectiveAttentiveFP.addPreModelCreateTask(objParamsKey='training', funcHandle=preproc_training_params)
-    objectiveAttentiveFP.addPreModelCreateTask(objParamsKey='featurizer', funcHandle=get_featuriser)
-    objectiveAttentiveFP.setModelCreator(funcHandle=model_create, extArgs=[modelCreatorClass])
-    objectiveAttentiveFP.setModelTrainer(funcHandle=model_trainer_func, extArgs=[data_preproc])
+def addHpoSettings(objective, crossValidation):
+    model_trainer_func = NN_model_train_cross_validate if crossValidation else NN_model_train
 
-    if bestTrialRetraining:
-        objectiveAttentiveFP.addPostModelCreateTask(objParamsKey='callbackBestTrialRetraining', funcHandle=NN_addBestModelRetrainCallback)
-        objectiveAttentiveFP.addPostTrainingTask(objParamsKey='logBestTrialRetrain', funcHandle=NN_logBestTrialRetraining)
-
-    if transferLearning:
-        objectiveAttentiveFP.addPostModelCreateTask(objParamsKey='callbackTransferLearning', funcHandle=NN_transferLearningCallback)
-        objectiveAttentiveFP.addPostModelCreateTask(objParamsKey='transferLearningModel', funcHandle=NN_prepareTransferLearningModel)
-        objectiveAttentiveFP.addPostTrainingTask(objParamsKey='logTransferLearning', funcHandle=NN_logTransferLearning)
-
-    return objectiveAttentiveFP
+    # this flag disables model creation in the objclass _createModel step, instead the model is
+    # created in the trainer as part of the cross validation loop
+    objective.setCrossValidation(crossValidation)
+    objective.setModelCreator(funcHandle=model_create,extArgs=[AttentiveFPPredictor])
+    objective.setModelTrainer(funcHandle=model_trainer_func,extArgs=[data_preproc])
+    objective.addPreModelCreateTask(objParamsKey='training', funcHandle=preproc_training_params)
+    objective.addPreModelCreateTask(objParamsKey='featurizer', funcHandle=get_featuriser)
+    return objective
 
 def get_featuriser(trial, data, objConfig, objParams):
     featurizer = {
