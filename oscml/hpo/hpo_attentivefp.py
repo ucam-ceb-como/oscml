@@ -21,24 +21,23 @@ from oscml.hpo.hpo_utils import NN_prepareTransferLearningModel, NN_logTransferL
 def getObjectiveAttentiveFP(modelName, data, config, logFile, logDir,
                             crossValidation, bestTrialRetraining=False, transferLearning=False):
 
-    if not crossValidation:
-        # for not cv job, make sure there is non empty validation set
-        # as NN methods require it for training
-        data = NN_valDataCheck(data, config, transferLearning)
-
     objectiveAttentiveFP = Objective(modelName=modelName, data=data, config=config,
                         logFile=logFile, logDir=logDir)
 
     # add goal and model specific settings
     if bestTrialRetraining:
-        objectiveAttentiveFP = addBestTrialRetrainingSettings(objectiveAttentiveFP)
+        objectiveAttentiveFP = addBestTrialRetrainingSettings(objectiveAttentiveFP, config)
     elif transferLearning:
         objectiveAttentiveFP = addTransferLearningSettings(objectiveAttentiveFP, crossValidation, config)
     else:
-        objectiveAttentiveFP = addHpoSettings(objectiveAttentiveFP, crossValidation)
+        objectiveAttentiveFP = addHpoSettings(objectiveAttentiveFP, crossValidation, config)
     return objectiveAttentiveFP
 
-def addBestTrialRetrainingSettings(objective):
+def addBestTrialRetrainingSettings(objective, config):
+    # for not cv job, make sure there is non empty validation set
+    # as NN methods require it for training. In case of the best trial
+    # retraining, the cross_validation must always be False
+    objective.data = NN_valDataCheck(objective.data, config)
     objective.setModelCreator(funcHandle=model_create,extArgs=[AttentiveFPPredictor])
     objective.setModelTrainer(funcHandle=NN_model_train,extArgs=[data_preproc])
     objective.addPreModelCreateTask(objParamsKey='training', funcHandle=preproc_training_params)
@@ -52,7 +51,11 @@ def addTransferLearningSettings(objective, crossValidation, config):
     modelCreatorClass = AttentiveFPTransfer if freeze_and_train else AttentiveFPPredictor
     model_trainer_func = NN_model_train_cross_validate if crossValidation else NN_model_train
 
-    # this flag disables model creation in the objclass _createModel step, instead the model is
+    # for not cv job, make sure there is non empty validation set
+    # as NN methods require it for training
+    if not crossValidation:
+        objective.data = NN_valDataCheck(objective.data, config, transferLearning=True)
+    # this flag, if true, disables model creation in the objclass _createModel step, instead the model is
     # created in the trainer as part of the cross validation loop
     objective.setCrossValidation(crossValidation)
     objective.setModelCreator(funcHandle=model_create,extArgs=[modelCreatorClass])
@@ -64,10 +67,14 @@ def addTransferLearningSettings(objective, crossValidation, config):
     objective.addPostTrainingTask(objParamsKey='logTransferLearning', funcHandle=NN_logTransferLearning)
     return objective
 
-def addHpoSettings(objective, crossValidation):
+def addHpoSettings(objective, crossValidation, config):
     model_trainer_func = NN_model_train_cross_validate if crossValidation else NN_model_train
 
-    # this flag disables model creation in the objclass _createModel step, instead the model is
+    # for not cv job, make sure there is non empty validation set
+    # as NN methods require it for training
+    if not crossValidation:
+        objective.data = NN_valDataCheck(objective.data, config)
+    # this flag, if true, disables model creation in the objclass _createModel step, instead the model is
     # created in the trainer as part of the cross validation loop
     objective.setCrossValidation(crossValidation)
     objective.setModelCreator(funcHandle=model_create,extArgs=[AttentiveFPPredictor])

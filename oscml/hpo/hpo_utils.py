@@ -178,7 +178,7 @@ def preproc_training_params(trial, data, objConfig, objParams):
             training_params[key] = set_config_param(trial=trial,param_name=key,param=value, all_params=training_params)
     return training_params
 
-def NN_valDataCheck(data, jobConfig, transferLearning):
+def NN_valDataCheck(data, jobConfig, transferLearning=False):
     if data['val'] is not None:
         if len(data['val']) > 0:
             return data

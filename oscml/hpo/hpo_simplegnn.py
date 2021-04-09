@@ -27,14 +27,18 @@ def getObjectiveSimpleGNN(modelName, data, config, logFile, logDir,
 
     # add goal and model specific settings
     if bestTrialRetraining:
-        objectiveSimpleGNN = addBestTrialRetrainingSettings(objectiveSimpleGNN)
+        objectiveSimpleGNN = addBestTrialRetrainingSettings(objectiveSimpleGNN, config)
     elif transferLearning:
         objectiveSimpleGNN = addTransferLearningSettings(objectiveSimpleGNN, crossValidation, config)
     else:
-        objectiveSimpleGNN = addHpoSettings(objectiveSimpleGNN, crossValidation)
+        objectiveSimpleGNN = addHpoSettings(objectiveSimpleGNN, crossValidation, config)
     return objectiveSimpleGNN
 
-def addBestTrialRetrainingSettings(objective):
+def addBestTrialRetrainingSettings(objective, config):
+    # for not cv job, make sure there is non empty validation set
+    # as NN methods require it for training. In case of the best trial
+    # retraining, the cross_validation must always be False
+    objective.data = NN_valDataCheck(objective.data, config)
     objective.setModelCreator(funcHandle=model_create,extArgs=[SimpleGNN])
     objective.setModelTrainer(funcHandle=NN_model_train,extArgs=[data_preproc])
     objective.addPreModelCreateTask(objParamsKey='training', funcHandle=preproc_training_params)
@@ -47,7 +51,11 @@ def addTransferLearningSettings(objective, crossValidation, config):
     modelCreatorClass = SimpleGNNTransfer if freeze_and_train else SimpleGNN
     model_trainer_func = NN_model_train_cross_validate if crossValidation else NN_model_train
 
-    # this flag disables model creation in the objclass _createModel step, instead the model is
+    # for not cv job, make sure there is non empty validation set
+    # as NN methods require it for training
+    if not crossValidation:
+        objective.data = NN_valDataCheck(objective.data, config)
+    # this flag, if true, disables model creation in the objclass _createModel step, instead the model is
     # created in the trainer as part of the cross validation loop
     objective.setCrossValidation(crossValidation)
     objective.setModelCreator(funcHandle=model_create,extArgs=[modelCreatorClass])
@@ -58,10 +66,14 @@ def addTransferLearningSettings(objective, crossValidation, config):
     objective.addPostTrainingTask(objParamsKey='logTransferLearning', funcHandle=NN_logTransferLearning)
     return objective
 
-def addHpoSettings(objective, crossValidation):
+def addHpoSettings(objective, crossValidation, config):
     model_trainer_func = NN_model_train_cross_validate if crossValidation else NN_model_train
 
-    # this flag disables model creation in the objclass _createModel step, instead the model is
+    # for not cv job, make sure there is non empty validation set
+    # as NN methods require it for training
+    if not crossValidation:
+        objective.data = NN_valDataCheck(objective.data, config, transferLearning=True)
+    # this flag, if true, disables model creation in the objclass _createModel step, instead the model is
     # created in the trainer as part of the cross validation loop
     objective.setCrossValidation(crossValidation)
     objective.setModelCreator(funcHandle=model_create,extArgs=[SimpleGNN])
