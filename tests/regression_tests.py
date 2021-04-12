@@ -1,24 +1,15 @@
-import logging
 import os
 import time
 import unittest
-from unittest.mock import patch
-
-import pytorch_lightning as pl
-
-import oscml.data.dataset_cep
-import oscml.data.dataset_hopv15
-import oscml.hpo.optunawrapper
-
 from oscml.jobhandling import JobHandler
 import oscml.utils.util
 import glob
 import pandas as pd
 import contextlib
 import shutil
+from parameterized import parameterized
 
 THIS_DIR = os.path.dirname(os.path.abspath(__file__))
-
 
 rf_test_cases = {
     'rf': ['trials_5_no_cv','trials_1_cv_2', 'trials_2_cv_2']
@@ -30,7 +21,7 @@ simplegnn_test_cases = {
     'simplegnn': ['trials_5_no_cv','trials_1_cv_2', 'trials_2_cv_2']
     }
 bilstm_test_cases = {
-    'bilstm': ['trials_5_no_cv','trials_1_cv_2', 'trials_2_cv_2']
+    'bilstm': ['trials_5_no_cv','trials_1_cv_2', 'trials_2_cv_2'] #['transfer']#'trials_5_no_cv','trials_1_cv_2', 'trials_2_cv_2']
     }
 attentivefp_test_cases = {
     'attentivefp': ['trials_5_no_cv','trials_1_cv_2', 'trials_2_cv_2']
@@ -38,39 +29,38 @@ attentivefp_test_cases = {
 
 
 class Test_HPO(unittest.TestCase):
-    def _run_test(self, test_cases):
-        for model, subtests in test_cases.items():
-            for test in subtests:
-                print('========================================================')
-                print('MODEL: ', model)
-                print('TEST: ', test)
-                print()
-                print()
-                test_path = os.path.join(THIS_DIR, 'modelsRegressionTests', model, test)
-                input_file = os.path.join(test_path,'input.json')
-                clean_test_dir(test_path)
-
-                jobHandler = JobHandler({'<configFile>': input_file})
-                jobHandler.runJob()
-                compareResults(test_path, model, test)
-                print('========================================================')
-                print()
-                print()
-
-    def rf_test_suite(self):
-        self._run_test(rf_test_cases)
-
-    def svr_test_suite(self):
-        self._run_test(svr_test_cases)
-
-    def simplegnn_test_suite(self):
-        self._run_test(simplegnn_test_cases)
-
-    def bilstm_test_suite(self):
-        self._run_test(bilstm_test_cases)
-
-    def attentivefp_test_suite(self):
-        self._run_test(attentivefp_test_cases)
+    @parameterized.expand([
+        ['rf','trials_5_no_cv'],
+        ['rf','trials_1_cv_2'],
+        ['rf','trials_2_cv_2'],
+        ['svr','trials_5_no_cv'],
+        ['svr','trials_1_cv_2'],
+        ['svr','trials_2_cv_2'],
+        ['simplegnn','trials_5_no_cv'],
+        ['simplegnn','trials_1_cv_2'],
+        ['simplegnn','trials_2_cv_2'],
+        ['bilstm','trials_5_no_cv'],
+        ['bilstm','trials_1_cv_2'],
+        ['bilstm','trials_2_cv_2'],
+        ['attentivefp','trials_5_no_cv'],
+        ['attentivefp','trials_1_cv_2'],
+        ['attentivefp','trials_2_cv_2']
+    ])
+    def test_models(self, model, test):
+        print('========================================================')
+        print('MODEL: ', model)
+        print('TEST: ', test)
+        print()
+        print()
+        test_path = os.path.join(THIS_DIR, 'modelsRegressionTests', model, test)
+        input_file = os.path.join(test_path,'input.json')
+        clean_test_dir(test_path)
+        jobHandler = JobHandler({'<configFile>': input_file})
+        jobHandler.runJob()
+        compareResults(test_path, model, test)
+        print('========================================================')
+        print()
+        print()
 
 def clean_test_dir(testDir):
     reg_test_dir = os.path.join(testDir,'reg_test')
@@ -83,37 +73,41 @@ def clean_test_dir(testDir):
 
 def compareResults(testDir, model, test):
     msg_head = "model: "+model+" test: "+test+" "
-    # prepare ref data
-    ref_hpo_file = os.path.join(testDir,'hpo_result.csv')
-    ref_best_trial_file = glob.glob(os.path.join(testDir,'best_trial_retrain_model*.csv'))[0]
-    ref_best_trial_nr = ref_best_trial_file.split('model_trial_')[1].split('.')[0]
+    # read ref data
 
-    ref_hpo_df = pd.read_csv(ref_hpo_file)
-    ref_hpo_df = ref_hpo_df.drop(['datetime_start', 'datetime_complete','duration'], axis=1)
-    ref_best_trial_df = pd.read_csv(ref_best_trial_file)
+    refData = _getTestData(os.path.join(testDir,"ref_data"))
+    regData = _getTestData(os.path.join(testDir,"reg_test"))
 
-    # prepare reg data
-    reg_hpo_file = os.path.join(testDir,'reg_test','hpo','hpo_result.csv')
-    reg_best_trial_nr = glob.glob(os.path.join(testDir,'reg_test','best_trial_retrain','trial_'+ref_best_trial_nr))
-    assert len(reg_best_trial_nr) == 1, msg_head+"best trials numbers do not match!"
+    for key in refData.keys():
+        assert key in regData
+        pd.testing.assert_frame_equal(refData[key],regData[key], rtol=0.05, atol=1e-5)
 
-    reg_best_trial_file = os.path.join(reg_best_trial_nr[0],'best_trial_retrain_model.csv')
-
-    reg_hpo_df = pd.read_csv(reg_hpo_file)
-    reg_hpo_df = reg_hpo_df.drop(['datetime_start', 'datetime_complete','duration'], axis=1)
-    reg_best_trial_df = pd.read_csv(reg_best_trial_file)
-
-    assert ref_hpo_df.equals(reg_hpo_df)==True, msg_head+"test and reference hpo results are not equal"
-    assert reg_best_trial_df.equals(reg_best_trial_df)==True, msg_head+"test and reference best trial retrain results are not equal"
-    pass
-
+def _getTestData(testDir):
+    testData = {}
+    hpoDir = os.path.join(testDir,'hpo')
+    bestTrialRetrainDir = os.path.join(testDir,'best_trial_retrain')
+    transferLearningDir = os.path.join(testDir,'transfer_learning')
+    if os.path.exists(hpoDir):
+        df = pd.read_csv(os.path.join(hpoDir,'hpo_result.csv'))
+        for col in ['datetime_start', 'datetime_complete','duration']:
+            if col in df:
+                df = df.drop([col], axis=1)
+        testData['hpo'] = df
+    if os.path.exists(bestTrialRetrainDir):
+        bestTrialResultsDir = glob.glob(os.path.join(bestTrialRetrainDir,'trial_*'))[0]
+        bestTrialNr = bestTrialResultsDir.split('trial_')[-1]
+        df = pd.read_csv(os.path.join(bestTrialResultsDir,"best_trial_retrain_model.csv"))
+        if 'time' in df:
+            df = df.drop(['time'], axis=1)
+        testData['bestTrialRetrain'+'_trial_'+str(bestTrialNr)] = df
+    if os.path.exists(transferLearningDir):
+        transferLearningResultsDir = glob.glob(os.path.join(transferLearningDir,'trial_*'))[0]
+        transferLearningTrialNr = transferLearningResultsDir.split('trial_')[-1]
+        df = pd.read_csv(os.path.join(transferLearningResultsDir,"transfer_learning_model.csv"))
+        if 'time' in df:
+            df = df.drop(['time'], axis=1)
+        testData['transferLearning'+'_trial_'+str(transferLearningTrialNr)] = df
+    return testData
 
 if __name__ == '__main__':
-    suite = unittest.TestSuite()
-    suite.addTest(Test_HPO('rf_test_suite'))
-    suite.addTest(Test_HPO('svr_test_suite'))
-    suite.addTest(Test_HPO('simplegnn_test_suite'))
-    suite.addTest(Test_HPO('bilstm_test_suite'))
-    suite.addTest(Test_HPO('attentivefp_test_suite'))
-    runner = unittest.TextTestRunner()
-    runner.run(suite)
+    unittest.main()

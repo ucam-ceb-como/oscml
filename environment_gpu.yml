@@ -24,3 +24,4 @@ dependencies:
     - dgllife==0.2.6
     - docopt==0.6.2
     - py4jps==1.0.0
+    - parameterized==0.8.1
