@@ -5,6 +5,13 @@ _RES_DIR = pkg_resources.resource_filename(__name__,os.path.join('..','resources
 _RES_LOG_CONFIG_FILE = os.path.join(_RES_DIR,'logging.yaml')
 
 DEFAULTS_ = {
+"goals":{
+    "hpo": True,
+    "contour_plot": False,
+    "best_trial_retraining": True,
+    "transfer_learning": False,
+    "predict": False
+},
 "numerical_settings":{
 	"seed": 1,
     "cudnn_deterministic": True,
@@ -22,7 +29,7 @@ DEFAULTS_ = {
     "jobs": 1,
     "timeout": None,
 	"study_name": "oscml_study",
-	"storage": "oscml_study.db",
+	"storage": "sqlite:///oscml_study.db",
 	"storage_timeout": 1000,
 	"load_if_exists": True,
 },

@@ -61,7 +61,11 @@ class JobHandler:
     """
     def __init__(self,cmdArgs):
         "JobHandler constructor"
-        self.cmdArgs = {k: v for k, v in cmdArgs.items() if v is not None}
+        # remove None values and convert 'False' and 'True' strings to boolean
+        cmdArgs = {k: v for k, v in cmdArgs.items() if v is not None}
+        cmdArgs = {**cmdArgs, **{k: True for k, v in cmdArgs.items() if v.lower()=="true"}}
+        cmdArgs = {**cmdArgs, **{k: False for k, v in cmdArgs.items() if v.lower()=="false"}}
+        self.cmdArgs = cmdArgs
         self.defaultArgs = None
         self.configFile = self._readConfigFile()
         self.configParams = self._setConfigParams()
@@ -301,7 +305,6 @@ class JobHandler:
                     updval = args.get('--'+k,None)
                     if updval is not None:
                         dout[k] = type(v)(updval)
-
             return dout
 
         cmdArgsDict = cmdArgsToDict(OrderedDict(), DEFAULTS_, self.cmdArgs)
