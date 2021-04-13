@@ -1,4 +1,11 @@
 {
+"goals":{
+    "hpo": true,
+    "contour_plot": false,
+    "best_trial_retraining": true,
+    "transfer_learning": false,
+    "predict": false
+},
 "numerical_settings":{
 	"seed": 1,
     "cudnn_deterministic": true,
@@ -43,23 +50,8 @@
 	"jobs": 1
     },
 "post_processing":{
-    "contour_plot": false,
     "contour_plot_alt_dir": null,
-    "best_trial_retraining": true,
     "z_transform_inverse_prediction": true,
-    "regression_plot": true,
-    "transfer": false
-},
-"transfer_learning": {
-  "fine_tune": true,
-  "freeze_and_train": false,
-  "ckpt_path": "(provide_path_to)/best_trial_retrain_model.ckpt",
-  "dataset":{
-    "src": "./data/processed/HOPV_15_revised_2_processed_homo_5fold.csv",
-    "z-stand": "False",
-    "x_column": ["smiles"],
-    "y_column": ["pce"],
-    "split": "ml_phase_fold_X (change X to one of the fold nr)"
-    }
+    "regression_plot": true
 }
 }

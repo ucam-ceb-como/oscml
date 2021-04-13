@@ -76,15 +76,12 @@ class JobHandler:
         self.goals = []
 
     def _setGoals(self):
-        trials = self.configParams['training']['trials']
-        contour_plot = self.configParams['post_processing']['contour_plot']
-        best_trial_retraining = self.configParams['post_processing']['best_trial_retraining']
-        transfer_learning = self.configParams['post_processing']['transfer']
+        goals = self.configParams['goals']
 
-        if trials > 0: self.goals.append(JobGoal(name='hpo_or_train', runFunc=self._runHpoOrtrain))
-        if contour_plot: self.goals.append(JobGoal(name='contour_plot', runFunc=self._runCountourPlot))
-        if best_trial_retraining: self.goals.append(JobGoal(name='best_trial_retraining', runFunc=self._runBestTrialRetraining))
-        if transfer_learning: self.goals.append(JobGoal(name='transfer_learning', runFunc=self._runTransferLearning))
+        if goals['hpo']: self.goals.append(JobGoal(name='hpo_or_train', runFunc=self._runHpoOrtrain))
+        if goals['contour_plot']: self.goals.append(JobGoal(name='contour_plot', runFunc=self._runCountourPlot))
+        if goals['best_trial_retraining']: self.goals.append(JobGoal(name='best_trial_retraining', runFunc=self._runBestTrialRetraining))
+        if goals['transfer_learning']: self.goals.append(JobGoal(name='transfer_learning', runFunc=self._runTransferLearning))
 
     def runJob(self):
         # set the goals first
