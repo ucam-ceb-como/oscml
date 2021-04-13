@@ -63,8 +63,8 @@ def data_preproc(trial, data, objConfig, objParams):
 
     logging.info('fingerprint params=%s', fp_params)
 
-    x_column = objConfig['config']['dataset']['x_column'][0]
-    y_column = objConfig['config']['dataset']['y_column'][0]
+    x_column = data['x_column'][0]
+    y_column = data['y_column'][0]
 
     # at the moment the only supported fingerprint choice is morgan
     fp_type = fp_params.pop('type',None)
@@ -84,6 +84,8 @@ def data_preproc(trial, data, objConfig, objParams):
     if data['val'] is not None:
         data_processed['val'] = get_fp(data['val'], fp_params, x_column, y_column)
     data_processed['test'] = get_fp(data['test'], fp_params, x_column, y_column)
+
+    data_processed = {**data, **data_processed}
     return data_processed
 
 def dataFrameToMorganFP(df, params_morgan, columns_smiles, column_y):

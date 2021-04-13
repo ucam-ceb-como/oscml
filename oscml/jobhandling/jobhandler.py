@@ -239,6 +239,8 @@ class JobHandler:
                     if df_val.empty:
                         df_val = None
                 data = {}
+                data['x_column'] = dataset['x_column']
+                data['y_column'] = dataset['y_column']
                 data['train'] = df_train
                 data['val'] = df_val
                 data['test'] = df_test
@@ -253,6 +255,8 @@ class JobHandler:
                 df_train = pd.concat([df_train, df_val])
                 df_val = None
 
+            self.data['x_column'] = dataset['x_column']
+            self.data['y_column'] = dataset['y_column']
             self.data['train'] = df_train
             self.data['val'] = df_val
             self.data['test'] = df_test

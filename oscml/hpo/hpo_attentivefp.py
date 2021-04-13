@@ -241,8 +241,8 @@ def collate_molgraphs(data):
     return x, y
 
 def data_preproc(trial, data, objConfig, objParams):
-    x_column = objConfig['config']['dataset']['x_column'][0]
-    y_column = objConfig['config']['dataset']['y_column'][0]
+    x_column = data['x_column'][0]
+    y_column = data['y_column'][0]
     featurizer = objParams['featurizer']
     batch_size = objParams['training']['batch_size']
     transformer = data['transformer']
@@ -262,4 +262,5 @@ def data_preproc(trial, data, objConfig, objParams):
         "test": test_dl,
         "transformer": data['transformer']
     }
+    processed_data = {**data, **processed_data}
     return processed_data

@@ -64,8 +64,8 @@ def data_preproc(trial, data, objConfig, objParams):
 
     logging.info('fingerprting params=%s', fp_params)
 
-    x_column = objConfig['config']['dataset']['x_column'][0]
-    y_column = objConfig['config']['dataset']['y_column'][0]
+    x_column = data['x_column'][0]
+    y_column = data['y_column'][0]
 
     data_processed = {
         'train': None,
@@ -92,4 +92,5 @@ def data_preproc(trial, data, objConfig, objParams):
         columns_phys=None, column_y=y_column, scaler_svr_physical_data=scaler_svr_physical_data)
     data_processed['test'] = (x,y)
 
+    data_processed = {**data, **data_processed}
     return data_processed

@@ -145,4 +145,5 @@ def data_preproc(trial, data, objConfig, objParams):
         "test": test_dl,
         "transformer": data['transformer']
     }
+    processed_data = {**data, **processed_data}
     return processed_data

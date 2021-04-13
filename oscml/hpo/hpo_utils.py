@@ -129,6 +129,7 @@ def NN_model_train_cross_validate(trial, model, data, objConfig, objParams, data
                       'val': df_train.iloc[val_index],
                       'test': df_test,
                       'transformer': transformer}
+        split_data = {**data, **split_data}
 
         objConfig['log_head'] = '[Trial '+ str(trial.number) + ' - fold ' + str(cv_index) + ']'
         objParams['cv_fold'] = str(cv_index)
@@ -210,6 +211,7 @@ def _reshuffleAndSplitData(data, n_splits, test_size, seed):
             'test': data['test'],
             'transformer': data['transformer']
         }
+    data_reshuffled= {**data, **data_reshuffled}
     return data_reshuffled
 
 def BL_bestTrialRetrainDataPreproc(data):
@@ -224,6 +226,7 @@ def BL_bestTrialRetrainDataPreproc(data):
         'test' : df_test,
         'transformer' : transformer
     }
+    data_preproc = {**data, **data_preproc}
     return data_preproc
 
 def NN_logBestTrialRetraining(trial, model, data, objConfig, objParams):
