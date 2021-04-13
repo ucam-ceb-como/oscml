@@ -14,6 +14,7 @@ import torch
 import pandas as pd
 import os
 from oscml.visualization.util_sns_plot import prediction_plot
+import re
 
 class MetricsCallback(pl.Callback):
 
@@ -245,8 +246,8 @@ def _logAndPlotResults(trial, model, data, objConfig, objParams, fileName):
     test_dl = data['test']
 
 
-    dirpath = log_dir + '/trial_' + str(trial.number) + '/'
-    ckpt_path = glob.glob(dirpath+ fileName+ '*.ckpt')[0].replace('\\', '/')
+    dirpath = os.path.join(log_dir, 'trial_' + str(trial.number))
+    ckpt_path = getLastCheckpointPath(os.path.join(dirpath, fileName+'*.ckpt'))
     model.load_state_dict(torch.load(ckpt_path)['state_dict'])
     model.eval()
 
@@ -266,14 +267,14 @@ def _logAndPlotResults(trial, model, data, objConfig, objParams, fileName):
         else:
             pred_df = pd.DataFrame(predictions[0], columns=['Measured PCE'])
             pred_df['Predicted PCE'] = predictions[1]
-        pred_df.to_csv(dirpath+'predictions_{}.csv'.format(index_.replace(' ', '_')))
+        pred_df.to_csv(os.path.join(dirpath,'predictions_{}.csv'.format(index_.replace(' ', '_'))))
 
-    pd.DataFrame(results_metric).to_csv(dirpath+fileName+'.csv')
+    pd.DataFrame(results_metric).to_csv(os.path.join(dirpath,fileName+'.csv'))
 
     if regression_plot:
-        prediction_plot(dirpath, dirpath + 'predictions_training_set.csv',
-                                                            dirpath + 'predictions_validation_set.csv',
-                                                            dirpath + 'predictions_test_set.csv')
+        prediction_plot(dirpath+'\\', os.path.join(dirpath,'predictions_training_set.csv'),
+                                 os.path.join(dirpath,'predictions_validation_set.csv'),
+                                 os.path.join(dirpath,'predictions_test_set.csv'))
 
 def NN_addBestModelRetrainCallback(trial, model, data, objConfig, objParams):
     metric = objParams['training']['metric']
@@ -299,10 +300,29 @@ def NN_transferLearningCallback(trial, model, data, objConfig, objParams):
 
 def NN_prepareTransferLearningModel(trial, model, data, objConfig, objParams):
     transfer_learning = objConfig['config']['transfer_learning']
-    ckpt_path = transfer_learning['ckpt_path']
+    ckpt_path = getLastCheckpointPath(transfer_learning['ckpt_path'])
     model.load_state_dict(torch.load(ckpt_path, map_location=torch.device('cpu'))['state_dict'])
+    model.eval()
+    return model
+
+def NN_loadModelFromCheckpoint(trial, data, objConfig, objParams, modelCreatorClass):
+    ckpt_path = getLastCheckpointPath(objConfig['config']['post_processing']['ckpt_path'])
+    model = modelCreatorClass.load_from_checkpoint(ckpt_path)
     model.eval()
     return model
 
 def NN_empty_torch_cache():
     torch.cuda.empty_cache()
+
+def getLastCheckpointPath(ckpt_path):
+    max_version = -1
+    max_version_ind = 0
+    ckpt_list = glob.glob(ckpt_path)
+    for i, ckpt in enumerate(ckpt_list):
+        match = re.search('-v\d+?\.ckpt',ckpt)
+        if match is not None:
+            version_ = int(match.group().replace(".ckpt",'').replace("-v",''))
+            if version_ > max_version:
+                max_version = version_
+                max_version_ind = i
+    return ckpt_list[max_version_ind]

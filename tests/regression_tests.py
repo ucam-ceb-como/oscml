@@ -5,28 +5,10 @@ from oscml.jobhandling import JobHandler
 import oscml.utils.util
 import glob
 import pandas as pd
-import contextlib
 import shutil
 from parameterized import parameterized
 
 THIS_DIR = os.path.dirname(os.path.abspath(__file__))
-
-rf_test_cases = {
-    'rf': ['trials_5_no_cv','trials_1_cv_2', 'trials_2_cv_2']
-    }
-svr_test_cases = {
-    'svr': ['trials_5_no_cv','trials_1_cv_2', 'trials_2_cv_2']
-    }
-simplegnn_test_cases = {
-    'simplegnn': ['trials_5_no_cv','trials_1_cv_2', 'trials_2_cv_2']
-    }
-bilstm_test_cases = {
-    'bilstm': ['trials_5_no_cv','trials_1_cv_2', 'trials_2_cv_2'] #['transfer']#'trials_5_no_cv','trials_1_cv_2', 'trials_2_cv_2']
-    }
-attentivefp_test_cases = {
-    'attentivefp': ['trials_5_no_cv','trials_1_cv_2', 'trials_2_cv_2']
-    }
-
 
 class Test_HPO(unittest.TestCase):
     @parameterized.expand([
@@ -42,6 +24,7 @@ class Test_HPO(unittest.TestCase):
         ['bilstm','trials_5_no_cv'],
         ['bilstm','trials_1_cv_2'],
         ['bilstm','trials_2_cv_2'],
+        ['bilstm','transfer'],
         ['attentivefp','trials_5_no_cv'],
         ['attentivefp','trials_1_cv_2'],
         ['attentivefp','trials_2_cv_2']
@@ -65,10 +48,10 @@ class Test_HPO(unittest.TestCase):
 def clean_test_dir(testDir):
     reg_test_dir = os.path.join(testDir,'reg_test')
     reg_test_db = os.path.join(testDir,'reg_test.db')
+
     if os.path.exists(reg_test_dir):
         shutil.rmtree(reg_test_dir)
-
-    with contextlib.suppress(FileNotFoundError):
+    if os.path.isfile(reg_test_db):
         os.remove(reg_test_db)
 
 def compareResults(testDir, model, test):

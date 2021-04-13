@@ -31,8 +31,6 @@ class Objective:
         self.trial = None
         self.obj_val = None
         self.model = None
-        self.modelCreator = None
-        self.modelTrainer = None
         self.crossValidation = False
 
     def addPreModelCreateTask(self, funcHandle, objParamsKey, extArgs=[]):
@@ -63,12 +61,13 @@ class Objective:
 
     def _doTraining(self):
         modelTrainer = self.objParams['modelTrainer']
-        self.obj_val = modelTrainer.run(self.trial, self.model, self.data, self.objConfig, self.objParams)
+        if modelTrainer is not None:
+            self.obj_val = modelTrainer.run(self.trial, self.model, self.data, self.objConfig, self.objParams)
 
     def _createModel(self):
         modelCreator = self.objParams['modelCreator']
         # for neural models run with cross_validation, the model is created in the trainer call
-        if not self.crossValidation:
+        if not self.crossValidation and modelCreator is not None:
             self.model = modelCreator.run(self.trial, self.data, self.objConfig, self.objParams)
 
     def __call__(self, trial):

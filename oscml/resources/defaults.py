@@ -34,15 +34,11 @@ DEFAULTS_ = {
 	"use_date_time": True
 },
 "post_processing":{
-    "contour_plot": False,
 	"contour_plot_alt_dir": None,
-    "best_trial_retraining": False,
     "z_transform_inverse_prediction": False,
-    "regression_plot": False,
-    "transfer": False
+    "regression_plot": False
 },
 "transfer_learning": {
-  "fine_tune": False,
   "freeze_and_train": False
 }
 }
