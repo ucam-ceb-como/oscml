@@ -21,6 +21,7 @@ class Test_HPO(unittest.TestCase):
         ['simplegnn','trials_5_no_cv'],
         ['simplegnn','trials_1_cv_2'],
         ['simplegnn','trials_2_cv_2'],
+        ['simplegnn','transfer'],
         ['bilstm','trials_5_no_cv'],
         ['bilstm','trials_1_cv_2'],
         ['bilstm','trials_2_cv_2'],
