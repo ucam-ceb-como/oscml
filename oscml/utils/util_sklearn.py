@@ -264,7 +264,7 @@ def best_model_retraining(trial, model, metric, x_train, y_train, x_val, y_val,
 
     model.fit(x_train, y_train)
 
-    model_pkl_file = os.path.join(dirpath,"model.pkl")
+    model_pkl_file = os.path.join(dirpath,"best_trial_retrain_model.ckpt")
     # using torch.save method rather than pure pickle or joblib
     # found that pickle or joblib do not work for some lambda functions in the svr model
     # torch.save in turn does work with lambdas.
