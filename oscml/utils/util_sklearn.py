@@ -5,9 +5,10 @@ import numpy as np
 import pandas as pd
 from pathlib import Path
 from sklearn.model_selection import ShuffleSplit
+import dill
 import os
 import oscml.utils.util
-
+import torch
 
 def calculate_mean_prediction(regressors, x, y):
 
@@ -262,6 +263,14 @@ def best_model_retraining(trial, model, metric, x_train, y_train, x_val, y_val,
     Path(dirpath).mkdir(parents=True, exist_ok=True)
 
     model.fit(x_train, y_train)
+
+    model_pkl_file = os.path.join(dirpath,"model.pkl")
+    # using torch.save method rather than pure pickle or joblib
+    # found that pickle or joblib do not work for some lambda functions in the svr model
+    # torch.save in turn does work with lambdas.
+    torch.save(obj=model,
+               f=model_pkl_file,
+               pickle_module=dill)
     log_and_plot(model, x_train, y_train, x_test, y_test, dirpath, transformer=transformer,
                  inverse=inverse, regression_plot=regression_plot, log_head=log_head)
     return calculate_metrics(model, x_train, y_train, metric, 'val', log_head)

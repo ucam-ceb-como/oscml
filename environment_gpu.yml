@@ -25,3 +25,4 @@ dependencies:
     - docopt==0.6.2
     - py4jps==1.0.0
     - parameterized==0.8.1
+    - dill==0.3.3
