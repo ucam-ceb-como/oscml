@@ -27,7 +27,8 @@ class Test_HPO(unittest.TestCase):
         ['bilstm','transfer'],
         ['attentivefp','trials_5_no_cv'],
         ['attentivefp','trials_1_cv_2'],
-        ['attentivefp','trials_2_cv_2']
+        ['attentivefp','trials_2_cv_2'],
+        ['attentivefp','transfer']
     ])
     def test_models(self, model, test):
         print('========================================================')
