@@ -16,6 +16,7 @@ Usage:
         --predict=DOMODELPREDICTION            Run the model predict flag (default False)
         --trials=TRIALS                        No. of hpo trials to run (default 10)
         --predict_input=SMILESLIST             List of smiles strings to be passed to saved model for pce prediction (no default)
+        --actual_output=PCELIST                List of pce values associated with defined SMILESLIST (no default)
         --jobs=JOBS                            No. of parallel hpo jobs (default 1)
         --epochs=EPOCHS                        No. of epochs to use during training (if applicable, no default)
         --batch_size=BATCHSIZE                 Batch size to use during training (if applicable, no default)
