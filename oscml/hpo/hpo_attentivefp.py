@@ -16,6 +16,8 @@ from dgllife.model import AttentiveFPPredictor
 import pandas as pd
 from oscml.data.dataset import DataTransformer
 import dill
+import os
+import glob
 from oscml.hpo.hpo_utils import NN_model_train, \
                                 NN_addBestModelRetrainCallback, \
                                 NN_valDataCheck, \
@@ -172,7 +174,7 @@ def pickleAtfpModel(trial, model, data, objConfig, objParams):
                pickle_module=dill)
 
 def unpickleAtfpModel(trial, data, objConfig, objParams):
-    ckpt_path = objParams['ckpt_path']
+    ckpt_path = glob.glob(objParams['ckpt_path'])[0]
     model_and_params = torch.load(ckpt_path, pickle_module=dill)
     model = model_and_params.pop('model')
     model = ModelWrapper(model, **model_and_params)
