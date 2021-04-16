@@ -15,21 +15,26 @@ class Test_HPO(unittest.TestCase):
         ['rf','trials_5_no_cv'],
         ['rf','trials_1_cv_2'],
         ['rf','trials_2_cv_2'],
+        ['rf','predict'],
         ['svr','trials_5_no_cv'],
         ['svr','trials_1_cv_2'],
         ['svr','trials_2_cv_2'],
+        ['svr','predict'],
         ['simplegnn','trials_5_no_cv'],
         ['simplegnn','trials_1_cv_2'],
         ['simplegnn','trials_2_cv_2'],
         ['simplegnn','transfer'],
+        ['simplegnn','predict'],
         ['bilstm','trials_5_no_cv'],
         ['bilstm','trials_1_cv_2'],
         ['bilstm','trials_2_cv_2'],
         ['bilstm','transfer'],
+        ['bilstm','predict'],
         ['attentivefp','trials_5_no_cv'],
         ['attentivefp','trials_1_cv_2'],
         ['attentivefp','trials_2_cv_2'],
         ['attentivefp','transfer']
+        ['attentivefp','predict']
     ])
     def test_models(self, model, test):
         print('========================================================')
@@ -72,6 +77,7 @@ def _getTestData(testDir):
     hpoDir = os.path.join(testDir,'hpo')
     bestTrialRetrainDir = os.path.join(testDir,'best_trial_retrain')
     transferLearningDir = os.path.join(testDir,'transfer_learning')
+    modelPredictDir = os.path.join(testDir,'model_predict')
     if os.path.exists(hpoDir):
         df = pd.read_csv(os.path.join(hpoDir,'hpo_result.csv'))
         for col in ['datetime_start', 'datetime_complete','duration']:
@@ -92,6 +98,9 @@ def _getTestData(testDir):
         if 'time' in df:
             df = df.drop(['time'], axis=1)
         testData['transferLearning'+'_trial_'+str(transferLearningTrialNr)] = df
+    if os.path.exists(modelPredictDir):
+        df = pd.read_csv(os.path.join(modelPredictDir,'model_predict.csv'))
+        testData['modelPredict'] = df
     return testData
 
 if __name__ == '__main__':
