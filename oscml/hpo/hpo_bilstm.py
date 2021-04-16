@@ -9,22 +9,36 @@ from oscml.hpo.hpo_utils import NN_model_train, NN_model_train_cross_validate
 from oscml.hpo.hpo_utils import NN_addBestModelRetrainCallback
 from oscml.hpo.hpo_utils import NN_logBestTrialRetraining, NN_transferLearningCallback
 from oscml.hpo.hpo_utils import NN_logTransferLearning, NN_prepareTransferLearningModel
-from oscml.hpo.hpo_utils import NN_valDataCheck, NN_loadModelFromCheckpoint
+from oscml.hpo.hpo_utils import NN_valDataCheck, NN_loadModelFromCheckpoint, NN_ModelPredict
 from oscml.data.dataset import get_dataset_info
+from oscml.utils.util import smiles2mol
+import torch
+import numpy as np
+import pandas as pd
 
-def getObjectiveBilstm(modelName, data, config, logFile, logDir,
-                       crossValidation, bestTrialRetraining=False,
-                       transferLearning=False, evaluateModel=False):
-
+def getObjectiveBilstm(
+        modelName,
+        data,
+        config,
+        logFile,
+        logDir,
+        logHead,
+        crossValidation,
+        bestTrialRetraining=False,
+        transferLearning=False,
+        modelPredict=False
+    ):
     # create a model agnostic objective instance
     objectiveBilstm = Objective(modelName=modelName, data=data, config=config,
-                        logFile=logFile, logDir=logDir)
+                        logFile=logFile, logDir=logDir, logHead=logHead)
 
     # add goal and model specific settings
     if bestTrialRetraining:
         objectiveBilstm = addBestTrialRetrainingSettings(objectiveBilstm, config)
     elif transferLearning:
         objectiveBilstm = addTransferLearningSettings(objectiveBilstm, crossValidation, config)
+    elif modelPredict:
+        objectiveBilstm = addModelPredictSettings(objectiveBilstm)
     else:
         objectiveBilstm = addHpoSettings(objectiveBilstm, crossValidation, config)
     return objectiveBilstm
@@ -40,6 +54,13 @@ def addBestTrialRetrainingSettings(objective, config):
     objective.addPreModelCreateTask(objParamsKey='training', funcHandle=preproc_training_params)
     objective.addPostModelCreateTask(objParamsKey='callbackBestTrialRetraining', funcHandle=NN_addBestModelRetrainCallback)
     objective.addPostTrainingTask(objParamsKey='logBestTrialRetrain', funcHandle=NN_logBestTrialRetraining)
+    return objective
+
+def addModelPredictSettings(objective):
+    objective.addPreModelCreateTask(objParamsKey='ckpt_path', funcHandle=setModelCheckpoint)
+    objective.setModelCreator(funcHandle=NN_loadModelFromCheckpoint, extArgs=[BiLstmForPce])
+    objective.addPostModelCreateTask(objParamsKey='predictDataPreproc', funcHandle=predictDataPreproc)
+    objective.addPostModelCreateTask(objParamsKey='predictModel', funcHandle=NN_ModelPredict)
     return objective
 
 def addTransferLearningSettings(objective, crossValidation, config):
@@ -135,3 +156,34 @@ def data_preproc(trial, data, objConfig, objParams):
     }
     processed_data = {**data, **processed_data}
     return processed_data
+
+def setModelCheckpoint(trial, data, objConfig, objParams):
+    return objConfig['config']['predict_settings']['ckpt_path']
+
+def predictDataPreproc(trial, model, data, objConfig, objParams):
+    type_dict = objConfig['config']['model']['type_dict']
+    info = get_dataset_info(type_dict)
+    max_sequence_length = objConfig['config']['model']['max_sequence_length']
+    mol2seq_obj = info.mol2seq
+    padding_index = 0
+    padding_sequence = [padding_index]*max_sequence_length
+    # index - row index in the dataframe
+    x = []
+    for smiles in data:
+        # smiles to rdkit mol object
+        m = smiles2mol(smiles)
+        # m to fragments sequence vector in BFS (not padded yet) but it may include oov indices as "-1"
+        xx = mol2seq_obj(m)
+        # increase all indexes by +1 - this this would shift any oov indices to "0"
+        xx = np.array(xx) + 1
+        # fill up the sequence with padding index 0
+        diff = max_sequence_length-len(xx)
+        if diff > 0:
+            xx = np.append(xx, padding_sequence[:diff])
+        if diff < 0:
+            raise RuntimeError('A sequence with length greater the maximum sequence length was generated.',
+                    ', length=', len(xx), ', maximum sequence length=', max_sequence_length)
+
+        xx = torch.tensor([xx], dtype = torch.long)
+        x.append(xx)
+    return x

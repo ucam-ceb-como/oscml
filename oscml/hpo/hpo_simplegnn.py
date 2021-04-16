@@ -8,28 +8,49 @@ from oscml.hpo.hpo_utils import preproc_training_params
 from oscml.utils.util_transfer_learning import SimpleGNNTransfer
 from oscml.models.model_gnn import SimpleGNN
 from oscml.hpo.hpo_utils import NN_model_train, NN_logBestTrialRetraining, NN_valDataCheck
-from oscml.hpo.hpo_utils import NN_model_train_cross_validate, NN_addBestModelRetrainCallback
-from oscml.hpo.hpo_utils import NN_prepareTransferLearningModel, NN_logTransferLearning, NN_transferLearningCallback
+from oscml.hpo.hpo_utils import NN_model_train_cross_validate, \
+                                NN_addBestModelRetrainCallback, \
+                                NN_prepareTransferLearningModel, \
+                                NN_logTransferLearning, \
+                                NN_transferLearningCallback, \
+                                NN_loadModelFromCheckpoint, \
+                                NN_ModelPredict
 from oscml.hpo.objclass import Objective
+from oscml.data.dataset import get_dataset_info
+from oscml.utils.util import smiles2mol
+from oscml.models.model_gnn import Mol2seq_simple
+import rdkit
+import rdkit.Chem
+import rdkit.Chem.AllChem
+import rdkit.Chem.rdmolops
+import networkx
+import dgl
+import torch
 
-
-def getObjectiveSimpleGNN(modelName, data, config, logFile, logDir,
-                         crossValidation, bestTrialRetraining=False, transferLearning=False):
-
-    if not crossValidation:
-        # for not cv job, make sure there is non empty validation set
-        # as NN methods require it for training
-        data = NN_valDataCheck(data, config, transferLearning)
+def getObjectiveSimpleGNN(
+        modelName,
+        data,
+        config,
+        logFile,
+        logDir,
+        logHead,
+        crossValidation,
+        bestTrialRetraining=False,
+        transferLearning=False,
+        modelPredict=False
+    ):
 
     # create SimpleGNN objective
     objectiveSimpleGNN = Objective(modelName=modelName, data=data, config=config,
-                        logFile=logFile, logDir=logDir)
+                        logFile=logFile, logDir=logDir, logHead=logHead)
 
     # add goal and model specific settings
     if bestTrialRetraining:
         objectiveSimpleGNN = addBestTrialRetrainingSettings(objectiveSimpleGNN, config)
     elif transferLearning:
         objectiveSimpleGNN = addTransferLearningSettings(objectiveSimpleGNN, crossValidation, config)
+    elif modelPredict:
+        objectiveSimpleGNN = addModelPredictSettings(objectiveSimpleGNN)
     else:
         objectiveSimpleGNN = addHpoSettings(objectiveSimpleGNN, crossValidation, config)
     return objectiveSimpleGNN
@@ -44,6 +65,13 @@ def addBestTrialRetrainingSettings(objective, config):
     objective.addPreModelCreateTask(objParamsKey='training', funcHandle=preproc_training_params)
     objective.addPostModelCreateTask(objParamsKey='callbackBestTrialRetraining', funcHandle=NN_addBestModelRetrainCallback)
     objective.addPostTrainingTask(objParamsKey='logBestTrialRetrain', funcHandle=NN_logBestTrialRetraining)
+    return objective
+
+def addModelPredictSettings(objective):
+    objective.addPreModelCreateTask(objParamsKey='ckpt_path', funcHandle=setModelCheckpoint)
+    objective.setModelCreator(funcHandle=NN_loadModelFromCheckpoint, extArgs=[SimpleGNN])
+    objective.addPostModelCreateTask(objParamsKey='predictDataPreproc', funcHandle=predictDataPreproc)
+    objective.addPostModelCreateTask(objParamsKey='predictModel', funcHandle=NN_ModelPredict)
     return objective
 
 def addTransferLearningSettings(objective, crossValidation, config):
@@ -147,3 +175,37 @@ def data_preproc(trial, data, objConfig, objParams):
     }
     processed_data = {**data, **processed_data}
     return processed_data
+
+
+def setModelCheckpoint(trial, data, objConfig, objParams):
+    return objConfig['config']['predict_settings']['ckpt_path']
+
+def predictDataPreproc(trial, model, data, objConfig, objParams):
+    type_dict = objConfig['config']['model']['type_dict']
+    info = get_dataset_info(type_dict)
+    node2index = info.node_types
+    mol2seq = Mol2seq_simple(node2index, fix=True, oov=True)
+
+    # index - row index in the dataframe
+    x = []
+    for smiles in data:
+        # smiles string -> molecular graph
+        m = smiles2mol(smiles)
+        # molecular graph -> sequence of indices of atom types
+        seq = mol2seq(m)
+        #    1 2 3   - this is to get the connectivity
+        # 1  0 1 0   - rows must have the same ordering of atoms!
+        # 2  1 0 0
+        # 3 ...
+        adj = rdkit.Chem.rdmolops.GetAdjacencyMatrix(m)
+        # so this an intermediate step, from adj -> g_nx
+        g_nx = networkx.convert_matrix.from_numpy_matrix(adj)
+        # g_nx -> g
+        g = dgl.from_networkx(g_nx)
+
+        tensor = torch.as_tensor(seq, dtype=torch.long)
+        # define 'type' var in the graph
+        g.ndata['type'] = tensor
+
+        x.append(g)
+    return x

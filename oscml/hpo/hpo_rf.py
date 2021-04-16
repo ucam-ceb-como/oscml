@@ -7,19 +7,33 @@ from oscml.utils.util import smiles2mol
 from oscml.utils.util_sklearn import train_model_hpo, best_model_retraining
 from oscml.hpo.objclass import Objective
 from oscml.hpo.hpo_utils import preproc_training_params, BL_model_train
-from oscml.hpo.hpo_utils import BL_model_train_cross_validate, BL_bestTrialRetrainDataPreproc
+from oscml.hpo.hpo_utils import BL_model_train_cross_validate, \
+                                BL_bestTrialRetrainDataPreproc, \
+                                BL_loadModelFromCheckpoint, BL_ModelPredict
 from oscml.utils.util_config import set_config_param
 
 
-def getObjectiveRF(modelName, data, config, logFile, logDir,
-                   crossValidation, bestTrialRetraining=False, transferLearning=False):
+def getObjectiveRF(
+        modelName,
+        data,
+        config,
+        logFile,
+        logDir,
+        logHead,
+        crossValidation,
+        bestTrialRetraining=False,
+        transferLearning=False,
+        modelPredict=False
+    ):
 
     objectiveRF = Objective(modelName=modelName, data=data, config=config,
-                        logFile=logFile, logDir=logDir)
+                        logFile=logFile, logDir=logDir, logHead=logHead)
 
     # add goal and model specific settings
     if bestTrialRetraining:
         objectiveRF = addBestTrialRetrainingSettings(objectiveRF)
+    elif modelPredict:
+        objectiveRF = addModelPredictSettings(objectiveRF)
     else:
         objectiveRF = addHpoSettings(objectiveRF, crossValidation)
     return objectiveRF
@@ -29,6 +43,12 @@ def addBestTrialRetrainingSettings(objective):
     objective.setModelCreator(funcHandle=model_create)
     objective.setModelTrainer(funcHandle=BL_model_train,extArgs=[data_preproc, best_model_retraining])
     objective.addPreModelCreateTask(objParamsKey='training', funcHandle=preproc_training_params)
+    return objective
+
+def addModelPredictSettings(objective):
+    objective.setModelCreator(funcHandle=BL_loadModelFromCheckpoint)
+    objective.addPostModelCreateTask(objParamsKey='predictDataPreproc', funcHandle=smilesToMorganFP)
+    objective.addPostModelCreateTask(objParamsKey='predictModel', funcHandle=BL_ModelPredict)
     return objective
 
 def addHpoSettings(objective, crossValidation):
@@ -66,6 +86,8 @@ def data_preproc(trial, data, objConfig, objParams):
     x_column = data['x_column'][0]
     y_column = data['y_column'][0]
 
+    objParams['model_params'] = fp_params
+
     # at the moment the only supported fingerprint choice is morgan
     fp_type = fp_params.pop('type',None)
     if fp_type=='morgan':
@@ -100,3 +122,12 @@ def dataFrameToMorganFP(df, params_morgan, columns_smiles, column_y):
         y.append(pce)
 
     return (x, y)
+
+def smilesToMorganFP(trial, model, data, objConfig, objParams):
+    x = []
+    params_morgan = objParams['model_params']
+    for smiles in data:
+        m = smiles2mol(smiles)
+        fingerprint = rdkit.Chem.AllChem.GetMorganFingerprintAsBitVect(m, **params_morgan)
+        x.append(fingerprint)
+    return x

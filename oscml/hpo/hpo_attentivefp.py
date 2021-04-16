@@ -7,28 +7,49 @@ import dgllife.utils
 import torch
 import torch.utils.data
 from oscml.utils.util_config import set_config_param
-import oscml.utils.util_lightning
+from oscml.utils.util_lightning import ModelWrapper
 import oscml.utils.util_transfer_learning
 from oscml.hpo.objclass import Objective
 from oscml.hpo.hpo_utils import preproc_training_params
 from oscml.utils.util_transfer_learning import AttentiveFPTransfer
 from dgllife.model import AttentiveFPPredictor
-from oscml.hpo.hpo_utils import NN_model_train, NN_addBestModelRetrainCallback, NN_valDataCheck
-from oscml.hpo.hpo_utils import NN_model_train_cross_validate, NN_logBestTrialRetraining, NN_transferLearningCallback
-from oscml.hpo.hpo_utils import NN_prepareTransferLearningModel, NN_logTransferLearning
+import pandas as pd
+from oscml.data.dataset import DataTransformer
+import dill
+from oscml.hpo.hpo_utils import NN_model_train, \
+                                NN_addBestModelRetrainCallback, \
+                                NN_valDataCheck, \
+                                NN_model_train_cross_validate, \
+                                NN_logBestTrialRetraining, \
+                                NN_transferLearningCallback, \
+                                NN_prepareTransferLearningModel, \
+                                NN_logTransferLearning, \
+                                NN_loadModelFromCheckpoint, \
+                                NN_ModelPredict
 
-
-def getObjectiveAttentiveFP(modelName, data, config, logFile, logDir,
-                            crossValidation, bestTrialRetraining=False, transferLearning=False):
+def getObjectiveAttentiveFP(
+        modelName,
+        data,
+        config,
+        logFile,
+        logDir,
+        logHead,
+        crossValidation,
+        bestTrialRetraining=False,
+        transferLearning=False,
+        modelPredict=False
+    ):
 
     objectiveAttentiveFP = Objective(modelName=modelName, data=data, config=config,
-                        logFile=logFile, logDir=logDir)
+                        logFile=logFile, logDir=logDir, logHead=logHead)
 
     # add goal and model specific settings
     if bestTrialRetraining:
         objectiveAttentiveFP = addBestTrialRetrainingSettings(objectiveAttentiveFP, config)
     elif transferLearning:
         objectiveAttentiveFP = addTransferLearningSettings(objectiveAttentiveFP, crossValidation, config)
+    elif modelPredict:
+        objectiveAttentiveFP = addModelPredictSettings(objectiveAttentiveFP)
     else:
         objectiveAttentiveFP = addHpoSettings(objectiveAttentiveFP, crossValidation, config)
     return objectiveAttentiveFP
@@ -44,6 +65,15 @@ def addBestTrialRetrainingSettings(objective, config):
     objective.addPreModelCreateTask(objParamsKey='featurizer', funcHandle=get_featuriser)
     objective.addPostModelCreateTask(objParamsKey='callbackBestTrialRetraining', funcHandle=NN_addBestModelRetrainCallback)
     objective.addPostTrainingTask(objParamsKey='logBestTrialRetrain', funcHandle=NN_logBestTrialRetraining)
+    objective.addPostTrainingTask(objParamsKey='pickleAtfpModel', funcHandle=pickleAtfpModel)
+    return objective
+
+def addModelPredictSettings(objective):
+    objective.addPreModelCreateTask(objParamsKey='ckpt_path', funcHandle=setModelCheckpoint)
+    objective.setModelCreator(funcHandle=unpickleAtfpModel)
+    objective.addPreModelCreateTask(objParamsKey='featurizer', funcHandle=get_featuriser)
+    objective.addPostModelCreateTask(objParamsKey='predictDataPreproc', funcHandle=predictDataPreproc)
+    objective.addPostModelCreateTask(objParamsKey='predictModel', funcHandle=NN_ModelPredict)
     return objective
 
 def addTransferLearningSettings(objective, crossValidation, config):
@@ -132,9 +162,22 @@ def model_create(trial, data, objConfig, objParams, modelCreatorClass):
     logging.info('model params=%s', model_params)
 
     model_predictor = modelCreatorClass(**model_params)
-    model = oscml.utils.util_lightning.ModelWrapper(model_predictor, optimizer, target_mean, target_std)
-
+    model = ModelWrapper(model_predictor, optimizer, target_mean, target_std)
     return model
+
+def pickleAtfpModel(trial, model, data, objConfig, objParams):
+    path = os.path.join(objParams['best_trial_retrain_dirpath'],'best_trial_retrain.pkl')
+    torch.save(obj={'model':model.model, 'optimizer':model.optimizer, 'target_mean':model.target_mean, 'target_std':model.target_std},
+               f=path,
+               pickle_module=dill)
+
+def unpickleAtfpModel(trial, data, objConfig, objParams):
+    ckpt_path = objParams['ckpt_path']
+    model_and_params = torch.load(ckpt_path, pickle_module=dill)
+    model = model_and_params.pop('model')
+    model = ModelWrapper(model, **model_and_params)
+    return model
+
 class SimpleAtomFeaturizer(dgllife.utils.BaseAtomFeaturizer):
 
     def __init__(self, atom_data_field='h'):
@@ -264,3 +307,21 @@ def data_preproc(trial, data, objConfig, objParams):
     }
     processed_data = {**data, **processed_data}
     return processed_data
+
+def setModelCheckpoint(trial, data, objConfig, objParams):
+    return objConfig['config']['predict_settings']['ckpt_path']
+
+def predictDataPreproc(trial, model, data, objConfig, objParams):
+    dgl_log_dir = objConfig['log_dir'] + '/dgl'
+    featurizer = objParams['featurizer']
+    objParams['splitBatchesFlag'] = True
+
+    dd = [[x,y] for x,y in zip(data , [1.0]*len(data))]
+    df = pd.DataFrame(dd, columns=['smiles', 'dummy_y'])
+    dummyTransformer = DataTransformer(column_target='dummy_y', target_mean=1.0, target_std=1.0, column_x='smiles')
+
+    train_dl= get_dataloader(df=df, file_name="graph_train.bin", shuffle=False,
+                             smiles_column='smiles', y_column='dummy_y', transformer=dummyTransformer,
+                             batch_size=1, log_dir=dgl_log_dir, node_featurizer=featurizer['node_featurizer'],
+                             edge_featurizer=featurizer['edge_featurizer'], collate_fn=collate_molgraphs)
+    return train_dl
