@@ -96,7 +96,6 @@ def preprocess_data_phys_and_struct(df, params_fingerprint, train_size, column_s
         #log('structural data:', type(x_struct), x_struct.shape)
         x = x_struct
 
-    scaler_svr_physical_data = None
     if columns_phys:
         x_phys = df_copy[columns_phys]
         if scaler_svr_physical_data:
