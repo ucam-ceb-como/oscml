@@ -5,7 +5,7 @@ from oscml.utils.util_pytorch import torch_init
 from oscml.utils.util import init_file_logging
 from oscml.data.dataset import get_dataframes
 from oscml.hpo.optunawrapper import check_for_existing_study
-from oscml.hpo.optunawrapper import runHPO, runPostProcTraining
+from oscml.hpo.optunawrapper import runHPO, runPostProcTraining, runModelPredict
 from oscml.visualization.util_sns_plot import contour_plot
 import logging
 import os
@@ -61,11 +61,7 @@ class JobHandler:
     """
     def __init__(self,cmdArgs):
         "JobHandler constructor"
-        # remove None values and convert 'False' and 'True' strings to boolean
-        cmdArgs = {k: v for k, v in cmdArgs.items() if v is not None}
-        cmdArgs = {**cmdArgs, **{k: True for k, v in cmdArgs.items() if v.lower()=="true"}}
-        cmdArgs = {**cmdArgs, **{k: False for k, v in cmdArgs.items() if v.lower()=="false"}}
-        self.cmdArgs = cmdArgs
+        self.cmdArgs = self._processCmdArgs(cmdArgs)
         self.defaultArgs = None
         self.configFile = self._readConfigFile()
         self.configParams = self._setConfigParams()
@@ -86,6 +82,7 @@ class JobHandler:
         if goals['contour_plot']: self.goals.append(JobGoal(name='contour_plot', runFunc=self._runCountourPlot))
         if goals['best_trial_retraining']: self.goals.append(JobGoal(name='best_trial_retraining', runFunc=self._runBestTrialRetraining))
         if goals['transfer_learning']: self.goals.append(JobGoal(name='transfer_learning', runFunc=self._runTransferLearning))
+        if goals['predict']: self.goals.append(JobGoal(name='predict', runFunc=self._runModelPredict))
 
     def runJob(self):
         # set the goals first
@@ -120,27 +117,32 @@ class JobHandler:
         if not self.dataInit:
             self._initData(crossValidation=crossValidation)
         log_dir = os.path.join(self.log_dir,'hpo')
-        self._initObjective(logDir=log_dir, crossValidation=crossValidation)
-        runHPO(objective=self.objective, log_dir=log_dir, \
-                    config=self.configParams, total_number_trials=self.total_trials_nr)
+        logHead=None
+        self._initObjective(logDir=log_dir, logHead=logHead, crossValidation=crossValidation)
+        runHPO(objective=self.objective, config=self.configParams, total_number_trials=self.total_trials_nr)
 
     def _runBestTrialRetraining(self):
         if not self.dataInit:
             self._initData(crossValidation=False)
         logDir = os.path.join(self.log_dir,'best_trial_retrain')
         logHead = '[Best trial retrain - Trial '
-        self._initObjective(logDir=logDir, crossValidation=False, bestTrialRetraining=True)
-        runPostProcTraining(objective=self.objective, logDir=logDir, logHead=logHead,\
-                    jobConfig=self.configParams)
+        self._initObjective(logDir=logDir, logHead=logHead, crossValidation=False, bestTrialRetraining=True)
+        runPostProcTraining(objective=self.objective, jobConfig=self.configParams)
 
     def _runTransferLearning(self):
         if not self.transferDataInit:
             self._initData(crossValidation=False, transferLearning=True)
         logDir = os.path.join(self.log_dir,'transfer_learning')
         logHead = '[Best trial transfer learning - Trial '
-        self._initObjective(logDir=logDir, crossValidation=False, transferLearning=True)
-        runPostProcTraining(objective=self.objective, logDir=logDir, logHead=logHead, \
-                    jobConfig=self.configParams)
+        self._initObjective(logDir=logDir, logHead=logHead, crossValidation=False, transferLearning=True)
+        runPostProcTraining(objective=self.objective, jobConfig=self.configParams)
+
+    def _runModelPredict(self):
+        self.data = self.configParams['predict_settings']['predict_input']
+        logDir = os.path.join(self.log_dir,'model_predict')
+        logHead = 'Model predict'
+        self._initObjective(logDir=logDir, logHead=logHead, crossValidation=False, bestTrialRetraining=False, modelPredict=True)
+        runModelPredict(objective=self.objective, jobConfig=self.configParams)
 
     def _runCountourPlot(self):
         logDir = self.configParams['post_processing']['contour_plot_alt_dir']
@@ -148,7 +150,15 @@ class JobHandler:
         path = os.path.join(logDir,'hpo','hpo_result.csv')
         contour_plot(logDir, path)
 
-    def _initObjective(self, crossValidation, transferLearning=False, bestTrialRetraining=False, logDir=None):
+    def _initObjective(
+                self,
+                crossValidation,
+                transferLearning=False,
+                bestTrialRetraining=False,
+                modelPredict=False,
+                logDir=None,
+                logHead=None
+                ):
         n_previous_trials = check_for_existing_study(self.configParams['training']['storage'], \
                                                      self.configParams['training']['study_name'])
 
@@ -176,11 +186,19 @@ class JobHandler:
         elif model_name == 'SimpleGNN':
             from oscml.hpo.hpo_simplegnn import getObjectiveSimpleGNN as getObjective
 
-
         if logDir is None: logDir = self.log_dir
-        self.objective = getObjective(modelName=model_name, data=self.data, config=self.configParams,
-                            logFile= self.log_file, logDir=logDir, transferLearning=transferLearning,
-                            crossValidation=crossValidation, bestTrialRetraining=bestTrialRetraining)
+        self.objective = getObjective(
+                            modelName=model_name,
+                            data=self.data,
+                            config=self.configParams,
+                            logFile= self.log_file,
+                            logDir=logDir,
+                            logHead=logHead,
+                            transferLearning=transferLearning,
+                            crossValidation=crossValidation,
+                            bestTrialRetraining=bestTrialRetraining,
+                            modelPredict=modelPredict
+                        )
 
     def _initTorch(self):
         torch_init(**self.configParams['numerical_settings'])
@@ -271,6 +289,16 @@ class JobHandler:
                 return json.load(json_config, object_pairs_hook=OrderedDict)
         except FileNotFoundError:
             raise FileNotFoundError('Error: Config file not found.')
+
+    @staticmethod
+    def _processCmdArgs(cmdArgs):
+        # remove None values and convert 'False' and 'True' strings to boolean
+        cmdArgs = {k: v for k, v in cmdArgs.items() if v is not None}
+        for k, v in cmdArgs.items():
+            if v.lower()=="true": cmdArgs[k] = True
+            elif v.lower()=="false": cmdArgs[k] = False
+            elif v[0]=="[" and v[-1]==']': cmdArgs[k] = v[1:-1].split(',')
+        return cmdArgs
 
     def _setConfigParams(self):
         def getDefaultsToAdd(dinter, confArgs, defArgs):

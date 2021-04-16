@@ -6,9 +6,9 @@ _RES_LOG_CONFIG_FILE = os.path.join(_RES_DIR,'logging.yaml')
 
 DEFAULTS_ = {
 "goals":{
-    "hpo": True,
+    "hpo": False,
     "contour_plot": False,
-    "best_trial_retraining": True,
+    "best_trial_retraining": False,
     "transfer_learning": False,
     "predict": False
 },
@@ -47,5 +47,9 @@ DEFAULTS_ = {
 },
 "transfer_learning": {
   "freeze_and_train": False
-}
+},
+"predict_settings": {
+  "predict_input": [],
+  "actual_output": []
+},
 }
