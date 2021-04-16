@@ -15,6 +15,8 @@ import pandas as pd
 import os
 from oscml.visualization.util_sns_plot import prediction_plot
 import re
+import dill
+from pathlib import Path
 
 class MetricsCallback(pl.Callback):
 
@@ -157,14 +159,14 @@ def NN_model_train_cross_validate(trial, model, data, objConfig, objParams, data
 
     return metric_value
 
-def BL_model_train(trial, model, data, objConfig, objParams, dataPreproc, *args):
+def BL_model_train(trial, model, data, objConfig, objParams, dataPreproc, trainerFunc):
     data = dataPreproc(trial, data, objConfig, objParams)
-    obj_value = train_model(trial, model, data, objConfig, objParams, *args)
+    obj_value = train_model(trial, model, data, objConfig, objParams, trainerFunc)
     return obj_value
 
 def BL_model_train_cross_validate(trial, model, data, objConfig, objParams, dataPreproc, *args):
     data = dataPreproc(trial, data, objConfig, objParams)
-    obj_value = train_model_cross_validate(trial, model, data, objConfig, objParams, *args)
+    obj_value = train_model_cross_validate(trial, model, data, objConfig, objParams)
     return obj_value
 
 def preproc_training_params(trial, data, objConfig, objParams):
@@ -248,12 +250,12 @@ def _logAndPlotResults(trial, model, data, objConfig, objParams, fileName):
     val_dl = data['val']
     test_dl = data['test']
 
-
     dirpath = os.path.join(log_dir, 'trial_' + str(trial.number))
     ckpt_path = getLastCheckpointPath(os.path.join(dirpath, fileName+'*.ckpt'))
-    model.load_state_dict(torch.load(ckpt_path)['state_dict'])
+    model.load_state_dict(torch.load(ckpt_path, map_location=torch.device('cpu'))['state_dict'])
     model.eval()
 
+    objParams['best_trial_retrain_dirpath'] = dirpath
     index_dl = ['training set', 'validation set', 'test set']
 
     dataset_dl = [train_dl, val_dl, test_dl]
@@ -309,10 +311,64 @@ def NN_prepareTransferLearningModel(trial, model, data, objConfig, objParams):
     return model
 
 def NN_loadModelFromCheckpoint(trial, data, objConfig, objParams, modelCreatorClass):
-    ckpt_path = getLastCheckpointPath(objConfig['config']['post_processing']['ckpt_path'])
+    ckpt_path = getLastCheckpointPath(objParams['ckpt_path'])
     model = modelCreatorClass.load_from_checkpoint(ckpt_path)
     model.eval()
     return model
+
+def BL_loadModelFromCheckpoint(trial, data, objConfig, objParams):
+    ckpt_path = getLastCheckpointPath(objConfig['config']['predict_settings']['ckpt_path'])
+    model_and_params = torch.load(f=ckpt_path, pickle_module=dill)
+    model = model_and_params['model']
+    objParams['model_params'] = model_and_params['model_params']
+    return model
+
+def NN_ModelPredict(trial, model, data, objConfig, objParams):
+    log_dir = objConfig['log_dir']
+    data = objParams['predictDataPreproc']
+    model.freeze()
+    target_std = model.target_std
+    target_mean = model.target_mean
+    inverse = objConfig['config']['post_processing']['z_transform_inverse_prediction']
+    splitBatchesFlag = 'splitBatchesFlag' in objParams
+    obj_values = []
+    for batch in data:
+        if splitBatchesFlag:
+            obj_value = model(*batch).numpy()[0][0]
+        else:
+            obj_value = model(batch).numpy()[0]
+        if inverse:
+            obj_value= obj_value * target_std + target_mean
+        obj_values.append(obj_value)
+    _logModelPredict(trial, model, data, objConfig, objParams, obj_values)
+    return obj_values
+
+def BL_ModelPredict(trial, model, data, objConfig, objParams):
+    data = objParams['predictDataPreproc']
+    obj_values = model.predict(data)
+    _logModelPredict(trial, model, data, objConfig, objParams, obj_values)
+
+    return obj_values
+
+def _logModelPredict(trial, model, data, objConfig, objParams, obj_values):
+    predict_inputs = objConfig['config']['predict_settings']['predict_input']
+    log_dir = objConfig['log_dir']
+    log_head = objConfig['log_head']
+    model_name = objConfig['config']['model']['name']
+    logging.info('%s for %s', log_head, model_name)
+    actual_output = objConfig['config']['predict_settings']['actual_output']
+    predicted_results = []
+
+    if actual_output:
+        for obj_val, predict_input, act_out in zip(obj_values,predict_inputs,actual_output):
+            predicted_results.append([obj_val, act_out, predict_input])
+            logging.info('objective value: %s , actual value: %s for input: %s', obj_val, act_out, predict_input)
+        df = pd.DataFrame(predicted_results, columns=['predicted Pce', 'actual Pce','smiles_string'])
+    else:
+        for obj_val, predict_input in zip(obj_values,predict_inputs):
+            predicted_results.append([obj_val, predict_input])
+            logging.info('objective value: %s for input: %s', obj_val, predict_input)
+    df.to_csv(path_or_buf=os.path.join(log_dir,'model_predict.csv'), index=False)
 
 def NN_empty_torch_cache():
     torch.cuda.empty_cache()

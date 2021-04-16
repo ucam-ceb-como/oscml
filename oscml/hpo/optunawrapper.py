@@ -68,7 +68,7 @@ def log_best_trial(trial):
     logging.info('best trial value=%s', trial.value)
     logging.info('best trial params=%s', trial.params)
 
-def runHPO(objective, log_dir, config, total_number_trials):
+def runHPO(objective, config, total_number_trials):
 
     try:
         seed = int(config['numerical_settings']['seed'])
@@ -80,6 +80,7 @@ def runHPO(objective, log_dir, config, total_number_trials):
         n_trials = int(config['training']['trials'])
         n_jobs = int(config['training']['jobs'])
         job_timeout = config['training']['timeout']
+        logDir = objective.objConfig['log_dir']
 
         if storage_url:
             storage = optuna.storages.RDBStorage(
@@ -100,7 +101,7 @@ def runHPO(objective, log_dir, config, total_number_trials):
                 catch = (RuntimeError, ValueError, TypeError), callbacks=[callback_on_trial_finished],
                 gc_after_trial=True)
         logging.info('finished HPO')
-        log_and_save(study, log_dir, get_statistics(study))
+        log_and_save(study, logDir, get_statistics(study))
         best_value = study.best_trial.value
 
         return best_value
@@ -135,13 +136,15 @@ def check_for_existing_study(storage, study_name):
         logging.info('exception - there is no study with name=%s so far', storage)
     return n_previous_trials
 
-def runPostProcTraining(objective, logDir, logHead, jobConfig):
+def runPostProcTraining(objective, jobConfig):
     study_name = jobConfig['training']['study_name']
     storage_url = jobConfig['training']['storage']
     load_if_exists = jobConfig['training']['load_if_exists']
     storage_timeout = jobConfig['training']['storage_timeout']
     seed = jobConfig['numerical_settings']['seed']
     direction = jobConfig['training']['direction']
+    logDir = objective.objConfig['log_dir']
+    logHead = objective.objConfig['log_head']
 
     if storage_url:
         storage = optuna.storages.RDBStorage(
@@ -157,5 +160,13 @@ def runPostProcTraining(objective, logDir, logHead, jobConfig):
     logging.info(logHead)
 
     Path(logDir).mkdir(parents=True, exist_ok=True)
-
     objective(study.best_trial)
+
+def runModelPredict(objective, jobConfig):
+    logDir = objective.objConfig['log_dir']
+    logHead = objective.objConfig['log_head']
+    logging.info('['+logHead+']')
+
+    Path(logDir).mkdir(parents=True, exist_ok=True)
+
+    objective(0)
