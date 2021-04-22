@@ -336,7 +336,10 @@ class JobHandler:
                 else:
                     updval = args.get('--'+k,None)
                     if updval is not None:
-                        dout[k] = type(v)(updval)
+                        if v is not None:
+                            dout[k] = type(v)(updval)
+                        else:
+                            dout[k] = updval
             return dout
 
         cmdArgsDict = cmdArgsToDict(OrderedDict(), DEFAULTS_, self.cmdArgs)
