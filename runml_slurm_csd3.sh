@@ -46,9 +46,9 @@ function usage {
 }
 
 # for debugging the bash script
-#function testfunc {
-#    printf "%s\n" "$@"
-#}
+function testfunc {
+    printf "%s\n" "$@"
+}
 
 JOBNAME="ML_run"
 # Scan command-line arguments
@@ -140,7 +140,7 @@ echo "Submitting job to Slurm..."
 STDOUT1=$JOBNAME"_"slurm.%u.%j.%N.stdout.txt
 STDERR1=$JOBNAME"_"slurm.%u.%j.%N.errout.txt
 
-sbatch --mail-user=$usremailadr --time=$WALLT --output=$STDOUT1 --error=$STDERR1 ./SLURM_runhpo_csd3.sh $ml_exec --config $CONFIG --timeout $WALLTS $ML_ARGS
+sbatch --mail-user=$usremailadr --time=$WALLT --output=$STDOUT1 --error=$STDERR1 ./SLURM_runhpo_csd3.sh $ml_exec $CONFIG --timeout $WALLTS ${ML_ARGS[@]}
 # for debugging the bash script
 #testfunc --mail-user=$usremailadr --time=$WALLT --output=$STDOUT1 --error=$STDERR1 ./SLURM_runhpo_csd3.sh $ml_exec $CONFIG --timeout $WALLTS ${ML_ARGS[@]}
 
