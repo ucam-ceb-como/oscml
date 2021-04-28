@@ -42,7 +42,7 @@ DEFAULTS_ = {
 },
 "post_processing":{
 	"contour_plot_alt_dir": None,
-    "z_transform_inverse_prediction": False,
+    "z_transform_inverse_prediction": True,
     "regression_plot": False
 },
 "transfer_learning": {
