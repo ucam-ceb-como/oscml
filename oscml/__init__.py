@@ -1,3 +1,5 @@
+from oscml.app import app
+
 """Root package info."""
 
 __version__ = '0.0.5'
