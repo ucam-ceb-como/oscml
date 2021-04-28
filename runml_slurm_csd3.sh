@@ -35,7 +35,7 @@ function usage {
     echo "                           |               |                      is to the ml code"
     echo "                      _____|_______     ___|_____               ______|__"
     echo "                     /              \  /         \             /         \ "
-    echo " ./runml_slurm_csd3 -c configFilePath -n my_ml_job -t 00:05:00 --trials 20"
+    echo " ./runml_slurm_csd3 -c configFilePath -n my_ml_job -t 00:05:00 --trials 20  [other options]"
     echo "                                                   \__________/"
     echo "                                                         |"
     echo "                        this will be used as slurm job time and also converted to"
