@@ -79,7 +79,8 @@ def runHPO(objective, config, total_number_trials):
         load_if_exists = config['training']['load_if_exists']
         n_trials = int(config['training']['trials'])
         n_jobs = int(config['training']['jobs'])
-        job_timeout = int(config['training']['timeout'])
+        job_timeout = config['training']['timeout']
+        job_timeout = int(job_timeout) if job_timeout is not None else job_timeout
         logDir = objective.objConfig['log_dir']
 
         if storage_url:
