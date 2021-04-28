@@ -348,7 +348,7 @@ def BL_ModelPredict(trial, model, data, objConfig, objParams):
     obj_values = model.predict(data)
     _logModelPredict(trial, model, data, objConfig, objParams, obj_values)
 
-    return obj_values
+    return obj_values.tolist()
 
 def _logModelPredict(trial, model, data, objConfig, objParams, obj_values):
     predict_inputs = objConfig['config']['predict_settings']['predict_input']
@@ -368,6 +368,7 @@ def _logModelPredict(trial, model, data, objConfig, objParams, obj_values):
         for obj_val, predict_input in zip(obj_values,predict_inputs):
             predicted_results.append([obj_val, predict_input])
             logging.info('objective value: %s for input: %s', obj_val, predict_input)
+        df = pd.DataFrame(predicted_results, columns=['predicted Pce', 'smiles_string'])
     df.to_csv(path_or_buf=os.path.join(log_dir,'model_predict.csv'), index=False)
 
 def NN_empty_torch_cache():
