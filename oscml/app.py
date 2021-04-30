@@ -46,12 +46,13 @@ def api():
         jobHandler.runJob()
 
         # get the results
-        result = {'requestedSmilesString': jobHandler.configParams['predict_settings']['predict_input'],
-                  'powerConversionEfficiency': jobHandler.objective.objParams['predictModel'],
-                  'model': model,
+        result = {'requestedSolarCellDonor': jobHandler.configParams['predict_settings']['predict_input'],
                   'solarCellType': 'organic',
-                  'architecture':'bulk heterojunction',
-                  'acceptorType':'fullerene-based'}
+                  'solarCellArchitecture':'bulk heterojunction',
+                  'solarCellAcceptor':'fullerene-based',
+                  'predictPowerConversionEfficiencyModel': model,
+                  'solarCellPowerConversionEfficiency': jobHandler.objective.objParams['predictModel']
+                }
 
         # Return the result in JSON format
         return jsonify({"result": result})
