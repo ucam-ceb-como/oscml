@@ -135,22 +135,23 @@ def get_dataframes(dataset, seed=200, cvFold=None, nestedCvFolds=None):
     src = dataset['src']
     x_column = dataset['x_column'][0]
     y_column = dataset['y_column'][0]
-    kg_options = dataset.get('kg_options', None)
-    kg_data_file = ""
-    if kg_options is not None: kg_data_file = kg_options.get("dst", "")
+    querykg = dataset['querykg']
+    kg_options = dataset['kg_options']
+    kg_data_file = kg_options['kgdstcsv']
 
-    if kg_options is not None and not os.path.exists(kg_data_file):
+    if querykg:
+        response = queryKG(kg_options['sparqlEndPoint'], kg_options['queryStr'])
+        pces = []
+        smiles = []
+        for items in response:
+            pces.append(items['PowerConversionEfficiencyValue'])
+            smiles.append(items['DonorSMILES'])
+        dd = [[x,y] for x,y in zip(smiles, pces)]
+        df = pd.DataFrame(dd, columns=[x_column, y_column])
+        df = df.sort_values(by=[x_column])
+        df.to_csv(kg_data_file, index=False)
 
-        response = queryKG(kg_options['sparqlEndPoint'],kg_options['queryStr'])
-        # 1. get data from the KG
-        # 2. sort data
-        # 3. reshuffle data
-        # 4. add ml_phase column(s) with initial split
-        # 5. write to a file, then update the config and config params to point to this data source...
-        # the rest should proceed as normal
-
-        df = pd.read_csv(kg_data_file)
-        df_train, df_val, df_test = read_and_split_by_size(kg_data_file, split_size_array=dataset['split'], seed=seed)
+        df_train, df_val, df_test = read_and_split_by_size(kg_data_file, split_size_array=kg_options['split'], seed=seed)
         df_train['ml_phase'] = 'train'
         df_val['ml_phase'] = 'val'
         df_test['ml_phase'] = 'test'
@@ -160,10 +161,9 @@ def get_dataframes(dataset, seed=200, cvFold=None, nestedCvFolds=None):
         if nestedCvFolds:
             add_k_fold_columns(df=df, k=nestedCvFolds, seed=seed, column_name_prefix='ml_phase')
 
-        df.to_csv(kg_data_file.replace('.csv', '2.csv'), index=False)
+        df.to_csv(kg_data_file, index=False)
 
-    if kg_options is not None:
-        src = kg_data_file.replace('.csv', '2.csv')
+        src = kg_data_file
         dataset['split'] = 'ml_phase'
 
     if cvFold is not None:

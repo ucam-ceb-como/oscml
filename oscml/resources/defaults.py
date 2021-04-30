@@ -18,7 +18,10 @@ DEFAULTS_ = {
     "cudnn_benchmark": False
 },
 "dataset":{
-	"kg_options": None
+	"querykg": False,
+	"kg_options": {
+		"kgdstcsv": "./data/processed/kgData.csv"
+	}
 },
 "training":{
     "metric": "mse",
