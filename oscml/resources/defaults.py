@@ -19,9 +19,6 @@ DEFAULTS_ = {
 },
 "dataset":{
 	"querykg": False,
-	"kg_options": {
-		"kgdstcsv": "./data/processed/kgData.csv"
-	}
 },
 "training":{
     "metric": "mse",
@@ -49,7 +46,10 @@ DEFAULTS_ = {
     "regression_plot": False
 },
 "transfer_learning": {
-  "freeze_and_train": False
+  "freeze_and_train": False,
+  "dataset":{
+  	"querykg": False
+  }
 },
 "predict_settings": {
   "predict_input": [],

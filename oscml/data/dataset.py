@@ -136,10 +136,11 @@ def get_dataframes(dataset, seed=200, cvFold=None, nestedCvFolds=None):
     x_column = dataset['x_column'][0]
     y_column = dataset['y_column'][0]
     querykg = dataset['querykg']
-    kg_options = dataset['kg_options']
-    kg_data_file = kg_options['kgdstcsv']
 
     if querykg:
+        kg_options = dataset['kg_options']
+        kg_data_file = kg_options['kgdstcsv']
+
         response = queryKG(kg_options['sparqlEndPoint'], kg_options['queryStr'])
         pces = []
         smiles = []
