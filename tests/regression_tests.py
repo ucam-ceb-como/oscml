@@ -33,7 +33,7 @@ class Test_HPO(unittest.TestCase):
         ['attentivefp','trials_5_no_cv'],
         ['attentivefp','trials_1_cv_2'],
         ['attentivefp','trials_2_cv_2'],
-        ['attentivefp','transfer']
+        ['attentivefp','transfer'],
         ['attentivefp','predict']
     ])
     def test_models(self, model, test):
