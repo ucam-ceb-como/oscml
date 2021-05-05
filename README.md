@@ -22,16 +22,16 @@ Provided all above prerequisites are met the package can be installed via the fo
     install_script.sh [options]
 
     options:
-	  -v              : creates conda virtual environment for this project in the project directory and
+      -v              : creates conda virtual environment for this project in the project directory and
                         installs all its dependencies. Note, if the same named environment already exists
                         it will be removed and created again
-	  -n VENV_NAME    : name of the virtual environment to be created, if not provided
-	                    default `oscml_venv` will be used instead
+      -n VENV_NAME    : name of the virtual environment to be created, if not provided
+                        default `oscml_venv` will be used instead
       -g              : install cuda-enabled version allowing to run training on gpu
-	  -i              : installs the project in the currently active virtual environment
-	  -e              : enables developer mode installation
+      -i              : installs the project in the currently active virtual environment
+      -e              : enables developer mode installation
       -r              : downloads project resources from the remote location
-	  -h              : prints this help message
+      -h              : prints this help message
 
     example usage:
     ./install_script.sh -v -i -e -r      this will create default conda virt. env. `oscml_venv`,
