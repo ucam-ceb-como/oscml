@@ -4,7 +4,7 @@
           xsi:schemaLocation="http://maven.apache.org/POM/4.0.0
   http://maven.apache.org/xsd/assembly-1.0.0.xsd"
           xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
-  <id>model_files</id>
+  <id>trained_models</id>
   <formats>
     <format>zip</format>
   </formats>
@@ -13,13 +13,13 @@
 
   <fileSets>
     <fileSet>
-      <directory>model_files/svr</directory>
+      <directory>trained_models</directory>
       <outputDirectory></outputDirectory>
       <includes>
-        <include>*.ckpt</include>
-		<include>*.json</include>
-		<include>*.pkl</include>
-		<include>*.txt</include>
+        <include>**/*.ckpt</include>
+		<include>**/*.json</include>
+		<include>**/*.pkl</include>
+		<include>**/*.txt</include>
       </includes>
     </fileSet>
   </fileSets>

@@ -1,5 +1,5 @@
 # Artifact ID is defined globally so that it can be used in both stages
-ARG artifact_id="model_files"
+ARG artifact_id="trained_models"
 
 # First stage: download maven artifact
 #==================================================================================================
@@ -12,12 +12,12 @@ FROM maven:3.6-openjdk-11-slim as dependency_fetcher
 ARG repo_url="https://maven.pkg.github.com/ucam-ceb-como/oscml/"
 ARG group_id="com.oscml"
 ARG artifact_fmt="zip"
-ARG artifact_version="1.0.0"
+ARG artifact_version="1.0.0-SNAPSHOT"
 # artifact_id has to be declared here so that the globally-defined value is available in this stage
 ARG artifact_id
 
 # Copy all files into root's home, including the pom file and ./m2 directory
-ADD docker /root
+ADD retrieved_models /root
 
 # Populate settings templates with credentials, repo name
 WORKDIR /root/.m2
@@ -53,7 +53,7 @@ SHELL ["/bin/bash", "-c"]
 # Set the default working directory, then copy the Python source code into it
 WORKDIR /app
 COPY . /app
-COPY --from=dependency_fetcher /root/${artifact_id} ./${artifact_id}
+COPY --from=dependency_fetcher /root/${artifact_id} ./retrieved_models/${artifact_id}
 
 # cron setup
 #------------------------------------
