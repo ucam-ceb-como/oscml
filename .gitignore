@@ -15,3 +15,5 @@ coverage.xml
 *.mp4
 tmp/
 logs/
+repo_username.txt
+repo_password.txt
