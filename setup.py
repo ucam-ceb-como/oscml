@@ -5,7 +5,7 @@ cwd_abspath= path.abspath(path.dirname(__file__))
 
 setup(
     name='oscml',
-    version='1.0.0',
+    version='1.0.0-SNAPSHOT',
     author='Andreas Eibeck, Daniel Nurkowski, Angiras Menon, Jiaru Bai',
     license='MIT',
     description='Organic solar cells PCE prediction models',

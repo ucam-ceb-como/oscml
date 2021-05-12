@@ -5,7 +5,7 @@ import os
 
 # Create the Flask app object
 app = Flask(__name__)
-trained_models = os.path.join('./trained_models')
+trained_models = os.path.join('./retrieved_models/trained_models/')
 
 # Show an instructional message at the app root
 @app.route('/')
@@ -34,8 +34,8 @@ def api():
     try:
         model = request.args['model']
     except KeyError:
-        # Select a default Random Forest model
-        model = 'rf'
+        # Select a default SVR model
+        model = 'svr'
 
     config = os.path.join(trained_models, model, model + '.json')
 

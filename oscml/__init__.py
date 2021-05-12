@@ -2,7 +2,7 @@ from oscml.app import app
 
 """Root package info."""
 
-__version__ = '0.0.5'
+__version__ = '1.0.0.-SNAPSHOT'
 __author__ = 'Andreas Eibeck, Daniel Nurkowski, Angiras Menon, Jiaru Bai'
 __author_email__ = ''
 __license__ = 'Apache-2.0'
