@@ -33,28 +33,34 @@ RUN sed -i "s|REPO_URL|${repo_url}|g;s|GROUP_ID|${group_id}|;s|ARTIFACT_ID|${art
 RUN mvn -f pom.xml org.apache.maven.plugins:maven-dependency-plugin:unpack-dependencies
 #==================================================================================================
 
-
-# This Dockerfile has been adapted from the VS Code example at https://code.visualstudio.com/docs/containers/quickstart-python
-
-# Base image is a lightweight version of Python
+# Second stage: install the oscml app
+#==================================================================================================
 FROM continuumio/miniconda3 as oscml_app
 
+# Set the artifact_id again otherwise it will be blank in this stage
+ARG artifact_id
 # Expose the port on which our server will run
 EXPOSE 5000
-
 # Keeps Python from generating .pyc files in the container
 #ENV PYTHONDONTWRITEBYTECODE=1
-
 # Turns off buffering for easier container logging
 ENV PYTHONUNBUFFERED=1
-
 SHELL ["/bin/bash", "-c"]
-
 # Set the default working directory, then copy the Python source code into it
 WORKDIR /app
-COPY . /app
+COPY ./oscml /app/oscml/
+COPY ./LICENSE /app/.
+COPY ./README.md /app/.
+COPY ./setup.py /app/.
+COPY ./cronconfig /app/.
+COPY ./environment_cpu.yml /app/.
+COPY ./environment_gpu.yml /app/.
+COPY ./delete_logs.sh /app/.
+COPY ./app_entry_point.sh /app/.
+COPY ./install_script.sh /app/.
 COPY --from=dependency_fetcher /root/${artifact_id} ./retrieved_models/${artifact_id}
 
+#------------------------------------
 # cron setup
 #------------------------------------
 # Get cron
@@ -69,8 +75,8 @@ RUN chmod 0744 /app/delete_logs.sh
 RUN crontab /etc/cron.d/cronconfig
 # Create the log file to be able to run tail
 RUN touch /var/log/cron.log
-#------------------------------------
 
+#------------------------------------
 # conda setup
 #------------------------------------
 ARG conda_env=oscml_venv
@@ -80,8 +86,10 @@ RUN ./install_script.sh -v -n $conda_env -i -e
 RUN echo "source activate $conda_env" > ~/.bashrc
 ENV PATH /opt/conda/envs/$conda_env/bin:$PATH
 RUN conda install openjdk
-#------------------------------------
 
+#------------------------------------
+# entry point setup
+#------------------------------------
 # Switch to a non-root user before running the server, for security reasons
 # (See https://code.visualstudio.com/docs/containers/python-user-rights)
 #RUN useradd appuser && chown -R appuser /app
@@ -89,3 +97,4 @@ RUN conda install openjdk
 # Set the entrypoint
 RUN chmod 0744 /app/app_entry_point.sh
 ENTRYPOINT /app/app_entry_point.sh
+#==================================================================================================
